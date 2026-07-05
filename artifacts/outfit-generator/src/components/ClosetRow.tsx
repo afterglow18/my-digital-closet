@@ -257,24 +257,22 @@ export const ClosetRow = forwardRef<ClosetRowHandle, ClosetRowProps>(
                     width: "100%",
                     height: "100%",
                     overflow: "hidden",
-                    // All four corners rounded to match the placeholder box shape
+                    // Rounded corners clip the image; matches the placeholder box shape
                     borderRadius: "10px",
-                    background: "rgba(255, 251, 244, 0.97)",
+                    // Transparent — no white/cream box behind the clothing photo
+                    background: "transparent",
+                    // Selected: blush-pink border. Non-selected: no border, no box.
                     border: isCenter
                       ? `4.5px solid ${PINK_BORDER}`
-                      : "1.5px solid rgba(196,155,42,0.14)",
-                    boxShadow: isCenter
-                      ? PINK_GLOW
-                      : "0 2px 8px rgba(0,0,0,0.06)",
-                    // box-sizing: border-box (React default) keeps outer size identical
-                    // regardless of border width — no layout shift between selected/unselected
+                      : "none",
+                    boxShadow: isCenter ? PINK_GLOW : "none",
+                    // box-sizing: border-box keeps outer size stable across states
                     transition: "border-color 0.24s ease, border-width 0.24s ease, box-shadow 0.24s ease",
                     position: "relative",
                     pointerEvents: "none",
-                    // Top padding keeps the clothing photo from touching the frame edge;
-                    // proportional to card height (clamped 8–18 px) so short viewports
-                    // don't lose usable image area in the shoes / bottoms rows.
-                    padding: `${cardTopPad}px 4px 4px`,
+                    // Small top inset only on selected card so image doesn't press
+                    // against the pink border. Non-selected has no border, needs no gap.
+                    padding: isCenter ? `${cardTopPad}px 4px 4px` : "0",
                   }}
                 >
                   {item.imageObjectPath ? (
