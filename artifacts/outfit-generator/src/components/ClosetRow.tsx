@@ -28,9 +28,12 @@ import React, {
   useState,
 } from "react";
 
-// Neutral warm-white shown in the letterbox areas when object-fit:contain
-// leaves empty space around the clothing item.
-const PHOTO_BG = "#f5f2ee";
+// ── Cover Flow visual constants ───────────────────────────────────────────────
+const SCALE_CTR   = 1.12;            // center card is 12% larger
+const SCALE_SIDE  = 0.88;            // side cards are 88% of center
+const OPACITY_SIDE = 0.72;           // side cards fade to 72%
+const BG_CENTER   = "rgba(253,236,239,1)";  // blush-pink card for selected item
+const SHADOW_CTR  = "0 4px 18px rgba(200,100,120,0.22), 0 1px 4px rgba(0,0,0,0.10)";
 import { ClothingItem } from "@workspace/api-client-react";
 import { getImageUrl } from "@/lib/utils";
 
@@ -188,30 +191,31 @@ export const ClosetRow = forwardRef<ClosetRowHandle, ClosetRowProps>(
     // ── Geometry ──────────────────────────────────────────────────────────────
     const baseX  = (1 - centredIdx) * slotW;
     const stripX = baseX + dragX;
+    const containerCX = slotW * 1.5; // visual center of the 3-slot viewport
 
-    // Items beyond ±1.65 slots from center are invisible; all others same size/opacity.
+    // Items beyond ±1.65 slots from center are culled
     const isVisible = (i: number) => {
-      const itemCX    = i * slotW + slotW / 2 + stripX;
-      const containerCX = (slotW * 3) / 2;
+      const itemCX = i * slotW + slotW / 2 + stripX;
       return Math.abs(itemCX - containerCX) / slotW <= 1.65;
     };
 
-    const lo    = Math.max(0, centredIdx - 2);
-    const hi    = Math.min(items.length - 1, centredIdx + 2);
+    const lo = Math.max(0, centredIdx - 2);
+    const hi = Math.min(items.length - 1, centredIdx + 2);
 
-    // ── Card geometry ─────────────────────────────────────────────────────────
-    // Photos are inset ~8% within each slot so there is breathing room between
-    // images and equal whitespace on every side.  The inset is split evenly:
-    // half on left/right (horizontal centering) and half as a top margin.
-    const GAP    = slotW * 0.06;         // total horizontal gap per slot (~6%)
-    const inset  = GAP / 2;             // equal margin each side
-    const photoW = slotW - GAP;         // ~94% of slot width
-    // Use maxPhotoH (from parent) when provided so all rows show identical card
-    // sizes.  Fall back to containerH-based clamp for safety.
+    // ── Card base geometry ────────────────────────────────────────────────────
+    // Side-item card dimensions (SCALE_SIDE = 1).  Center card is scaled up
+    // via CSS transform so layout is unaffected.
+    const GAP    = slotW * 0.06;
+    const photoW = slotW - GAP;
     const photoH = Math.min(photoW * 1.5, maxPhotoH ?? (containerH - 2));
 
-    // Center item gets a thin soft-pink outline; left/right items are borderless.
-    const CENTER_BORDER = "1.5px solid #F7C6D8";
+    // CSS transition applied to individual card properties during snap animation.
+    // During live drag we compute live values so no card-level transition is needed.
+    const CARD_TRANSITION =
+      "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94), " +
+      "opacity 0.28s ease, " +
+      "box-shadow 0.28s ease, " +
+      "background-color 0.28s ease";
 
     // Don't render until we've measured the container
     if (!slotW || !containerH) {
@@ -228,7 +232,8 @@ export const ClosetRow = forwardRef<ClosetRowHandle, ClosetRowProps>(
         style={{
           position: "absolute",
           inset: 0,
-          overflow: "hidden",
+          // overflow visible so the scaled-up center card isn't clipped at edges
+          overflow: "visible",
           touchAction: "pan-y",
           userSelect: "none",
           cursor: items.length > 1 ? "ew-resize" : "default",
@@ -254,6 +259,37 @@ export const ClosetRow = forwardRef<ClosetRowHandle, ClosetRowProps>(
             if (!isVisible(i)) return null;
             const isCenter = i === centredIdx;
 
+            // ── Cover Flow per-card style ──────────────────────────────────────
+            // During a live drag React re-renders on every pointer-move, so we
+            // can compute the exact visual state from the real pixel position.
+            // During the snap animation (transitioning=true) the strip moves via
+            // CSS, React doesn't re-render per-frame, so we fall back to discrete
+            // center/side values and let CARD_TRANSITION do the blend.
+            let scale:   number;
+            let opacity: number;
+            let bg:      string;
+            let shadow:  string;
+
+            if (transitioning) {
+              // Discrete snap state — CSS transition interpolates the rest
+              scale   = isCenter ? SCALE_CTR  : SCALE_SIDE;
+              opacity = isCenter ? 1          : OPACITY_SIDE;
+              bg      = isCenter ? BG_CENTER  : "transparent";
+              shadow  = isCenter ? SHADOW_CTR : "none";
+            } else {
+              // Live drag — smooth per-frame interpolation based on actual px position
+              const itemCX    = i * slotW + slotW / 2 + stripX;
+              const distSlots = Math.abs(itemCX - containerCX) / slotW;
+              // progress: 1 when perfectly centred, 0 when one full slot away
+              const p = Math.max(0, Math.min(1, 1 - distSlots));
+              scale   = SCALE_SIDE  + (SCALE_CTR   - SCALE_SIDE)   * p;
+              opacity = OPACITY_SIDE + (1           - OPACITY_SIDE) * p;
+              bg      = `rgba(253,236,239,${p.toFixed(3)})`;
+              shadow  = p > 0.05
+                ? `0 ${(4 * p).toFixed(1)}px ${(16 * p).toFixed(1)}px rgba(200,100,120,${(0.22 * p).toFixed(3)})`
+                : "none";
+            }
+
             return (
               <button
                 key={item.id}
@@ -273,30 +309,32 @@ export const ClosetRow = forwardRef<ClosetRowHandle, ClosetRowProps>(
                   border: "none",
                   padding: 0,
                   WebkitTapHighlightColor: "transparent",
-                  // Center the inset card horizontally inside the full-width button
                   display: "flex",
+                  alignItems: "center",
                   justifyContent: "center",
+                  // z-index so the scaled-up center card renders above its neighbours
+                  zIndex: isCenter ? 2 : 1,
                 }}
               >
-                {/* Photo card — inset ~8% within its slot for breathing room.
-                    Center item: thin soft-pink outline (#F7C6D8).
-                    Left/right items: borderless.
-                    Pink hanger in background image is the primary selection cue.
-                    Hanger overlay at z=20 (wardrobe.tsx) renders on top. */}
+                {/* Photo card — scales, fades, and recolours as it moves
+                    to/from centre.  transform-origin centre keeps the card
+                    visually anchored in its slot. */}
                 <div
                   style={{
                     width: photoW,
                     height: photoH,
+                    flexShrink: 0,
                     overflow: "hidden",
-                    borderRadius: "10px",
-                    background: PHOTO_BG,
-                    border: isCenter ? CENTER_BORDER : "none",
-                    boxShadow: "none",
+                    borderRadius: "12px",
+                    background: bg,
+                    boxShadow: shadow,
                     position: "relative",
                     pointerEvents: "none",
-                    padding: 0,
-                    flexShrink: 0,
-                    marginTop: 2,      // minimal top gap — maximise visible photo height
+                    opacity,
+                    transform: `scale(${scale.toFixed(4)})`,
+                    transformOrigin: "center center",
+                    transition: transitioning ? CARD_TRANSITION : "none",
+                    willChange: "transform, opacity",
                   }}
                 >
                   {item.imageObjectPath ? (
