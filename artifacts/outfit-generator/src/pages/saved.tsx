@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   useListOutfits,
   useDeleteOutfit,
+  useRenameOutfit,
   useAddItemToOutfit,
   getListOutfitsQueryKey,
   ClothingItem,
 } from "@workspace/api-client-react";
-import { Trash2, Bookmark, Plus } from "lucide-react";
+import { Trash2, Bookmark, Plus, Pencil, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -66,12 +67,36 @@ function ItemPhoto({
 export default function SavedPage() {
   const { data: outfits, isLoading } = useListOutfits();
   const deleteOutfit = useDeleteOutfit();
+  const renameOutfit = useRenameOutfit();
   const addItemToOutfit = useAddItemToOutfit();
   const queryClient = useQueryClient();
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [addAccessoryToId, setAddAccessoryToId] = useState<number | null>(null);
   const [detailsItem, setDetailsItem] = useState<ClothingItem | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renamingId !== null) renameInputRef.current?.focus();
+  }, [renamingId]);
+
+  const startRename = (id: number, currentName: string) => {
+    setRenamingId(id);
+    setRenameValue(currentName);
+  };
+
+  const commitRename = (id: number) => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== outfits?.find((o) => o.id === id)?.name) {
+      renameOutfit.mutate(
+        { id, name: trimmed },
+        { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) }
+      );
+    }
+    setRenamingId(null);
+  };
 
   const isFree = tier === "free";
   const outfitCount = outfits?.length ?? 0;
@@ -197,11 +222,36 @@ export default function SavedPage() {
                 data-testid={`outfit-card-${outfit.id}`}
               >
                 {/* Card header */}
-                <div className="px-4 py-3 border-b-2 border-black flex justify-between items-center bg-primary">
-                  <h3 className="font-display font-bold text-lg uppercase tracking-tight">{outfit.name}</h3>
+                <div className="px-4 py-3 border-b-2 border-black flex justify-between items-center bg-primary gap-2">
+                  {renamingId === outfit.id ? (
+                    <form
+                      className="flex-1 flex items-center gap-1"
+                      onSubmit={(e) => { e.preventDefault(); commitRename(outfit.id); }}
+                    >
+                      <input
+                        ref={renameInputRef}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => commitRename(outfit.id)}
+                        maxLength={60}
+                        className="flex-1 font-display font-bold text-lg uppercase tracking-tight bg-white/60 border-2 border-black rounded-lg px-2 py-0.5 outline-none min-w-0"
+                      />
+                      <button type="submit" className="w-7 h-7 flex items-center justify-center bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => startRename(outfit.id, outfit.name)}
+                      className="flex-1 flex items-center gap-1.5 text-left group min-w-0"
+                    >
+                      <h3 className="font-display font-bold text-lg uppercase tracking-tight truncate">{outfit.name}</h3>
+                      <Pencil className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(outfit.id)}
-                    className="w-8 h-8 flex items-center justify-center bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:translate-x-0.5 active:shadow-none hover:bg-destructive/10 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:translate-x-0.5 active:shadow-none hover:bg-destructive/10 transition-colors shrink-0"
                     data-testid={`button-delete-outfit-${outfit.id}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />

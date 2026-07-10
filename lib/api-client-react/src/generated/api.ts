@@ -876,6 +876,57 @@ export const useDeleteOutfit = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getDeleteOutfitMutationOptions(options));
     }
 
+export const getRenameOutfitUrl = (id: number) => {
+  return `/api/outfits/${id}`
+}
+
+/**
+ * @summary Rename a saved outfit
+ */
+export const renameOutfit = async (id: number, name: string, options?: RequestInit): Promise<SavedOutfit> => {
+  return customFetch<SavedOutfit>(getRenameOutfitUrl(id), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export const getRenameOutfitMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renameOutfit>>, TError,{id: number; name: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renameOutfit>>, TError,{id: number; name: string}, TContext> => {
+
+const mutationKey = ['renameOutfit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renameOutfit>>, {id: number; name: string}> = (props) => {
+          const {id, name} = props ?? {};
+          return renameOutfit(id, name, requestOptions)
+        }
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenameOutfitMutationResult = NonNullable<Awaited<ReturnType<typeof renameOutfit>>>
+    export type RenameOutfitMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Rename a saved outfit
+ */
+export const useRenameOutfit = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renameOutfit>>, TError,{id: number; name: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof renameOutfit>>,
+        TError,
+        {id: number; name: string},
+        TContext
+      > => {
+      return useMutation(getRenameOutfitMutationOptions(options));
+    }
+
 export const getAddItemToOutfitUrl = (id: number) => {
   return `/api/outfits/${id}/items`
 }

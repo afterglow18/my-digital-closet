@@ -4,6 +4,8 @@ import { db, savedOutfitsTable, outfitItemsTable, clothingItemsTable } from "@wo
 import {
   SaveOutfitBody,
   DeleteOutfitParams,
+  RenameOutfitParams,
+  RenameOutfitBody,
   AddOutfitItemParams,
   AddOutfitItemBody,
 } from "@workspace/api-zod";
@@ -74,6 +76,35 @@ router.post("/outfits", requireAuth, async (req, res): Promise<void> => {
     : [];
 
   res.status(201).json({ ...outfit, itemIds: parsed.data.itemIds, items: savedItems });
+});
+
+router.patch("/outfits/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthRequest).userId;
+  const params = RenameOutfitParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const body = RenameOutfitBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+
+  const [outfit] = await db
+    .select()
+    .from(savedOutfitsTable)
+    .where(and(eq(savedOutfitsTable.id, params.data.id), eq(savedOutfitsTable.userId, userId)));
+  if (!outfit) { res.status(404).json({ error: "Outfit not found" }); return; }
+
+  const [updated] = await db
+    .update(savedOutfitsTable)
+    .set({ name: body.data.name })
+    .where(eq(savedOutfitsTable.id, params.data.id))
+    .returning();
+
+  const outfitItems = await db.select().from(outfitItemsTable).where(eq(outfitItemsTable.outfitId, params.data.id));
+  const itemIds = outfitItems.map((r) => r.clothingItemId);
+  const items = itemIds.length > 0
+    ? await db.select().from(clothingItemsTable).where(inArray(clothingItemsTable.id, itemIds))
+    : [];
+
+  res.json({ ...updated, itemIds, items });
 });
 
 router.patch("/outfits/:id/items", requireAuth, async (req, res): Promise<void> => {

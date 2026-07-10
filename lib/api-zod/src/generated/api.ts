@@ -277,6 +277,17 @@ export const SaveOutfitResponse = zod.object({
 
 
 /**
+ * @summary Rename a saved outfit
+ */
+export const RenameOutfitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RenameOutfitBody = zod.object({
+  "name": zod.string().min(1)
+})
+
+/**
  * @summary Delete a saved outfit
  */
 export const DeleteOutfitParams = zod.object({
