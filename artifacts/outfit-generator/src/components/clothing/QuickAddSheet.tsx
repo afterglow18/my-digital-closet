@@ -24,7 +24,6 @@ import {
   getListClothingQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { encodeToPng } from "@/lib/processImage";
 import { apiUrl } from "@/lib/apiUrl";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -47,25 +46,86 @@ type Phase =
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/**
+ * Re-encode any image (HEIC, JPEG, PNG, …) to a JPEG capped at 2048 px on the
+ * long edge.  Keeps files small enough to upload reliably over mobile networks
+ * and avoids the ~40 MB PNGs that a raw iPhone photo would produce.
+ */
+async function encodeForUpload(input: File | Blob): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(input);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      if (!img.naturalWidth || !img.naturalHeight) {
+        reject(new Error(`Image decoded with 0 dimensions — format may be unsupported (type: ${input.type || "unknown"})`));
+        return;
+      }
+
+      const MAX_DIM = 2048;
+      const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth  * scale);
+      const h = Math.round(img.naturalHeight * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("canvas.getContext('2d') returned null")); return; }
+
+      ctx.drawImage(img, 0, 0, w, h);
+
+      canvas.toBlob(
+        (b) => {
+          if (b && b.size > 1000) {
+            resolve(b);
+          } else {
+            reject(new Error(`canvas.toBlob returned ${b?.size ?? 0} bytes — image may be blank or cross-origin tainted`));
+          }
+        },
+        "image/jpeg",
+        0.85,
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`Failed to load image into <img> element (type: ${input.type || "unknown"}, size: ${input.size} bytes)`));
+    };
+
+    img.src = url;
+  });
+}
+
 async function uploadBlob(blob: Blob, filename: string): Promise<string> {
-  const res = await fetch(apiUrl("/api/storage/uploads/request-url"), {
+  const contentType = "image/jpeg";
+
+  const urlRes = await fetch(apiUrl("/api/storage/uploads/request-url"), {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ name: filename, size: blob.size, contentType: "image/png" }),
+    body:    JSON.stringify({ name: filename, size: blob.size, contentType }),
   });
-  if (!res.ok) throw new Error("Failed to request upload URL");
+  if (!urlRes.ok) {
+    const body = await urlRes.text().catch(() => "");
+    throw new Error(`Upload URL request failed (HTTP ${urlRes.status}): ${body}`);
+  }
 
-  const { uploadURL, objectPath } = (await res.json()) as {
+  const { uploadURL, objectPath } = (await urlRes.json()) as {
     uploadURL: string;
     objectPath: string;
   };
 
   const put = await fetch(uploadURL, {
     method:  "PUT",
-    headers: { "Content-Type": "image/png" },
+    headers: { "Content-Type": contentType },
     body:    blob,
   });
-  if (!put.ok) throw new Error("Upload PUT failed");
+  if (!put.ok) {
+    const body = await put.text().catch(() => "");
+    throw new Error(`Storage PUT failed (HTTP ${put.status}): ${body}`);
+  }
 
   return objectPath;
 }
@@ -171,38 +231,41 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleFile = useCallback(async (file: File) => {
     setErrorMsg(null);
 
-    // 1. Encode to PNG
+    // 1. Encode: resize to ≤2048 px and convert to JPEG for a small, uploadable blob
     setPhase("validating");
-    let png: Blob;
+    let jpeg: Blob;
     try {
-      png = await encodeToPng(file);
+      jpeg = await encodeForUpload(file);
+      console.log(`[upload] encoded ${file.name} (${file.type}, ${file.size}B) → JPEG ${jpeg.size}B`);
     } catch (err) {
-      console.error("PNG encoding failed:", err);
-      setErrorMsg("Could not read the photo. Please try again.");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[upload] encode failed:", msg);
+      setErrorMsg(`Could not read the photo: ${msg}`);
       setPhase("pick");
       return;
     }
 
-    // 2. Validate with Gemini
+    // 2. Validate with Gemini (fails open — outage never blocks upload)
     try {
-      const { isClothing, reason } = await validateIsClothing(png);
+      const { isClothing, reason } = await validateIsClothing(jpeg);
       if (!isClothing) {
         setErrorMsg(
-          `That doesn't look like a clothing item. ${reason ? reason : "Please try a different photo."}`
+          `That doesn't look like a clothing item. ${reason || "Please try a different photo."}`
         );
         setPhase("pick");
         return;
       }
     } catch (err) {
-      // Validation threw unexpectedly — fail open and continue
-      console.warn("Clothing validation error (failing open):", err);
+      console.warn("[upload] validation error (failing open):", err);
     }
 
-    // 3. Upload & save
+    // 3. Upload to storage & save DB record
     setPhase("uploading");
     try {
-      const filename = `${category}-${Date.now()}.png`;
-      const path     = await uploadBlob(png, filename);
+      const filename = `${category}-${Date.now()}.jpg`;
+      console.log(`[upload] requesting presigned URL for ${filename} (${jpeg.size}B)`);
+      const path = await uploadBlob(jpeg, filename);
+      console.log(`[upload] stored at ${path}`);
 
       const label    = CATEGORY_LABELS[category];
       const n        = existingCount + 1;
@@ -217,15 +280,19 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               if (onCreated) onCreated(createdItem);
               resolve();
             },
-            onError: reject,
+            onError: (err) => {
+              console.error("[upload] createItem failed:", err);
+              reject(err);
+            },
           },
         );
       });
 
       handleClose();
     } catch (err) {
-      console.error("Upload / create failed:", err);
-      setErrorMsg("Could not save the item. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[upload] upload/save failed:", msg);
+      setErrorMsg(`Save failed: ${msg}`);
       setPhase("pick");
     }
   }, [category, existingCount, createItem, queryClient, handleClose]);
