@@ -280,7 +280,7 @@ export default function GeneratePage() {
           aria-hidden="true"
           style={{
             position: "absolute",
-            top:  pY(ir, 0.135),
+            top:  pY(ir, 0.225),
             left: ir.left,
             width: ir.width,
             textAlign: "center",
@@ -292,11 +292,11 @@ export default function GeneratePage() {
           <span style={{
             fontFamily: "var(--font-display)",
             fontWeight: 700,
-            fontSize: Math.max(11, ir.width * 0.038),
+            fontSize: Math.max(13, ir.width * 0.052),
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: "#7a4f10",
-            opacity: 0.85,
+            color: "#3d1a00",
+            opacity: 0.92,
           }}>
             Matchmaker
           </span>
