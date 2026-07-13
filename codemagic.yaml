@@ -121,7 +121,7 @@ workflows:
       - name: Upload to TestFlight
         script: |
           KEY_FILE=$(mktemp /tmp/AuthKey_XXXXXX.p8)
-          printf '%b' "$APP_STORE_CONNECT_PRIVATE_KEY" | tr -d '\r' | awk 'NF' > "$KEY_FILE"
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
           echo "Key first line: $(head -1 "$KEY_FILE")"
           echo "Key line count: $(wc -l < "$KEY_FILE")"
           app-store-connect publish \
