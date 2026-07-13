@@ -51,6 +51,12 @@ workflows:
           npx cap add ios
           npx cap sync ios
 
+      - name: Set export compliance
+        script: |
+          /usr/libexec/PlistBuddy \
+            -c "Add :ITSAppUsesNonExemptEncryption bool false" \
+            artifacts/outfit-generator/ios/App/App/Info.plist
+
       - name: Inject app icon
         script: |
           cd artifacts/outfit-generator
