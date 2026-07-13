@@ -12,6 +12,7 @@ import AuthPage from './pages/auth';
 import { setGlobalTier } from '@/hooks/useEntitlements';
 import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { queryClient } from '@/lib/queryClient';
+import { apiUrl } from '@/lib/apiUrl';
 
 function NotFound() {
   return (
@@ -87,7 +88,7 @@ function AppShell() {
     sessionStorage.setItem("closet-entered", "1");
     setEntered(true);
 
-    fetch(`/api/stripe/verify?session_id=${encodeURIComponent(sessionId)}`)
+    fetch(apiUrl(`/api/stripe/verify?session_id=${encodeURIComponent(sessionId)}`))
       .then((r) => r.json())
       .then(({ verified, product }: { verified: boolean; product: string | null }) => {
         if (verified && product === "unlock") setGlobalTier("unlock");

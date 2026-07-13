@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect, useCallback, FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthContext } from "@/context/AuthContext";
+import { apiUrl } from "@/lib/apiUrl";
 
 const IMG_W = 941;
 const IMG_H = 1672;
@@ -138,7 +139,7 @@ export default function AuthPage({ onAuthenticated }: { onAuthenticated: () => v
     setError("");
     setLoading(true);
     try {
-      await fetch("/api/auth/forgot-password", {
+      await fetch(apiUrl("/api/auth/forgot-password"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -160,7 +161,7 @@ export default function AuthPage({ onAuthenticated }: { onAuthenticated: () => v
     }
     setLoading(true);
     try {
-      const r = await fetch("/api/auth/reset-password", {
+      const r = await fetch(apiUrl("/api/auth/reset-password"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: resetToken, password: newPassword }),

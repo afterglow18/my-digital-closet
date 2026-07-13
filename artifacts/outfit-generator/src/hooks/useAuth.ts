@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { apiUrl } from "@/lib/apiUrl";
 
 export interface AuthUser {
   id: number;
@@ -37,7 +38,7 @@ export function useAuth() {
 
     setAuthTokenGetter(() => token);
 
-    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/auth/me"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then(({ user }) => setState({ status: "authenticated", user, token }))
       .catch(() => {
@@ -49,7 +50,7 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const r = await fetch("/api/auth/login", {
+    const r = await fetch(apiUrl("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -62,7 +63,7 @@ export function useAuth() {
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
-    const r = await fetch("/api/auth/register", {
+    const r = await fetch(apiUrl("/api/auth/register"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
