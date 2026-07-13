@@ -7,5 +7,6 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getImageUrl(path: string | null | undefined) {
   if (!path) return null;
-  return `/api/storage${path}`;
+  const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
+  return `${API_BASE}/api/storage${path}`;
 }

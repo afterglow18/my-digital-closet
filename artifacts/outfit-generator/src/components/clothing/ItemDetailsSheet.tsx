@@ -221,7 +221,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
     >
       {/* ── Header ── */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3
-                      bg-white border-b-2 border-black flex-shrink-0">
+                      bg-white border-b-2 border-black flex-shrink-0"
+           style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
         <h2 className="font-display font-bold text-xl uppercase tracking-tight">
           Item Details
         </h2>
