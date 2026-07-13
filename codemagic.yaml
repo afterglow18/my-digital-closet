@@ -118,6 +118,18 @@ workflows:
             -exportOptionsPlist app-store/ExportOptions.plist \
             -exportPath "$CM_BUILD_DIR/build/ipa"
 
+      - name: Upload to TestFlight
+        script: |
+          KEY_FILE=$(mktemp /tmp/AuthKey.XXXXXX)
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
+          app-store-connect publish \
+            --path "$CM_BUILD_DIR/build/ipa/App.ipa" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --private-key "@file:$KEY_FILE" \
+            --testflight
+          rm -f "$KEY_FILE"
+
     artifacts:
       - $CM_BUILD_DIR/build/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
