@@ -25,6 +25,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { encodeToPng } from "@/lib/processImage";
+import { apiUrl } from "@/lib/apiUrl";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ type Phase =
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 async function uploadBlob(blob: Blob, filename: string): Promise<string> {
-  const res = await fetch("/api/storage/uploads/request-url", {
+  const res = await fetch(apiUrl("/api/storage/uploads/request-url"), {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ name: filename, size: blob.size, contentType: "image/png" }),
@@ -115,7 +116,7 @@ async function validateIsClothing(
   const thumb = await resizeForValidation(pngBlob, 512);
   const imageBase64 = await blobToBase64(thumb);
 
-  const res = await fetch("/api/clothing/validate-image", {
+  const res = await fetch(apiUrl("/api/clothing/validate-image"), {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ imageBase64 }),
@@ -247,8 +248,11 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       transition={{ type: "spring", damping: 28, stiffness: 240 }}
       className="fixed inset-0 z-[70] flex flex-col max-w-md mx-auto bg-[#f9f4ee]"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b-2 border-black flex-shrink-0">
+      {/* Header — pt accounts for iOS status bar safe area */}
+      <div
+        className="flex items-center justify-between px-4 pb-3 bg-white border-b-2 border-black flex-shrink-0"
+        style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
+      >
         <h2 className="font-display font-bold text-xl uppercase tracking-tight">
           Add {label}
         </h2>
