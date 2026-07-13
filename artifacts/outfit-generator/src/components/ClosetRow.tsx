@@ -237,7 +237,7 @@ export const ClosetRow = forwardRef<ClosetRowHandle, ClosetRowProps>(
           inset: 0,
           // overflow visible so the scaled-up center card isn't clipped at edges
           overflow: "visible",
-          touchAction: "pan-y",
+          touchAction: disableSwipe ? "none" : "pan-y",
           userSelect: "none",
           cursor: items.length > 1 ? "ew-resize" : "default",
         }}
