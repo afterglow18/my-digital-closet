@@ -68,8 +68,8 @@ router.post("/stripe/checkout", async (req, res): Promise<void> => {
       returnPath?: unknown;
     };
 
-    if (product !== "unlock" && product !== "premium") {
-      res.status(400).json({ error: "Unknown product. Valid products: 'unlock', 'premium'." });
+    if (product !== "monthly" && product !== "annual") {
+      res.status(400).json({ error: "Unknown product. Valid products: 'monthly', 'annual'." });
       return;
     }
 
@@ -112,7 +112,7 @@ router.post("/stripe/checkout", async (req, res): Promise<void> => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [{ price: prices.data[0].id, quantity: 1 }],
-      mode: "payment",
+      mode: "subscription",
       success_url: successUrl,
       cancel_url:  cancelUrl,
       metadata: { product_key: product },

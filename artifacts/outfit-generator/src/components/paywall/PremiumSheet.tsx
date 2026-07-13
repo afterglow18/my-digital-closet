@@ -102,9 +102,8 @@ export function PremiumSheet({ onClose }: Props) {
 
       {/* CTA footer */}
       <div className="px-5 pb-6 pt-4 bg-white border-t-2 border-black flex flex-col gap-3 flex-shrink-0">
-        {/* Primary: Pro Stylist */}
         <button
-          onClick={() => handlePurchase("premium")}
+          onClick={() => handlePurchase("annual")}
           disabled={!!pending}
           className="w-full py-4 rounded-xl flex items-center justify-center gap-2
                      font-display font-bold text-lg uppercase tracking-tight border-4 border-black
@@ -112,12 +111,10 @@ export function PremiumSheet({ onClose }: Props) {
                      active:translate-x-1 active:translate-y-1 active:shadow-none
                      disabled:opacity-60 disabled:cursor-not-allowed transition-all"
         >
-          {pending === "premium" ? "Opening checkout…" : "Get Pro Stylist – $9.99"}
+          {pending ? "Opening checkout…" : "Subscribe – $19.99/yr"}
         </button>
-
-        {/* Secondary: Unlock Forever (if they just want unlimited without mannequin) */}
         <button
-          onClick={() => handlePurchase("unlock")}
+          onClick={() => handlePurchase("monthly")}
           disabled={!!pending}
           className="w-full py-3 rounded-xl flex items-center justify-center gap-1.5
                      font-display font-bold text-sm uppercase tracking-tight border-4 border-black
@@ -125,9 +122,8 @@ export function PremiumSheet({ onClose }: Props) {
                      active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
                      disabled:opacity-60 disabled:cursor-not-allowed transition-all"
         >
-          {pending === "unlock" ? "Opening checkout…" : "Or get Unlock Forever – $4.99 (no mannequin)"}
+          {pending ? "Opening checkout…" : "Or $1.99/month"}
         </button>
-
         <button
           onClick={onClose}
           className="text-sm font-bold text-black/40 text-center underline underline-offset-2

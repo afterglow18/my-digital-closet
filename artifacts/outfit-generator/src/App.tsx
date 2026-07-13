@@ -91,7 +91,7 @@ function AppShell() {
     fetch(apiUrl(`/api/stripe/verify?session_id=${encodeURIComponent(sessionId)}`))
       .then((r) => r.json())
       .then(({ verified, product }: { verified: boolean; product: string | null }) => {
-        if (verified && product === "unlock") setGlobalTier("unlock");
+        if (verified && (product === "monthly" || product === "annual" || product === "unlock")) setGlobalTier("unlock");
         if (verified && product === "premium") setGlobalTier("premium");
       })
       .catch(() => {});

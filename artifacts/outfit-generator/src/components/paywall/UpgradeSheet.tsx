@@ -1,8 +1,7 @@
 /**
  * UpgradeSheet
  *
- * Full-screen paywall — shown when the user taps the mannequin button or hits
- * a free-tier limit (items / outfits).
+ * Full-screen paywall — shown when the user hits a free-tier limit.
  *
  * Design:
  *   Background  — cream #F8F4ED
@@ -10,9 +9,10 @@
  *   CTA button  — closet-door yellow #F0C030, black text
  */
 import React, { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useEntitlements, PurchaseResult } from "@/hooks/useEntitlements";
+import { PurchaseProduct } from "@/lib/entitlements";
 
 export type UpgradeReason = "items" | "outfits" | "mannequin";
 
@@ -22,33 +22,33 @@ interface Props {
 }
 
 const FEATURES = [
-  { emoji: "♾️",  text: "Unlimited clothing items" },
-  { emoji: "👚",  text: "Unlimited outfits"        },
-  { emoji: "☁️",  text: "Save your entire wardrobe" },
-  { emoji: "💳",  text: "One-time purchase"         },
-  { emoji: "🚫",  text: "No monthly subscription"  },
+  { emoji: "♾️",  text: "Unlimited clothing items"   },
+  { emoji: "👗",  text: "Unlimited saved outfits"    },
+  { emoji: "☁️",  text: "Wardrobe saved to the cloud" },
+  { emoji: "🔄",  text: "Cancel anytime"              },
 ] as const;
 
 const SUBTITLES: Record<UpgradeReason, string> = {
-  items:     "You've reached your 20-item limit. Unlock your entire digital closet with a one-time purchase of $4.99.",
-  outfits:   "You've hit the free outfit limit.",
-  mannequin: "A premium feature — unlock it once.",
+  items:     "You've reached your 20-item limit. Subscribe to unlock your full digital closet.",
+  outfits:   "You've hit the free outfit limit. Subscribe to save unlimited outfits.",
+  mannequin: "Subscribe to unlock all premium features.",
 };
 
 export function UpgradeSheet({ reason, onClose }: Props) {
   const { purchase } = useEntitlements();
   const [status, setStatus] = useState<"idle" | "pending">("idle");
+  const [plan, setPlan] = useState<PurchaseProduct>("annual");
 
   const handlePurchase = useCallback(async () => {
     if (status === "pending") return;
     setStatus("pending");
-    const result: PurchaseResult = await purchase("unlock");
+    const result: PurchaseResult = await purchase(plan);
     if (result === "success") {
       onClose();
     } else {
       setStatus("idle");
     }
-  }, [status, purchase, onClose]);
+  }, [status, purchase, plan, onClose]);
 
   return (
     <motion.div
@@ -85,19 +85,43 @@ export function UpgradeSheet({ reason, onClose }: Props) {
           </p>
         </div>
 
-        {/* Black card — flex-1 so it fills remaining space */}
+        {/* Black card */}
         <div
           className="rounded-3xl overflow-hidden border-4 border-black flex flex-col flex-1 min-h-0"
           style={{ background: "#0a0a0a", boxShadow: "6px 6px 0px 0px rgba(0,0,0,0.35)" }}
         >
-          {/* "Upgrade once to unlock:" header */}
-          <div className="px-5 pt-5 pb-3 border-b border-white/10 flex-shrink-0">
-            <p className="font-display font-bold text-base uppercase tracking-tight text-white">
-              Upgrade once to unlock:
-            </p>
+          {/* Plan toggle */}
+          <div className="px-5 pt-5 pb-4 border-b border-white/10 flex-shrink-0">
+            <div className="flex gap-2 bg-white/10 rounded-xl p-1">
+              <button
+                onClick={() => setPlan("monthly")}
+                className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
+                style={{
+                  background: plan === "monthly" ? "#F0C030" : "transparent",
+                  color:      plan === "monthly" ? "#0a0a0a"  : "rgba(255,255,255,0.55)",
+                }}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setPlan("annual")}
+                className="flex-1 py-2 rounded-lg text-sm font-bold transition-all relative"
+                style={{
+                  background: plan === "annual" ? "#F0C030" : "transparent",
+                  color:      plan === "annual" ? "#0a0a0a"  : "rgba(255,255,255,0.55)",
+                }}
+              >
+                Annual
+                {plan !== "annual" && (
+                  <span className="absolute -top-2 -right-1 bg-green-400 text-black text-[9px] font-black px-1 py-0.5 rounded-full leading-none">
+                    SAVE
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Feature list — fills space evenly */}
+          {/* Feature list */}
           <ul className="px-5 py-0 flex flex-col flex-1 justify-evenly">
             {FEATURES.map(({ emoji, text }) => (
               <li key={text} className="flex items-center gap-4 py-1">
@@ -114,18 +138,23 @@ export function UpgradeSheet({ reason, onClose }: Props) {
                 className="font-display font-bold text-5xl leading-none"
                 style={{ color: "#F0C030" }}
               >
-                $4.99
+                {plan === "annual" ? "$19.99" : "$1.99"}
               </span>
               <span className="text-white/50 font-semibold text-sm leading-tight">
-                one&#8209;time
+                {plan === "annual" ? "/ year" : "/ month"}
               </span>
             </div>
+            {plan === "annual" && (
+              <p className="text-green-400 text-xs font-bold mt-1">
+                That's $1.67/mo — 2 months free vs monthly
+              </p>
+            )}
           </div>
         </div>
 
       </div>
 
-      {/* CTA footer — extra bottom padding clears iPhone home indicator */}
+      {/* CTA footer */}
       <div
         className="px-5 pt-3 flex flex-col gap-3 flex-shrink-0"
         style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}
@@ -142,7 +171,11 @@ export function UpgradeSheet({ reason, onClose }: Props) {
             boxShadow: status === "pending" ? "none" : "5px 5px 0px 0px rgba(0,0,0,1)",
           }}
         >
-          {status === "pending" ? "Opening checkout…" : "Unlock Forever – $4.99"}
+          {status === "pending"
+            ? "Opening checkout…"
+            : plan === "annual"
+              ? "Start Annual – $19.99/yr"
+              : "Start Monthly – $1.99/mo"}
         </button>
         <button
           onClick={onClose}

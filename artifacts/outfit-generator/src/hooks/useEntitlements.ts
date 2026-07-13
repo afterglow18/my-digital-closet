@@ -135,7 +135,7 @@ export function useEntitlements() {
     async (product: PurchaseProduct): Promise<PurchaseResult> => {
       const result = await runCheckout(product);
       if (result === "success") {
-        setGlobalTier(product === "unlock" ? "unlock" : "premium");
+        setGlobalTier("unlock");
       }
       return result;
     },
