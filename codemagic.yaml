@@ -118,6 +118,20 @@ workflows:
             -exportOptionsPlist app-store/ExportOptions.plist \
             -exportPath "$CM_BUILD_DIR/build/ipa"
 
+      - name: Diagnose private key format
+        script: |
+          python3 -c "
+import os
+key = os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY', '')
+print('Key length (chars):', len(key))
+print('Has BEGIN header:', '-----BEGIN' in key)
+print('Has END footer:', '-----END' in key)
+print('Contains literal backslash-n:', r'\n' in key)
+print('Newline count:', key.count(chr(10)))
+print('First 40 chars repr:', repr(key[:40]))
+print('Last 40 chars repr:', repr(key[-40:]))
+"
+
       - name: Upload to TestFlight
         script: |
           app-store-connect publish \
