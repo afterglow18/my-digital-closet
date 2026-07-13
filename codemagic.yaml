@@ -124,17 +124,8 @@ workflows:
           # can read it — avoids depending on Codemagic's GUI integration
           # placing the file on disk automatically.
           KEY_FILE=$(mktemp /tmp/AuthKey_XXXXXX.p8)
-          # BSD sed (macOS) doesn't interpret \n in replacements — use Python instead
-          export KEY_FILE
-          python3 << 'PYEOF'
-import os
-key = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"]
-# If stored with literal \n (common in CI env var UIs), convert to real newlines
-if "\\n" in key:
-    key = key.replace("\\n", "\n")
-with open(os.environ["KEY_FILE"], "w") as f:
-    f.write(key)
-PYEOF
+          # Single-line Python: converts literal \n to real newlines (macOS-safe)
+          python3 -c "import os; k=os.environ['APP_STORE_CONNECT_PRIVATE_KEY']; open('$KEY_FILE','w').write(k.replace('\\\\n',chr(10)))"
           app-store-connect publish \
             --path "$CM_BUILD_DIR/build/ipa/App.ipa" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
