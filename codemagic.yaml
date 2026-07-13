@@ -122,7 +122,7 @@ workflows:
         script: |
           app-store-connect publish \
             --path "$CM_BUILD_DIR/build/ipa/App.ipa" \
-            --key-id "$APP_STORE_CONNECT_KEY_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --private-key "@env:APP_STORE_CONNECT_PRIVATE_KEY" \
             --testflight
