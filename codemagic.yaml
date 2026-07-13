@@ -120,19 +120,12 @@ workflows:
 
       - name: Upload to TestFlight
         script: |
-          # Write the private key env var to a temp file so app-store-connect
-          # can read it — avoids depending on Codemagic's GUI integration
-          # placing the file on disk automatically.
-          KEY_FILE=$(mktemp /tmp/AuthKey_XXXXXX.p8)
-          # Single-line Python: converts literal \n to real newlines (macOS-safe)
-          python3 -c "import os; k=os.environ['APP_STORE_CONNECT_PRIVATE_KEY']; open('$KEY_FILE','w').write(k.replace('\\\\n',chr(10)))"
           app-store-connect publish \
             --path "$CM_BUILD_DIR/build/ipa/App.ipa" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --private-key "@file:$KEY_FILE" \
+            --private-key "@env:APP_STORE_CONNECT_PRIVATE_KEY" \
             --testflight
-          rm -f "$KEY_FILE"
 
     artifacts:
       - $CM_BUILD_DIR/build/ipa/*.ipa
