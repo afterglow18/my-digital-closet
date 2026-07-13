@@ -36,7 +36,7 @@ const LM = {
     { btnCY: 0.498, boxY: 0.506 },
     { btnCY: 0.690, boxY: 0.697 },
   ],
-  barY:    0.860,
+  barY:    0.870,
   barBot:  0.993,
   saveBtnL: 0.350,
   saveBtnR: 0.650,
