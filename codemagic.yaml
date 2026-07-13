@@ -124,7 +124,8 @@ workflows:
           # can read it — avoids depending on Codemagic's GUI integration
           # placing the file on disk automatically.
           KEY_FILE=$(mktemp /tmp/AuthKey_XXXXXX.p8)
-          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_FILE"
+          # Codemagic stores multiline env vars with literal \n — convert to real newlines
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" | sed 's/\\n/\n/g' > "$KEY_FILE"
           app-store-connect publish \
             --path "$CM_BUILD_DIR/build/ipa/App.ipa" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
