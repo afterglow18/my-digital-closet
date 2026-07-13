@@ -60,7 +60,8 @@ export function UpgradeSheet({ reason, onClose }: Props) {
       style={{ background: "#F8F4ED" }}
     >
       {/* Close button */}
-      <div className="flex justify-end px-4 pt-4 pb-2 flex-shrink-0">
+      <div className="flex justify-end px-4 pb-2 flex-shrink-0"
+           style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}>
         <button
           onClick={onClose}
           className="w-9 h-9 rounded-full border-2 border-black flex items-center justify-center

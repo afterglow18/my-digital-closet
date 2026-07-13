@@ -79,7 +79,8 @@ export function WardrobePickerSheet({ open, onOpenChange, category, onPick, exis
         className="fixed inset-0 z-[70] flex flex-col max-w-md mx-auto bg-[#f9f4ee]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-white border-b-2 border-black flex-shrink-0">
+        <div className="flex items-center justify-between px-4 pb-3 bg-white border-b-2 border-black flex-shrink-0"
+             style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
           <h2 className="font-display font-bold text-xl uppercase tracking-tight">
             Pick {/^[aeiou]/i.test(label) ? 'an' : 'a'} {label}
           </h2>
