@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
 import { Eye, EyeOff, Check, Loader2, TriangleAlert, LogOut } from "lucide-react";
+import { apiUrl } from "@/lib/apiUrl";
 
 type Section = "email" | "password";
 
@@ -134,7 +135,7 @@ export default function AccountPage() {
   const token = state.status === "authenticated" ? state.token : null;
 
   const patchMe = async (body: object) => {
-    const res = await fetch("/api/auth/me", {
+    const res = await fetch(apiUrl("/api/auth/me"), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -302,7 +303,7 @@ export default function AccountPage() {
                   if (!deletePassword) { setDeleteError("Enter your password to confirm"); return; }
                   setDeletePending(true);
                   try {
-                    const res = await fetch("/api/auth/me", {
+                    const res = await fetch(apiUrl("/api/auth/me"), {
                       method: "DELETE",
                       headers: {
                         "Content-Type": "application/json",

@@ -28,6 +28,7 @@ import {
   TierCapabilities,
   PurchaseProduct,
 } from "@/lib/entitlements";
+import { apiUrl } from "@/lib/apiUrl";
 
 // ── Shared external store ─────────────────────────────────────────────────────
 // All hook instances share a single in-memory value so a purchase in any
@@ -83,7 +84,7 @@ async function runCheckout(product: PurchaseProduct): Promise<PurchaseResult> {
     // from a trusted origin to prevent open-redirect abuse.
     const returnPath = (import.meta.env.BASE_URL as string) ?? "/";
 
-    const res = await fetch("/api/stripe/checkout", {
+    const res = await fetch(apiUrl("/api/stripe/checkout"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product, returnPath }),

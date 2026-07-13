@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { queryClient } from './lib/queryClient';
+import { apiUrl } from './lib/apiUrl';
 
 import App from './App';
 
@@ -26,10 +27,10 @@ async function main() {
       const CATEGORIES = ['tops', 'bottoms', 'shoes', 'accessories', 'outerwear', 'dresses'] as const;
 
       const [outfits, stats, allItems, ...categoryItems] = await Promise.all([
-        fetch('/api/outfits').then(r => r.json()),
-        fetch('/api/clothing/stats').then(r => r.json()),
-        fetch('/api/clothing').then(r => r.json()),
-        ...CATEGORIES.map(cat => fetch(`/api/clothing?category=${cat}`).then(r => r.json())),
+        fetch(apiUrl('/api/outfits')).then(r => r.json()),
+        fetch(apiUrl('/api/clothing/stats')).then(r => r.json()),
+        fetch(apiUrl('/api/clothing')).then(r => r.json()),
+        ...CATEGORIES.map(cat => fetch(apiUrl(`/api/clothing?category=${cat}`)).then(r => r.json())),
       ]);
 
       // Seed each per-category query
