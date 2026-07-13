@@ -274,6 +274,35 @@ export default function GeneratePage() {
         }}
       />
 
+      {/* ── "Matchmaker" subtitle under baked-in title ── */}
+      {ready && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top:  pY(ir, 0.135),
+            left: ir.left,
+            width: ir.width,
+            textAlign: "center",
+            zIndex: 5,
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        >
+          <span style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: Math.max(11, ir.width * 0.038),
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "#7a4f10",
+            opacity: 0.85,
+          }}>
+            Matchmaker
+          </span>
+        </div>
+      )}
+
       {ready && (() => {
         const tapH       = Math.max(36, pH(ir, 0.055));
         const rowTapTops = LM.rows.map(lm => pY(ir, lm.btnCY) - tapH / 2);
