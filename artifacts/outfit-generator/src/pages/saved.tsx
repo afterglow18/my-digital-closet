@@ -197,9 +197,9 @@ export default function SavedPage() {
           </p>
           <button
             onClick={() => setShowUpgrade(true)}
-            className="w-full py-2.5 rounded-lg border-2 border-black bg-black text-white
+            className="w-full py-2.5 rounded-lg border-2 border-black bg-primary text-black
                        font-bold uppercase text-xs tracking-wide
-                       shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]
+                       shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                        active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
           >
             Unlock Forever – $4.99
@@ -265,7 +265,7 @@ export default function SavedPage() {
                         maxLength={60}
                         className="flex-1 font-display font-bold text-lg uppercase tracking-tight bg-white/60 border-2 border-black rounded-lg px-2 py-0.5 outline-none min-w-0"
                       />
-                      <button type="submit" className="w-7 h-7 flex items-center justify-center bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                      <button type="submit" className="w-7 h-7 flex items-center justify-center bg-primary border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
                         <Check className="w-3.5 h-3.5" />
                       </button>
                     </form>
@@ -280,7 +280,7 @@ export default function SavedPage() {
                   )}
                   <button
                     onClick={() => handleDelete(outfit.id)}
-                    className="w-8 h-8 flex items-center justify-center bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:translate-x-0.5 active:shadow-none hover:bg-destructive/10 transition-colors shrink-0"
+                    className="w-8 h-8 flex items-center justify-center bg-primary border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-colors shrink-0"
                     data-testid={`button-delete-outfit-${outfit.id}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -301,7 +301,7 @@ export default function SavedPage() {
                         placeholder="Add notes…"
                         className="flex-1 text-xs border-2 border-black rounded-lg px-2 py-1.5 resize-none outline-none focus:ring-2 focus:ring-primary bg-white"
                       />
-                      <button type="submit" className="self-start w-7 h-7 flex items-center justify-center bg-black text-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                      <button type="submit" className="self-start w-7 h-7 flex items-center justify-center bg-primary text-black border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
                         <Check className="w-3.5 h-3.5" />
                       </button>
                     </form>

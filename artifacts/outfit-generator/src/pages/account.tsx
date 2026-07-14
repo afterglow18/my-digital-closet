@@ -112,7 +112,7 @@ export default function AccountPage() {
           onClick={handleRestore}
           disabled={restoreStatus.kind === "loading"}
           className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                     bg-white font-bold text-sm uppercase tracking-tight
+                     bg-primary font-bold text-sm uppercase tracking-tight
                      shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
                      active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
                      disabled:opacity-50 transition-all"
@@ -164,7 +164,7 @@ export default function AccountPage() {
           onClick={() => importRef.current?.click()}
           disabled={importStatus.kind === "loading"}
           className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                     bg-white font-bold text-sm uppercase tracking-tight
+                     bg-primary font-bold text-sm uppercase tracking-tight
                      shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
                      active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
                      disabled:opacity-50 transition-all"
