@@ -8,12 +8,14 @@
  *  4. App info
  */
 import React, { useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Download, Upload, RefreshCw, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { useEntitlements, setGlobalTier } from "@/hooks/useEntitlements";
 import { restorePurchases } from "@/lib/revenuecat";
 import { exportBackup, importBackup, type ImportResult } from "@/lib/backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListClothingQueryKey, getListOutfitsQueryKey } from "@/lib/local-api";
+import { UpgradeSheet } from "@/components/paywall/UpgradeSheet";
 
 type Status = { kind: "idle" } | { kind: "loading" } | { kind: "ok"; msg: string } | { kind: "err"; msg: string };
 
@@ -25,6 +27,7 @@ export default function AccountPage() {
   const [exportStatus,  setExportStatus]  = useState<Status>({ kind: "idle" });
   const [importStatus,  setImportStatus]  = useState<Status>({ kind: "idle" });
   const [restoreStatus, setRestoreStatus] = useState<Status>({ kind: "idle" });
+  const [showUpgrade,   setShowUpgrade]   = useState(false);
 
   // ── Export ──────────────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -76,6 +79,7 @@ export default function AccountPage() {
   };
 
   return (
+    <>
     <div
       className="flex flex-col gap-5 px-4 py-6 max-w-md mx-auto"
       style={{ paddingTop: "max(24px, env(safe-area-inset-top))" }}
@@ -103,9 +107,15 @@ export default function AccountPage() {
         </div>
 
         {tier === "free" && (
-          <p className="text-sm text-black/60">
-            Upgrade to unlock unlimited items, outfits, and more.
-          </p>
+          <button
+            onClick={() => setShowUpgrade(true)}
+            className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
+                       bg-primary font-bold text-sm uppercase tracking-tight
+                       shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+          >
+            Upgrade
+          </button>
         )}
 
         <StatusMessage status={restoreStatus} />
@@ -201,6 +211,13 @@ export default function AccountPage() {
         </p>
       </section>
     </div>
+
+    <AnimatePresence>
+      {showUpgrade && (
+        <UpgradeSheet reason="items" onClose={() => setShowUpgrade(false)} />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 
