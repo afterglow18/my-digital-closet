@@ -176,7 +176,7 @@ export default function SplashScreen({ onEnter }: Props) {
                 </a>
                 <span className="text-white/30 text-xs">•</span>
                 <a
-                  href="https://mydigitalcloset.app/support"
+                  href="https://app.notion.com/p/My-Digital-Collection-Support-39782db60653802a9088dcbae84c0527"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-white/60 text-xs font-medium"
