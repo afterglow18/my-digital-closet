@@ -86,7 +86,7 @@ export default function AccountPage() {
       <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <span className="text-2xl">👑</span>
-          <h2 className="font-display font-bold text-lg uppercase tracking-tight">Subscription</h2>
+          <h2 className="font-display font-bold text-lg uppercase tracking-tight">My Plan</h2>
         </div>
 
         <div className="flex items-center justify-between">
