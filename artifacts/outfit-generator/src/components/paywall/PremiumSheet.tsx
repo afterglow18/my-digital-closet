@@ -27,15 +27,18 @@ const FEATURES = [
 
 function HangerIcon() {
   return (
-    <svg width="52" height="44" viewBox="0 0 52 44" fill="none"
+    <svg width="60" height="52" viewBox="0 0 60 52" fill="none"
          stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M26 2 C26 2 31 2 31 7 C31 11 27 12 26 12" />
-      <line x1="26" y1="12" x2="26" y2="16" />
-      <path d="M26 16 C26 16 18 20 4 36" />
-      <path d="M26 16 C26 16 34 20 48 36" />
-      <line x1="4" y1="36" x2="48" y2="36" />
-      <line x1="4" y1="36" x2="4" y2="40" />
-      <line x1="48" y1="36" x2="48" y2="40" />
+      {/* Hook loop — centered teardrop curl */}
+      <path d="M30 18 C30 11 38 9 38 15 C38 19 34 19 30 18" />
+      {/* Neck */}
+      <line x1="30" y1="18" x2="30" y2="22" />
+      {/* Left arm */}
+      <path d="M30 22 C25 27 12 36 4 46" />
+      {/* Right arm */}
+      <path d="M30 22 C35 27 48 36 56 46" />
+      {/* Bottom bar */}
+      <line x1="4" y1="46" x2="56" y2="46" />
     </svg>
   );
 }
@@ -153,7 +156,8 @@ export function PremiumSheet({ onClose }: Props) {
       </div>
 
       {/* ── Scrollable body ───────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto flex flex-col px-4 pt-4 pb-2 gap-4 min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex flex-col px-4 pt-4 pb-2 gap-4">
 
         {/* Headline */}
         <div>
@@ -268,7 +272,8 @@ export function PremiumSheet({ onClose }: Props) {
           })}
         </div>
 
-      </div>
+      </div>{/* inner flex col */}
+      </div>{/* outer scroll */}
 
       {/* ── CTA footer ───────────────────────────────────────────────────── */}
       <div
