@@ -107,6 +107,7 @@ export default function GeneratePage() {
   const [centred,    setCentred]    = useState<Partial<Record<RowKey, ClothingItem>>>({});
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [saveName,   setSaveName]   = useState("");
+  const [savedToast, setSavedToast] = useState<string | null>(null);
 
   // Ref so the spin callbacks always read the latest rowData without needing
   // to be recreated on every data change.
@@ -237,8 +238,11 @@ export default function GeneratePage() {
       { data: { name: saveName.trim(), itemIds } },
       { onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+        const name = saveName.trim();
         setIsSaveOpen(false);
         setSaveName("");
+        setSavedToast(name);
+        setTimeout(() => setSavedToast(null), 2500);
       }},
     );
   };
@@ -725,6 +729,39 @@ export default function GeneratePage() {
           </>
         );
       })()}
+
+      {/* ── Saved toast ── */}
+      <AnimatePresence>
+        {savedToast && (
+          <motion.div
+            key="saved-toast"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            style={{
+              position: "fixed",
+              bottom: 104,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 60,
+              background: "#1a1a1a",
+              color: "#fff",
+              borderRadius: 999,
+              padding: "10px 20px",
+              fontSize: 13,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              boxShadow: "0 4px 18px rgba(0,0,0,0.22)",
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+            }}
+          >
+            <span>✅</span> "{savedToast}" saved!
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
