@@ -102,7 +102,6 @@ export function PremiumSheet({ onClose }: Props) {
              paddingBottom: 12,
              background: PLAID,
            }}>
-        <HangerIcon />
         <button onClick={onClose}
                 className="absolute top-0 right-4 w-8 h-8 rounded-full bg-white/90
                            flex items-center justify-center shadow active:opacity-70 transition-opacity"
