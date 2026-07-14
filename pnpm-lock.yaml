@@ -72,6 +72,12 @@ importers:
 
   .:
     dependencies:
+      '@replit/connectors-sdk':
+        specifier: ^0.4.1
+        version: 0.4.1
+      '@replit/revenuecat-sdk':
+        specifier: ^5.0.0
+        version: 5.0.0(typescript@5.9.3)
       stripe:
         specifier: ^22.3.0
         version: 22.3.0(@types/node@25.9.4)
@@ -371,6 +377,9 @@ importers:
       '@imgly/background-removal':
         specifier: ^1.7.0
         version: 1.7.0(onnxruntime-web@1.21.0)
+      '@revenuecat/purchases-capacitor':
+        specifier: ^13.2.2
+        version: 13.2.2(@capacitor/core@8.4.1)
       onnxruntime-web:
         specifier: 1.21.0
         version: 1.21.0
@@ -2368,6 +2377,14 @@ packages:
       react-native:
         optional: true
 
+  '@replit/connectors-sdk@0.4.1':
+    resolution: {integrity: sha512-iw0uy95+Qul8MPc/bBo8hBfYk1wm6RpBZ9sHyCpcA9A9T4zcUT9deSQxdyMyI0w3sv3+5uGmdfq1TpFTMrjD1g==}
+
+  '@replit/revenuecat-sdk@5.0.0':
+    resolution: {integrity: sha512-waW/1S5P53KNoTAfDdN+aDevzaTKSPb1GdLTWdFSwYaRqOlS+ljm8lkD3SHcLqhjnTgC/tmhNH4oo1TeLfKeXA==}
+    peerDependencies:
+      typescript: ^5
+
   '@replit/vite-plugin-cartographer@0.5.21':
     resolution: {integrity: sha512-E5rco8Mov05QDfUOjoim3MVJdDX0/pBYql5Jay3w9cqmU/QOL6cEOUAjsBZPB/V8FEChsk++sZUrcWt1bHaAoQ==}
 
@@ -2376,6 +2393,14 @@ packages:
 
   '@replit/vite-plugin-runtime-error-modal@0.0.6':
     resolution: {integrity: sha512-53iuzLsrvcUnWxAo0fvNrUhOf7LYJ+3at61dZeTIrkaZD4vGNjTbvE0j50TFcjjTC9UM74uprlnQ4+L2A//Cjg==}
+
+  '@revenuecat/purchases-capacitor@13.2.2':
+    resolution: {integrity: sha512-dbhGDL081zbZPNWC44wyDBVub6Vd2pTBo6uVbkM3OlXbZNf4NRizpAXhxUk3lwKcWIelL6HIDEQSq9/+XpWy+g==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@revenuecat/purchases-typescript-internal-esm@18.19.0':
+    resolution: {integrity: sha512-XOczsiHgfmiSb4l5qbrNaQi/eaTRjGqBQ8CqyQAyxxXPxtaoRaiEMKDtjYGTETuVPksyOOMtixF9Iltr8JbP6A==}
 
   '@rolldown/pluginutils@1.0.0-rc.3':
     resolution: {integrity: sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q==}
@@ -6807,6 +6832,12 @@ snapshots:
       - '@types/react'
       - immer
 
+  '@replit/connectors-sdk@0.4.1': {}
+
+  '@replit/revenuecat-sdk@5.0.0(typescript@5.9.3)':
+    dependencies:
+      typescript: 5.9.3
+
   '@replit/vite-plugin-cartographer@0.5.21':
     dependencies:
       '@babel/parser': 7.29.7
@@ -6822,6 +6853,13 @@ snapshots:
   '@replit/vite-plugin-runtime-error-modal@0.0.6':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
+
+  '@revenuecat/purchases-capacitor@13.2.2(@capacitor/core@8.4.1)':
+    dependencies:
+      '@capacitor/core': 8.4.1
+      '@revenuecat/purchases-typescript-internal-esm': 18.19.0
+
+  '@revenuecat/purchases-typescript-internal-esm@18.19.0': {}
 
   '@rolldown/pluginutils@1.0.0-rc.3': {}
 
