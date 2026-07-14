@@ -512,7 +512,7 @@ export default function GeneratePage() {
                 background: [
                   "repeating-linear-gradient(45deg,  transparent, transparent 12px, rgba(180,130,0,0.28) 12px, rgba(180,130,0,0.28) 24px)",
                   "repeating-linear-gradient(-45deg, transparent, transparent 12px, rgba(255,255,255,0.18) 12px, rgba(255,255,255,0.18) 24px)",
-                  "#f5d840",
+                  "#F0C030",
                 ].join(", "),
                 borderTop: "1.5px solid rgba(180,130,0,0.35)",
               }}
