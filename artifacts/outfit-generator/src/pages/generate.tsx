@@ -758,7 +758,7 @@ export default function GeneratePage() {
               gap: 7,
             }}
           >
-            <span>✅</span> "{savedToast}" saved!
+            <span>💛</span> "{savedToast}" saved!
           </motion.div>
         )}
       </AnimatePresence>
