@@ -27,14 +27,19 @@ function Router() {
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(
+    () => !sessionStorage.getItem('mdc_entered')
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <AnimatePresence>
           {showSplash && (
-            <SplashScreen onEnter={() => setShowSplash(false)} />
+            <SplashScreen onEnter={() => {
+              sessionStorage.setItem('mdc_entered', '1');
+              setShowSplash(false);
+            }} />
           )}
         </AnimatePresence>
         <Router />
