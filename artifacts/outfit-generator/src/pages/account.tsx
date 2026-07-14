@@ -68,7 +68,7 @@ export default function AccountPage() {
         setGlobalTier("unlock");
         setRestoreStatus({ kind: "ok", msg: "Subscription restored! ✨" });
       } else {
-        setRestoreStatus({ kind: "ok", msg: "No active subscription found." });
+        setRestoreStatus({ kind: "ok", msg: "You're using the Free plan." });
       }
     } catch {
       setRestoreStatus({ kind: "err", msg: "Restore failed. Please try again." });
@@ -80,7 +80,7 @@ export default function AccountPage() {
       className="flex flex-col gap-5 px-4 py-6 max-w-md mx-auto"
       style={{ paddingTop: "max(24px, env(safe-area-inset-top))" }}
     >
-      <h1 className="font-display font-bold text-3xl uppercase tracking-tight">My Closet</h1>
+      <h1 className="font-display font-bold text-3xl uppercase tracking-tight">My Digital Closet</h1>
 
       {/* ── Subscription ───────────────────────────────────────────────────── */}
       <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
@@ -108,24 +108,21 @@ export default function AccountPage() {
           </p>
         )}
 
+        <StatusMessage status={restoreStatus} />
+
         <button
           onClick={handleRestore}
           disabled={restoreStatus.kind === "loading"}
-          className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                     bg-primary font-bold text-sm uppercase tracking-tight
-                     shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                     disabled:opacity-50 transition-all"
+          className="flex items-center justify-center gap-1.5 text-xs font-semibold
+                     text-black/40 hover:text-black/70 transition-colors disabled:opacity-50"
         >
           {restoreStatus.kind === "loading" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3 h-3" />
           )}
           Restore Purchases
         </button>
-
-        <StatusMessage status={restoreStatus} />
       </section>
 
       {/* ── Backup ─────────────────────────────────────────────────────────── */}
@@ -198,9 +195,9 @@ export default function AccountPage() {
           <span className="text-2xl">👗</span>
           <h2 className="font-display font-bold text-lg uppercase tracking-tight">My Digital Closet</h2>
         </div>
-        <p className="text-sm text-black/60">Version 1.0</p>
+        <p className="text-sm text-black/60">Version 1.0.0</p>
         <p className="text-sm text-black/60 leading-snug">
-          Your wardrobe lives entirely on your phone — no account required, works offline, backed up to iCloud automatically.
+          Your wardrobe stays on your device, works offline, and can be backed up with iCloud.
         </p>
       </section>
     </div>
