@@ -1,5 +1,5 @@
 import React from "react";
-import { ClothingItem } from "@workspace/api-client-react";
+import { ClothingItem } from "@/lib/local-api";
 import { getImageUrl } from "@/lib/utils";
 
 interface ClothingCardProps {

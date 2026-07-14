@@ -13,7 +13,7 @@ import {
   getListClothingQueryKey,
   ListClothingCategory,
   ClothingItem,
-} from "@workspace/api-client-react";
+} from "@/lib/local-api";
 import { getImageUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { QuickAddSheet } from "./QuickAddSheet";

@@ -4,22 +4,19 @@
  * Upload flow:
  *   pick ──(file chosen)──► uploading ──► close
  *
- * To re-enable background removal in a future update, replace encodeForUpload
- * with processClothingImage from @/lib/processImage.
+ * Images are encoded to JPEG (≤2048 px) and saved to Capacitor Filesystem
+ * (Documents dir) via imageStorage.ts — no server upload required.
  */
 import React, { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Loader2,
-  Check,
-} from "lucide-react";
+import { X, Loader2, Check } from "lucide-react";
 import {
   useCreateClothingItem,
   getListClothingQueryKey,
-} from "@workspace/api-client-react";
+} from "@/lib/local-api";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiUrl } from "@/lib/apiUrl";
+import { saveImage } from "@/lib/imageStorage";
+import type { ClothingItem } from "@/lib/local-api";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -36,14 +33,13 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 type Phase =
   | "pick"       // two-button landing screen
-  | "uploading"; // encoding + uploading JPEG, creating DB record
+  | "uploading"; // encoding + saving JPEG, creating DB record
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
  * Re-encode any image (HEIC, JPEG, PNG, …) to a JPEG capped at 2048 px on the
- * long edge.  Keeps files small enough to upload reliably over mobile networks
- * and avoids the ~40 MB PNGs that a raw iPhone photo would produce.
+ * long edge. Keeps files small for reliable storage and fast display.
  */
 async function encodeForUpload(input: File | Blob): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -54,7 +50,7 @@ async function encodeForUpload(input: File | Blob): Promise<Blob> {
       URL.revokeObjectURL(url);
 
       if (!img.naturalWidth || !img.naturalHeight) {
-        reject(new Error(`Image decoded with 0 dimensions — format may be unsupported (type: ${input.type || "unknown"})`));
+        reject(new Error(`Image decoded with 0 dimensions (type: ${input.type || "unknown"})`));
         return;
       }
 
@@ -76,7 +72,7 @@ async function encodeForUpload(input: File | Blob): Promise<Blob> {
           if (b && b.size > 1000) {
             resolve(b);
           } else {
-            reject(new Error(`canvas.toBlob returned ${b?.size ?? 0} bytes — image may be blank or cross-origin tainted`));
+            reject(new Error(`canvas.toBlob returned ${b?.size ?? 0} bytes — image may be blank`));
           }
         },
         "image/jpeg",
@@ -86,42 +82,11 @@ async function encodeForUpload(input: File | Blob): Promise<Blob> {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error(`Failed to load image into <img> element (type: ${input.type || "unknown"}, size: ${input.size} bytes)`));
+      reject(new Error(`Failed to load image (type: ${input.type || "unknown"}, size: ${input.size} bytes)`));
     };
 
     img.src = url;
   });
-}
-
-async function uploadBlob(blob: Blob, filename: string): Promise<string> {
-  const contentType = "image/jpeg";
-
-  const urlRes = await fetch(apiUrl("/api/storage/uploads/request-url"), {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ name: filename, size: blob.size, contentType }),
-  });
-  if (!urlRes.ok) {
-    const body = await urlRes.text().catch(() => "");
-    throw new Error(`Upload URL request failed (HTTP ${urlRes.status}): ${body}`);
-  }
-
-  const { uploadURL, objectPath } = (await urlRes.json()) as {
-    uploadURL: string;
-    objectPath: string;
-  };
-
-  const put = await fetch(uploadURL, {
-    method:  "PUT",
-    headers: { "Content-Type": contentType },
-    body:    blob,
-  });
-  if (!put.ok) {
-    const body = await put.text().catch(() => "");
-    throw new Error(`Storage PUT failed (HTTP ${put.status}): ${body}`);
-  }
-
-  return objectPath;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -131,8 +96,8 @@ interface Props {
   onOpenChange:  (open: boolean) => void;
   category:      Category;
   existingCount: number;
-  /** Called with the newly created item after a successful upload. */
-  onCreated?:    (item: import("@workspace/api-client-react").ClothingItem) => void;
+  /** Called with the newly created item after a successful save. */
+  onCreated?:    (item: ClothingItem) => void;
 }
 
 const PHOTO_TIPS = [
@@ -144,10 +109,9 @@ const PHOTO_TIPS = [
 ] as const;
 
 export function QuickAddSheet({ open, onOpenChange, category, existingCount, onCreated }: Props) {
-  const [phase,    setPhase]   = useState<Phase>("pick");
+  const [phase,    setPhase]    = useState<Phase>("pick");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Two separate file inputs: one triggers camera, one opens gallery
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -161,30 +125,29 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     onOpenChange(false);
   }, [onOpenChange]);
 
-  // ── File picked → encode → upload → create DB record → close ──
+  // ── File picked → encode → save locally → create DB record → close ──
   const handleFile = useCallback(async (file: File) => {
     setErrorMsg(null);
-
-    // 1. Encode: resize to ≤2048 px and convert to JPEG for a small, uploadable blob
     setPhase("uploading");
+
+    // 1. Encode: resize to ≤2048 px and convert to JPEG
     let jpeg: Blob;
     try {
       jpeg = await encodeForUpload(file);
-      console.log(`[upload] encoded ${file.name} (${file.type}, ${file.size}B) → JPEG ${jpeg.size}B`);
+      console.log(`[quickadd] encoded ${file.name} (${file.type}, ${file.size}B) → JPEG ${jpeg.size}B`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[upload] encode failed:", msg);
+      console.error("[quickadd] encode failed:", msg);
       setErrorMsg(`Could not read the photo: ${msg}`);
       setPhase("pick");
       return;
     }
 
-    // 2. Upload to storage & save DB record
+    // 2. Save to Capacitor Filesystem and create the DB record
     try {
       const filename = `${category}-${Date.now()}.jpg`;
-      console.log(`[upload] requesting presigned URL for ${filename} (${jpeg.size}B)`);
-      const path = await uploadBlob(jpeg, filename);
-      console.log(`[upload] stored at ${path}`);
+      const imageObjectPath = await saveImage(jpeg, filename);
+      console.log(`[quickadd] saved locally as ${imageObjectPath}`);
 
       const label    = CATEGORY_LABELS[category];
       const n        = existingCount + 1;
@@ -192,7 +155,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
       await new Promise<void>((resolve, reject) => {
         createItem.mutate(
-          { data: { name: autoName, category, imageObjectPath: path } },
+          { data: { name: autoName, category, imageObjectPath } },
           {
             onSuccess: (createdItem) => {
               queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
@@ -200,7 +163,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               resolve();
             },
             onError: (err) => {
-              console.error("[upload] createItem failed:", err);
+              console.error("[quickadd] createItem failed:", err);
               reject(err);
             },
           },
@@ -210,11 +173,11 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       handleClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[upload] upload/save failed:", msg);
+      console.error("[quickadd] save failed:", msg);
       setErrorMsg(`Save failed: ${msg}`);
       setPhase("pick");
     }
-  }, [category, existingCount, createItem, queryClient, handleClose]);
+  }, [category, existingCount, createItem, queryClient, handleClose, onCreated]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -234,7 +197,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       transition={{ type: "spring", damping: 28, stiffness: 240 }}
       className="fixed inset-0 z-[70] flex flex-col max-w-md mx-auto bg-[#f9f4ee]"
     >
-      {/* Header — pt accounts for iOS status bar safe area */}
+      {/* Header */}
       <div
         className="flex items-center justify-between px-4 pb-3 bg-white border-b-2 border-black flex-shrink-0"
         style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}

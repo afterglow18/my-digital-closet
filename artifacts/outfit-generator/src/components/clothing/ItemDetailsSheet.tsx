@@ -15,7 +15,7 @@ import {
   useDeleteClothingItem,
   getListClothingQueryKey,
   getListOutfitsQueryKey,
-} from "@workspace/api-client-react";
+} from "@/lib/local-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { getImageUrl } from "@/lib/utils";
 

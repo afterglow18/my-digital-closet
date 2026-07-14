@@ -1,372 +1,230 @@
-import React, { useState } from "react";
-import { useAuthContext } from "@/context/AuthContext";
-import { Eye, EyeOff, Check, Loader2, TriangleAlert, LogOut } from "lucide-react";
-import { apiUrl } from "@/lib/apiUrl";
+/**
+ * AccountPage — My Closet settings.
+ *
+ * Sections:
+ *  1. Subscription status + Restore Purchases
+ *  2. Export backup (ZIP → iOS share sheet / browser download)
+ *  3. Import backup (file picker → restore from ZIP)
+ *  4. App info
+ */
+import React, { useRef, useState } from "react";
+import { Download, Upload, RefreshCw, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { useEntitlements, setGlobalTier } from "@/hooks/useEntitlements";
+import { restorePurchases } from "@/lib/revenuecat";
+import { exportBackup, importBackup, type ImportResult } from "@/lib/backup";
+import { useQueryClient } from "@tanstack/react-query";
+import { getListClothingQueryKey, getListOutfitsQueryKey } from "@/lib/local-api";
 
-type Section = "email" | "password";
+type Status = { kind: "idle" } | { kind: "loading" } | { kind: "ok"; msg: string } | { kind: "err"; msg: string };
 
-function Field({
-  label,
-  type,
-  value,
-  onChange,
-  placeholder,
-  autoComplete,
-}: {
-  label: string;
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  autoComplete?: string;
-}) {
-  const [show, setShow] = useState(false);
-  const isPassword = type === "password";
+export default function AccountPage() {
+  const { tier } = useEntitlements();
+  const queryClient = useQueryClient();
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const [exportStatus,  setExportStatus]  = useState<Status>({ kind: "idle" });
+  const [importStatus,  setImportStatus]  = useState<Status>({ kind: "idle" });
+  const [restoreStatus, setRestoreStatus] = useState<Status>({ kind: "idle" });
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+  const handleExport = async () => {
+    setExportStatus({ kind: "loading" });
+    try {
+      await exportBackup();
+      setExportStatus({ kind: "ok", msg: "Backup ready! Save it somewhere safe." });
+    } catch (err) {
+      setExportStatus({ kind: "err", msg: err instanceof Error ? err.message : "Export failed." });
+    }
+  };
+
+  // ── Import ──────────────────────────────────────────────────────────────────
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImportStatus({ kind: "loading" });
+    try {
+      const result: ImportResult = await importBackup(file);
+      // Invalidate all queries so pages reflect restored data
+      queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      setImportStatus({
+        kind: "ok",
+        msg: `Restored ${result.itemCount} items and ${result.outfitCount} outfits.`,
+      });
+    } catch (err) {
+      setImportStatus({ kind: "err", msg: err instanceof Error ? err.message : "Import failed." });
+    }
+  };
+
+  // ── Restore purchases ────────────────────────────────────────────────────────
+  const handleRestore = async () => {
+    setRestoreStatus({ kind: "loading" });
+    try {
+      const isActive = await restorePurchases();
+      if (isActive) {
+        setGlobalTier("unlock");
+        setRestoreStatus({ kind: "ok", msg: "Subscription restored! ✨" });
+      } else {
+        setRestoreStatus({ kind: "ok", msg: "No active subscription found." });
+      }
+    } catch {
+      setRestoreStatus({ kind: "err", msg: "Restore failed. Please try again." });
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-bold uppercase tracking-widest text-black/50">{label}</label>
-      <div className="relative">
-        <input
-          type={isPassword && show ? "text" : type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          className="w-full border-2 border-black rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-primary bg-white pr-10"
-        />
-        {isPassword && (
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={() => setShow((s) => !s)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-black/40 hover:text-black/70"
-          >
-            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
+    <div
+      className="flex flex-col gap-5 px-4 py-6 max-w-md mx-auto"
+      style={{ paddingTop: "max(24px, env(safe-area-inset-top))" }}
+    >
+      <h1 className="font-display font-bold text-3xl uppercase tracking-tight">My Closet</h1>
+
+      {/* ── Subscription ───────────────────────────────────────────────────── */}
+      <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">👑</span>
+          <h2 className="font-display font-bold text-lg uppercase tracking-tight">Subscription</h2>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-sm text-black/70">Current plan</span>
+          {tier === "free" ? (
+            <span className="px-3 py-1 border-2 border-black rounded-full text-sm font-bold bg-[#f9f4ee]">
+              Free
+            </span>
+          ) : (
+            <span className="px-3 py-1 border-2 border-black rounded-full text-sm font-bold bg-primary">
+              Unlocked ✨
+            </span>
+          )}
+        </div>
+
+        {tier === "free" && (
+          <p className="text-sm text-black/60">
+            Upgrade to unlock unlimited items, outfits, and more.
+          </p>
         )}
-      </div>
+
+        <button
+          onClick={handleRestore}
+          disabled={restoreStatus.kind === "loading"}
+          className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
+                     bg-white font-bold text-sm uppercase tracking-tight
+                     shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                     disabled:opacity-50 transition-all"
+        >
+          {restoreStatus.kind === "loading" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
+          Restore Purchases
+        </button>
+
+        <StatusMessage status={restoreStatus} />
+      </section>
+
+      {/* ── Backup ─────────────────────────────────────────────────────────── */}
+      <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">💾</span>
+          <h2 className="font-display font-bold text-lg uppercase tracking-tight">Backup & Restore</h2>
+        </div>
+
+        <p className="text-sm text-black/60 leading-snug">
+          Export your wardrobe to a ZIP file. Save it to iCloud Drive or Files to keep it safe across phone upgrades.
+        </p>
+
+        {/* Export */}
+        <button
+          onClick={handleExport}
+          disabled={exportStatus.kind === "loading"}
+          className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
+                     bg-primary font-bold text-sm uppercase tracking-tight
+                     shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                     disabled:opacity-50 transition-all"
+        >
+          {exportStatus.kind === "loading" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          Export Backup
+        </button>
+
+        <StatusMessage status={exportStatus} />
+
+        {/* Import */}
+        <button
+          onClick={() => importRef.current?.click()}
+          disabled={importStatus.kind === "loading"}
+          className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
+                     bg-white font-bold text-sm uppercase tracking-tight
+                     shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                     disabled:opacity-50 transition-all"
+        >
+          {importStatus.kind === "loading" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Upload className="w-4 h-4" />
+          )}
+          Import Backup
+        </button>
+
+        <input
+          ref={importRef}
+          type="file"
+          accept=".zip"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+
+        <StatusMessage status={importStatus} />
+
+        <p className="text-xs text-black/40 text-center">
+          Importing replaces your current wardrobe with the backup.
+        </p>
+      </section>
+
+      {/* ── App info ────────────────────────────────────────────────────────── */}
+      <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-2">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-2xl">👗</span>
+          <h2 className="font-display font-bold text-lg uppercase tracking-tight">My Digital Closet</h2>
+        </div>
+        <p className="text-sm text-black/60">Version 1.0</p>
+        <p className="text-sm text-black/60 leading-snug">
+          Your wardrobe lives entirely on your phone — no account required, works offline, backed up to iCloud automatically.
+        </p>
+      </section>
     </div>
   );
 }
 
-function Card({
-  title,
-  emoji,
-  onSubmit,
-  error,
-  success,
-  pending,
-  children,
-}: {
-  title: string;
-  emoji: string;
-  onSubmit: (e: React.FormEvent) => void;
-  error: string | null;
-  success: string | null;
-  pending: boolean;
-  children: React.ReactNode;
-}) {
+// ── StatusMessage helper ──────────────────────────────────────────────────────
+
+function StatusMessage({ status }: { status: Status }) {
+  if (status.kind === "idle" || status.kind === "loading") return null;
   return (
-    <form
-      onSubmit={onSubmit}
-      className="bg-white border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
+    <div
+      className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 border ${
+        status.kind === "ok"
+          ? "bg-green-50 border-green-200 text-green-800"
+          : "bg-red-50 border-red-200 text-red-800"
+      }`}
     >
-      <div className="px-4 py-3 border-b-2 border-black bg-secondary/20 flex items-center gap-2">
-        <span className="text-lg leading-none">{emoji}</span>
-        <h2 className="font-display font-bold text-base uppercase tracking-tight">{title}</h2>
-      </div>
-      <div className="p-4 flex flex-col gap-3">
-        {children}
-
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
-        {success && (
-          <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center gap-2">
-            <Check className="w-4 h-4 shrink-0" /> {success}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full flex items-center justify-center gap-2 py-3
-                     border-4 border-black rounded-xl bg-primary font-display font-bold
-                     text-sm uppercase tracking-tight
-                     shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                     disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {pending && <Loader2 className="w-4 h-4 animate-spin" />}
-          Save Changes
-        </button>
-      </div>
-    </form>
-  );
-}
-
-export default function AccountPage() {
-  const { state, logout } = useAuthContext();
-  const currentEmail = state.status === "authenticated" ? state.user?.email ?? "" : "";
-
-  // Email form
-  const [emailCurrent, setEmailCurrent] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
-  const [emailPending, setEmailPending] = useState(false);
-
-  // Password form
-  const [pwCurrent, setPwCurrent] = useState("");
-  const [pwNew, setPwNew] = useState("");
-  const [pwConfirm, setPwConfirm] = useState("");
-  const [pwError, setPwError] = useState<string | null>(null);
-  const [pwSuccess, setPwSuccess] = useState<string | null>(null);
-  const [pwPending, setPwPending] = useState(false);
-
-  // Delete account
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deletePending, setDeletePending] = useState(false);
-
-  const token = state.status === "authenticated" ? state.token : null;
-
-  const patchMe = async (body: object) => {
-    const res = await fetch(apiUrl("/api/auth/me"), {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "Something went wrong");
-    return data;
-  };
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEmailError(null);
-    setEmailSuccess(null);
-    if (!newEmail.trim()) { setEmailError("Please enter a new email address"); return; }
-    setEmailPending(true);
-    try {
-      await patchMe({ currentPassword: emailCurrent, newEmail: newEmail.trim() });
-      setEmailSuccess("Email updated successfully");
-      setEmailCurrent("");
-      setNewEmail("");
-    } catch (err) {
-      setEmailError(err instanceof Error ? err.message : "Failed to update email");
-    } finally {
-      setEmailPending(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwError(null);
-    setPwSuccess(null);
-    if (!pwNew) { setPwError("Please enter a new password"); return; }
-    if (pwNew.length < 6) { setPwError("New password must be at least 6 characters"); return; }
-    if (pwNew !== pwConfirm) { setPwError("Passwords don't match"); return; }
-    setPwPending(true);
-    try {
-      await patchMe({ currentPassword: pwCurrent, newPassword: pwNew });
-      setPwSuccess("Password updated successfully");
-      setPwCurrent("");
-      setPwNew("");
-      setPwConfirm("");
-    } catch (err) {
-      setPwError(err instanceof Error ? err.message : "Failed to update password");
-    } finally {
-      setPwPending(false);
-    }
-  };
-
-  return (
-    <div className="min-h-full flex flex-col pt-8 px-4 pb-8 bg-secondary/10">
-      <header className="mb-6">
-        <h1 className="text-4xl font-display font-bold uppercase tracking-tighter mb-1">Account</h1>
-        <p className="font-medium text-muted-foreground text-sm">{currentEmail}</p>
-      </header>
-
-      <div className="flex flex-col gap-4">
-        {/* Change Email */}
-        <Card
-          title="Change Email"
-          emoji="✉️"
-          onSubmit={handleEmailSubmit}
-          error={emailError}
-          success={emailSuccess}
-          pending={emailPending}
-        >
-          <Field
-            label="New Email Address"
-            type="email"
-            value={newEmail}
-            onChange={setNewEmail}
-            placeholder="new@email.com"
-            autoComplete="email"
-          />
-          <Field
-            label="Current Password"
-            type="password"
-            value={emailCurrent}
-            onChange={setEmailCurrent}
-            placeholder="Enter your current password"
-            autoComplete="current-password"
-          />
-        </Card>
-
-        {/* Change Password */}
-        <Card
-          title="Change Password"
-          emoji="🔑"
-          onSubmit={handlePasswordSubmit}
-          error={pwError}
-          success={pwSuccess}
-          pending={pwPending}
-        >
-          <Field
-            label="Current Password"
-            type="password"
-            value={pwCurrent}
-            onChange={setPwCurrent}
-            placeholder="Enter your current password"
-            autoComplete="current-password"
-          />
-          <Field
-            label="New Password"
-            type="password"
-            value={pwNew}
-            onChange={setPwNew}
-            placeholder="At least 6 characters"
-            autoComplete="new-password"
-          />
-          <Field
-            label="Confirm New Password"
-            type="password"
-            value={pwConfirm}
-            onChange={setPwConfirm}
-            placeholder="Repeat new password"
-            autoComplete="new-password"
-          />
-        </Card>
-
-        {/* Sign Out */}
-        <button
-          onClick={logout}
-          className="w-full flex items-center justify-center gap-2 py-4
-                     border-4 border-black rounded-2xl bg-primary text-black
-                     font-display font-bold text-base uppercase tracking-tight
-                     shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
-                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-        >
-          <LogOut className="w-5 h-5" />
-          Sign Out
-        </button>
-
-        {/* Delete Account */}
-        <div className="bg-white border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-4 py-3 border-b-2 border-black bg-red-50 flex items-center gap-2">
-            <span className="text-lg leading-none">🗑️</span>
-            <h2 className="font-display font-bold text-base uppercase tracking-tight text-red-700">Delete Account</h2>
-          </div>
-          <div className="p-4 flex flex-col gap-3">
-            {!showDeleteConfirm ? (
-              <>
-                <p className="text-sm text-black/60 leading-snug">
-                  Permanently deletes your account and everything in your closet — clothes, outfits, all of it. This cannot be undone.
-                </p>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3
-                             border-4 border-red-600 rounded-xl bg-white text-red-600
-                             font-display font-bold text-sm uppercase tracking-tight
-                             shadow-[3px_3px_0px_0px_rgba(220,38,38,1)]
-                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all
-                             hover:bg-red-50"
-                >
-                  <TriangleAlert className="w-4 h-4" />
-                  Delete My Account
-                </button>
-              </>
-            ) : (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setDeleteError(null);
-                  if (!deletePassword) { setDeleteError("Enter your password to confirm"); return; }
-                  setDeletePending(true);
-                  try {
-                    const res = await fetch(apiUrl("/api/auth/me"), {
-                      method: "DELETE",
-                      headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                      },
-                      body: JSON.stringify({ password: deletePassword }),
-                    });
-                    if (!res.ok) {
-                      const d = await res.json();
-                      throw new Error(d.error ?? "Failed to delete account");
-                    }
-                    logout();
-                  } catch (err) {
-                    setDeleteError(err instanceof Error ? err.message : "Failed to delete account");
-                    setDeletePending(false);
-                  }
-                }}
-                className="flex flex-col gap-3"
-              >
-                <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
-                  <TriangleAlert className="w-4 h-4 shrink-0" />
-                  This will delete everything permanently.
-                </p>
-                <Field
-                  label="Enter your password to confirm"
-                  type="password"
-                  value={deletePassword}
-                  onChange={setDeletePassword}
-                  placeholder="Your current password"
-                  autoComplete="current-password"
-                />
-                {deleteError && (
-                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                    {deleteError}
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); setDeleteError(null); }}
-                    className="flex-1 py-3 border-4 border-black rounded-xl bg-white font-display font-bold text-sm uppercase tracking-tight shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={deletePending}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3
-                               border-4 border-red-600 rounded-xl bg-red-600 text-white
-                               font-display font-bold text-sm uppercase tracking-tight
-                               shadow-[3px_3px_0px_0px_rgba(220,38,38,1)]
-                               active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                               disabled:opacity-50 transition-all"
-                  >
-                    {deletePending && <Loader2 className="w-4 h-4 animate-spin" />}
-                    Yes, Delete
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      </div>
+      {status.kind === "ok" ? (
+        <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+      ) : (
+        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+      )}
+      {status.msg}
     </div>
   );
 }

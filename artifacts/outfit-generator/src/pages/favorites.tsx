@@ -12,7 +12,7 @@ import {
   useUpdateClothingItem,
   getListClothingQueryKey,
   ClothingItem,
-} from "@workspace/api-client-react";
+} from "@/lib/local-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { getImageUrl } from "@/lib/utils";
 import { ItemDetailsSheet } from "@/components/clothing/ItemDetailsSheet";

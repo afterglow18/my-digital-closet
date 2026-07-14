@@ -7,7 +7,7 @@ import {
   useRemoveItemFromOutfit,
   getListOutfitsQueryKey,
   ClothingItem,
-} from "@workspace/api-client-react";
+} from "@/lib/local-api";
 import { Trash2, Bookmark, Plus, Pencil, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/lib/utils";

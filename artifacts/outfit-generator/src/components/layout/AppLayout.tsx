@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Shirt, Sparkles, Bookmark, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useGetWardrobeStats } from "@workspace/api-client-react";
-import { useAuthContext } from "@/context/AuthContext";
+import { useGetWardrobeStats } from "@/lib/local-api";
 
 interface AppLayoutProps {
   children: React.ReactNode;

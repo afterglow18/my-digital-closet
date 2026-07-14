@@ -1,12 +1,17 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getCachedImageUrl } from "./imageStorage";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getImageUrl(path: string | null | undefined) {
-  if (!path) return null;
-  const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
-  return `${API_BASE}/api/storage${path}`;
+/**
+ * Returns a displayable URL for a clothing item's image.
+ * Reads from the in-memory URL cache populated at upload time (web) or
+ * app startup (native iOS via warmImageUrls).
+ * Returns null if the filename is empty or not yet warmed.
+ */
+export function getImageUrl(filename: string | null | undefined): string | null {
+  return getCachedImageUrl(filename);
 }

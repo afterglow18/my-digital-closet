@@ -1,13 +1,13 @@
 import React from "react";
 import { Sheet } from "@/components/ui/sheet";
 import { ClothingForm, ClothingFormData } from "./ClothingForm";
-import { 
-  useGetClothingItem, 
-  useUpdateClothingItem, 
+import {
+  useGetClothingItem,
+  useUpdateClothingItem,
   useDeleteClothingItem,
   getListClothingQueryKey,
-  getGetClothingItemQueryKey
-} from "@workspace/api-client-react";
+  getGetClothingItemQueryKey,
+} from "@/lib/local-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
 
@@ -68,7 +68,7 @@ export function EditClothingSheet({ itemId, open, onOpenChange }: EditClothingSh
               color: item.color || undefined,
               brand: item.brand || undefined,
               notes: item.notes || undefined,
-              isFavorite: item.isFavorite,
+              isFavorite: item.isFavorite ?? undefined,
               imageObjectPath: item.imageObjectPath,
             }}
             onSubmit={handleSubmit} 
