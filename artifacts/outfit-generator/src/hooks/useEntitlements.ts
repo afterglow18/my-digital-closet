@@ -9,12 +9,10 @@
  * across installs / reinstalls.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * REVENUECAT PURCHASE FLOW
+ * TIER MAP
  *
- * 1. purchase("monthly" | "annual") is called from a paywall component.
- * 2. purchaseProduct() opens the native Apple StoreKit sheet.
- * 3. On success, setGlobalTier("unlock") is called immediately.
- * 4. Tier is persisted to localStorage so it survives restarts.
+ *   monthly / annual  →  "unlock"  (unlimited items + outfits)
+ *   lifetime          →  "premium" (unlock + mannequin view)
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useCallback, useEffect, useSyncExternalStore } from "react";
@@ -69,8 +67,10 @@ export function useEntitlements() {
 
   // Sync tier with RevenueCat on mount — restores subscriptions after reinstall
   useEffect(() => {
-    checkSubscription().then((isActive) => {
-      if (isActive && _currentTier === "free") setGlobalTier("unlock");
+    checkSubscription().then((active) => {
+      if (!active) return;
+      const restored: Tier = active === "premium" ? "premium" : "unlock";
+      if (_currentTier === "free") setGlobalTier(restored);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -96,7 +96,9 @@ export function useEntitlements() {
   const purchase = useCallback(
     async (product: PurchaseProduct): Promise<PurchaseResult> => {
       const result = await purchaseProduct(product);
-      if (result === "success") setGlobalTier("unlock");
+      if (result === "success") {
+        setGlobalTier(product === "lifetime" ? "premium" : "unlock");
+      }
       return result;
     },
     [],

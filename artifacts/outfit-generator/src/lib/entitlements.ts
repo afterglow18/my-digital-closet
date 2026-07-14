@@ -3,8 +3,8 @@
  *
  * Tiers:
  *   "free"    — default; up to FREE_ITEM_LIMIT items, FREE_OUTFIT_LIMIT saved outfits.
- *   "unlock"  — active subscriber (monthly or annual); unlimited items + outfits.
- *   "premium" — reserved for future features (3D mannequin, etc.).
+ *   "unlock"  — monthly or annual subscriber; unlimited items + outfits.
+ *   "premium" — lifetime owner; unlimited + mannequin view.
  */
 
 export type Tier = "free" | "unlock" | "premium";
@@ -29,9 +29,10 @@ export const TIER_CAPS: Record<Tier, TierCapabilities> = {
 };
 
 /** Subscription products available for purchase. */
-export type PurchaseProduct = "monthly" | "annual";
+export type PurchaseProduct = "monthly" | "annual" | "lifetime";
 
 export const PRODUCT_PRICES: Record<PurchaseProduct, { display: string; sub: string }> = {
-  monthly: { display: "$1.99", sub: "/ month" },
-  annual:  { display: "$19.99", sub: "/ year"  },
+  monthly:  { display: "$1.99",  sub: "/ month"   },
+  annual:   { display: "$19.99", sub: "/ year"    },
+  lifetime: { display: "$9.99",  sub: "one-time"  },
 };

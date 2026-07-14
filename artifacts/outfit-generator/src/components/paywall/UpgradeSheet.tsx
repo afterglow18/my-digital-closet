@@ -3,10 +3,12 @@
  *
  * Full-screen paywall — shown when the user hits a free-tier limit.
  *
- * Design:
- *   Background  — cream #F8F4ED
- *   Card        — black, white text
- *   CTA button  — closet-door yellow #F0C030, black text
+ * Design matches brand screenshot:
+ *   Header     — yellow plaid background, white hanger icon
+ *   Body       — cream #F8F4ED
+ *   Dark card  — black with gold checkmarks and feature list
+ *   Plan cards — Monthly / Yearly / Lifetime (Lifetime highlighted as Best Value)
+ *   CTA        — yellow pill, text updates per selected plan
  */
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -22,22 +24,105 @@ interface Props {
 }
 
 const FEATURES = [
-  { emoji: "♾️",  text: "Unlimited clothing items"   },
-  { emoji: "👗",  text: "Unlimited saved outfits"    },
-  { emoji: "☁️",  text: "Wardrobe saved to the cloud" },
-  { emoji: "🔄",  text: "Cancel anytime"              },
+  "Unlimited clothing items",
+  "Unlimited outfits",
+  "Save your entire wardrobe",
+  "One-time payment options",
+  "Choose monthly, yearly or lifetime!",
 ] as const;
 
-const SUBTITLES: Record<UpgradeReason, string> = {
-  items:     "You've reached your 20-item limit. Subscribe to unlock your full digital closet.",
-  outfits:   "You've hit the free outfit limit. Subscribe to save unlimited outfits.",
-  mannequin: "Subscribe to unlock all premium features.",
-};
+// ── Hanger SVG icon ──────────────────────────────────────────────────────────
+function HangerIcon() {
+  return (
+    <svg width="52" height="44" viewBox="0 0 52 44" fill="none"
+         stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* hook */}
+      <path d="M26 2 C26 2 31 2 31 7 C31 11 27 12 26 12" />
+      {/* neck down */}
+      <line x1="26" y1="12" x2="26" y2="16" />
+      {/* left shoulder */}
+      <path d="M26 16 C26 16 18 20 4 36" />
+      {/* right shoulder */}
+      <path d="M26 16 C26 16 34 20 48 36" />
+      {/* bottom bar */}
+      <line x1="4" y1="36" x2="48" y2="36" />
+      {/* left foot */}
+      <line x1="4" y1="36" x2="4" y2="40" />
+      {/* right foot */}
+      <line x1="48" y1="36" x2="48" y2="40" />
+    </svg>
+  );
+}
 
-export function UpgradeSheet({ reason, onClose }: Props) {
+// ── Gold checkmark bullet ─────────────────────────────────────────────────────
+function GoldCheck() {
+  return (
+    <span
+      className="flex-shrink-0 flex items-center justify-center rounded-full"
+      style={{ width: 22, height: 22, background: "#F0C030" }}
+    >
+      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+        <path d="M1 4.5L4 7.5L10 1" stroke="#0a0a0a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+type Plan = PurchaseProduct;
+
+interface PlanCard {
+  id: Plan;
+  label: string;
+  price: string;
+  period: string;
+  bullets: { text: string; accent?: boolean }[];
+  bestValue?: boolean;
+  cta: string;
+}
+
+const PLANS: PlanCard[] = [
+  {
+    id: "monthly",
+    label: "MONTHLY",
+    price: "$1.99",
+    period: "/month",
+    bullets: [
+      { text: "Cancel anytime" },
+      { text: "Billed monthly" },
+    ],
+    cta: "START MONTHLY – $1.99",
+  },
+  {
+    id: "annual",
+    label: "YEARLY",
+    price: "$19.99",
+    period: "/year",
+    bullets: [
+      { text: "Save 17%", accent: true },
+      { text: "Billed yearly" },
+    ],
+    cta: "START YEARLY – $19.99",
+  },
+  {
+    id: "lifetime",
+    label: "LIFETIME",
+    price: "$9.99",
+    period: "one-time",
+    bullets: [
+      { text: "Pay once" },
+      { text: "Yours forever" },
+    ],
+    bestValue: true,
+    cta: "UNLOCK FOREVER – $9.99",
+  },
+];
+
+export function UpgradeSheet({ onClose }: Props) {
   const { purchase } = useEntitlements();
-  const [status, setStatus] = useState<"idle" | "pending">("idle");
-  const [plan, setPlan] = useState<PurchaseProduct>("annual");
+  const [status, setStatus]   = useState<"idle" | "pending">("idle");
+  const [plan, setPlan]       = useState<Plan>("lifetime");
+
+  const activePlan = PLANS.find((p) => p.id === plan)!;
 
   const handlePurchase = useCallback(async () => {
     if (status === "pending") return;
@@ -56,131 +141,209 @@ export function UpgradeSheet({ reason, onClose }: Props) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: "100%" }}
       transition={{ type: "spring", damping: 28, stiffness: 240 }}
-      className="fixed inset-0 z-[80] flex flex-col max-w-md mx-auto"
+      className="fixed inset-0 z-[80] flex flex-col max-w-md mx-auto overflow-hidden"
       style={{ background: "#F8F4ED" }}
     >
-      {/* Close button */}
-      <div className="flex justify-end px-4 pb-2 flex-shrink-0"
-           style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}>
+      {/* ── Plaid header ─────────────────────────────────────────────────── */}
+      <div
+        className="flex-shrink-0 relative flex items-center justify-center"
+        style={{
+          paddingTop: "max(28px, env(safe-area-inset-top))",
+          paddingBottom: 20,
+          background: `
+            repeating-linear-gradient(
+              45deg,
+              transparent, transparent 14px,
+              rgba(180,130,0,0.22) 14px, rgba(180,130,0,0.22) 28px
+            ),
+            repeating-linear-gradient(
+              -45deg,
+              transparent, transparent 14px,
+              rgba(255,255,255,0.12) 14px, rgba(255,255,255,0.12) 28px
+            ),
+            #F0C030
+          `,
+        }}
+      >
+        <HangerIcon />
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="w-9 h-9 rounded-full border-2 border-black flex items-center justify-center
-                     bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                     active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+          className="absolute top-0 right-4 w-9 h-9 rounded-full bg-white/90
+                     flex items-center justify-center shadow active:opacity-70 transition-opacity"
+          style={{ marginTop: "max(12px, calc(env(safe-area-inset-top) - 4px))" }}
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 text-black" />
         </button>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 flex flex-col px-5 pb-4 gap-4 min-h-0">
+      {/* ── Scrollable body ───────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto flex flex-col px-4 pt-4 pb-2 gap-4 min-h-0">
 
         {/* Headline */}
-        <div className="flex flex-col gap-0.5">
-          <h1 className="font-display font-bold text-4xl uppercase tracking-tight leading-none">
+        <div>
+          <h1
+            className="font-display font-black uppercase leading-none tracking-tight"
+            style={{ fontSize: "clamp(2rem, 9vw, 2.6rem)", color: "#0a0a0a" }}
+          >
             Unlock Your<br />Unlimited<br />Digital Closet
           </h1>
-          <p className="text-sm font-bold text-black/55 mt-2">
-            {SUBTITLES[reason]}
+          <p className="text-sm text-black/50 font-semibold mt-2">
+            A premium feature — unlock it once.
           </p>
         </div>
 
-        {/* Black card */}
+        {/* Dark features card */}
         <div
-          className="rounded-3xl overflow-hidden border-4 border-black flex flex-col flex-1 min-h-0"
-          style={{ background: "#0a0a0a", boxShadow: "6px 6px 0px 0px rgba(0,0,0,0.35)" }}
+          className="rounded-2xl overflow-hidden flex flex-col"
+          style={{ background: "#0a0a0a" }}
         >
-          {/* Plan toggle */}
-          <div className="px-5 pt-5 pb-4 border-b border-white/10 flex-shrink-0">
-            <div className="flex gap-2 bg-white/10 rounded-xl p-1">
-              <button
-                onClick={() => setPlan("monthly")}
-                className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
-                style={{
-                  background: plan === "monthly" ? "#F0C030" : "transparent",
-                  color:      plan === "monthly" ? "#0a0a0a"  : "rgba(255,255,255,0.55)",
-                }}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setPlan("annual")}
-                className="flex-1 py-2 rounded-lg text-sm font-bold transition-all relative"
-                style={{
-                  background: plan === "annual" ? "#F0C030" : "transparent",
-                  color:      plan === "annual" ? "#0a0a0a"  : "rgba(255,255,255,0.55)",
-                }}
-              >
-                Annual
-                {plan !== "annual" && (
-                  <span className="absolute -top-2 -right-1 bg-green-400 text-black text-[9px] font-black px-1 py-0.5 rounded-full leading-none">
-                    SAVE
-                  </span>
-                )}
-              </button>
-            </div>
+          {/* Card header */}
+          <div className="px-4 pt-4 pb-3">
+            <p
+              className="font-bold text-xs tracking-widest uppercase"
+              style={{ color: "#F0C030" }}
+            >
+              Upgrade to Premium &amp; Get:
+            </p>
           </div>
+          <div style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
 
           {/* Feature list */}
-          <ul className="px-5 py-0 flex flex-col flex-1 justify-evenly">
-            {FEATURES.map(({ emoji, text }) => (
-              <li key={text} className="flex items-center gap-4 py-1">
-                <span className="text-xl leading-none w-7 flex-shrink-0 text-center">{emoji}</span>
-                <span className="text-white font-semibold text-sm leading-snug">{text}</span>
-              </li>
+          <ul className="flex flex-col">
+            {FEATURES.map((text, i) => (
+              <React.Fragment key={text}>
+                <li className="flex items-center gap-3 px-4 py-3">
+                  <GoldCheck />
+                  <span className="text-white font-semibold text-sm leading-snug">{text}</span>
+                </li>
+                {i < FEATURES.length - 1 && (
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginLeft: 56 }} />
+                )}
+              </React.Fragment>
             ))}
           </ul>
+        </div>
 
-          {/* Price */}
-          <div className="px-5 pb-5 pt-2 border-t border-white/10 flex-shrink-0">
-            <div className="flex items-baseline gap-2">
-              <span
-                className="font-display font-bold text-5xl leading-none"
-                style={{ color: "#F0C030" }}
+        {/* Plan picker label */}
+        <p className="text-center text-xs font-black tracking-widest uppercase text-black/50">
+          Choose Your Plan
+        </p>
+
+        {/* Plan cards row */}
+        <div className="flex gap-2">
+          {PLANS.map((p) => {
+            const selected = plan === p.id;
+            const isLifetime = p.id === "lifetime";
+            return (
+              <button
+                key={p.id}
+                onClick={() => setPlan(p.id)}
+                className="flex-1 rounded-2xl flex flex-col relative overflow-hidden text-left transition-all"
+                style={{
+                  background: isLifetime ? "#F0C030" : "#fff",
+                  border: `2.5px solid ${selected ? "#0a0a0a" : "rgba(0,0,0,0.12)"}`,
+                  boxShadow: selected ? "3px 3px 0 rgba(0,0,0,0.85)" : "none",
+                  padding: "10px 8px 10px",
+                }}
               >
-                {plan === "annual" ? "$19.99" : "$1.99"}
-              </span>
-              <span className="text-white/50 font-semibold text-sm leading-tight">
-                {plan === "annual" ? "/ year" : "/ month"}
-              </span>
-            </div>
-            {plan === "annual" && (
-              <p className="text-green-400 text-xs font-bold mt-1">
-                That's $1.67/mo — 2 months free vs monthly
-              </p>
-            )}
-          </div>
+                {/* Best Value badge */}
+                {p.bestValue && (
+                  <span
+                    className="absolute top-0 right-0 font-black text-white text-[8px]
+                               uppercase tracking-tight leading-tight px-1.5 py-1 rounded-bl-xl rounded-tr-xl"
+                    style={{ background: "#E0345A" }}
+                  >
+                    BEST ★{"\n"}VALUE
+                  </span>
+                )}
+
+                {/* Plan label */}
+                <span
+                  className="font-black text-[9px] tracking-widest uppercase block mb-0.5"
+                  style={{ color: isLifetime ? "#0a0a0a" : "rgba(0,0,0,0.45)" }}
+                >
+                  {p.label}
+                </span>
+
+                {/* Price */}
+                <span
+                  className="font-black leading-none block"
+                  style={{
+                    fontSize: "clamp(1.3rem, 6vw, 1.6rem)",
+                    color: "#0a0a0a",
+                  }}
+                >
+                  {p.price}
+                </span>
+                <span
+                  className="text-[10px] font-semibold block mb-2"
+                  style={{ color: isLifetime ? "#0a0a0a" : "rgba(0,0,0,0.45)" }}
+                >
+                  {p.period}
+                </span>
+
+                {/* Bullets */}
+                <div className="flex flex-col gap-1">
+                  {p.bullets.map((b) => (
+                    <div key={b.text} className="flex items-center gap-1">
+                      <span
+                        className="flex-shrink-0 rounded-full flex items-center justify-center"
+                        style={{
+                          width: 14, height: 14,
+                          background: isLifetime ? "rgba(0,0,0,0.18)" : "#F0C030",
+                        }}
+                      >
+                        <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
+                          <path d="M1 3L2.8 5L6 1" stroke={isLifetime ? "#fff" : "#0a0a0a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      <span
+                        className="text-[9px] font-bold leading-tight"
+                        style={{
+                          color: b.accent ? "#E09020" : (isLifetime ? "#0a0a0a" : "rgba(0,0,0,0.55)"),
+                        }}
+                      >
+                        {b.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
       </div>
 
-      {/* CTA footer */}
+      {/* ── CTA footer ───────────────────────────────────────────────────── */}
       <div
-        className="px-5 pt-3 flex flex-col gap-3 flex-shrink-0"
-        style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}
+        className="px-4 pt-3 flex flex-col gap-2 flex-shrink-0"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
       >
         <button
           onClick={handlePurchase}
           disabled={status === "pending"}
-          className="w-full py-4 rounded-2xl font-display font-bold text-xl uppercase
-                     tracking-tight border-4 border-black text-black
-                     active:translate-x-1 active:translate-y-1 transition-all
+          className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-tight
+                     border-4 border-black text-black flex items-center justify-center gap-2
+                     active:translate-x-0.5 active:translate-y-0.5 transition-all
                      disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             background: "#F0C030",
-            boxShadow: status === "pending" ? "none" : "5px 5px 0px 0px rgba(0,0,0,1)",
+            boxShadow: status === "pending" ? "none" : "4px 4px 0px rgba(0,0,0,1)",
+            letterSpacing: "0.03em",
           }}
         >
-          {status === "pending"
-            ? "Opening checkout…"
-            : plan === "annual"
-              ? "Start Annual – $19.99/yr"
-              : "Start Monthly – $1.99/mo"}
+          {status === "pending" ? "Opening checkout…" : activePlan.cta}
+          {status !== "pending" && (
+            <span className="text-xl leading-none">›</span>
+          )}
         </button>
+
         <button
           onClick={onClose}
-          className="text-sm font-bold text-black/40 text-center underline underline-offset-2
-                     hover:text-black/60 transition-colors"
+          className="text-xs font-bold text-black/35 text-center underline underline-offset-2
+                     hover:text-black/55 transition-colors py-1"
         >
           Maybe Later
         </button>
