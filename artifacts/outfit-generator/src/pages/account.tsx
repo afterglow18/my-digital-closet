@@ -206,7 +206,7 @@ export default function AccountPage() {
       {/* ── App info ────────────────────────────────────────────────────────── */}
       <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-2xl">👗</span>
+          <span className="text-2xl">💛</span>
           <h2 className="font-display font-bold text-lg uppercase tracking-tight">My Digital Closet</h2>
         </div>
         <p className="text-sm text-black/60">Version 1.0.0</p>
