@@ -1,7 +1,8 @@
 /**
  * SplashScreen — shown on every app launch.
- * Yellow doors with app branding, Enter Closet CTA, and legal links.
+ * Two yellow doors swing open on "Enter Closet", revealing the wardrobe.
  */
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
@@ -9,86 +10,132 @@ interface Props {
 }
 
 export default function SplashScreen({ onEnter }: Props) {
+  const [opening, setOpening] = useState(false);
+
+  const handleEnter = () => {
+    setOpening(true);
+    setTimeout(onEnter, 750);
+  };
+
   return (
-    <AnimatePresence>
+    <div className="fixed inset-0 z-[200] overflow-hidden" style={{ background: "#F0C030" }}>
+
+      {/* Closet interior visible behind the doors */}
+      <img
+        src="/closet-bg.png"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
+      {/* ── Left door ── */}
       <motion.div
-        key="splash"
-        initial={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-        className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
-        style={{ background: "#F0C030" }}
+        className="absolute inset-y-0 left-0 w-1/2"
+        animate={opening ? { x: "-100%" } : { x: 0 }}
+        transition={{ duration: 0.65, ease: [0.4, 0, 0.2, 1] }}
+        style={{ background: "#F0C030", transformOrigin: "left center", zIndex: 10 }}
       >
-        {/* Closet background — doors visible */}
-        <div className="flex-1 relative">
-          <img
-            src="/closet-bg.png"
-            alt="My Digital Closet"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+        {/* Door panel detail */}
+        <div className="absolute inset-4 border-4 border-yellow-500/30 rounded-lg" />
+        {/* Handle */}
+        <div
+          className="absolute top-1/2 right-3 -translate-y-1/2 w-3 h-10 rounded-full"
+          style={{ background: "#C49B2A", boxShadow: "inset -1px 0 2px rgba(0,0,0,0.3)" }}
+        />
+        {/* Hinge marks */}
+        <div className="absolute left-2 top-1/4 w-2 h-4 rounded-sm" style={{ background: "#C49B2A" }} />
+        <div className="absolute left-2 top-3/4 w-2 h-4 rounded-sm" style={{ background: "#C49B2A" }} />
+      </motion.div>
 
-          {/* Dark gradient overlay at bottom for text legibility */}
-          <div
-            className="absolute inset-x-0 bottom-0"
-            style={{
-              height: "55%",
-              background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.72))",
-            }}
-          />
+      {/* ── Right door ── */}
+      <motion.div
+        className="absolute inset-y-0 right-0 w-1/2"
+        animate={opening ? { x: "100%" } : { x: 0 }}
+        transition={{ duration: 0.65, ease: [0.4, 0, 0.2, 1] }}
+        style={{ background: "#F0C030", transformOrigin: "right center", zIndex: 10 }}
+      >
+        <div className="absolute inset-4 border-4 border-yellow-500/30 rounded-lg" />
+        <div
+          className="absolute top-1/2 left-3 -translate-y-1/2 w-3 h-10 rounded-full"
+          style={{ background: "#C49B2A", boxShadow: "inset 1px 0 2px rgba(0,0,0,0.3)" }}
+        />
+        <div className="absolute right-2 top-1/4 w-2 h-4 rounded-sm" style={{ background: "#C49B2A" }} />
+        <div className="absolute right-2 top-3/4 w-2 h-4 rounded-sm" style={{ background: "#C49B2A" }} />
+      </motion.div>
 
-          {/* Branding + CTA */}
-          <div
-            className="absolute inset-x-0 bottom-0 flex flex-col items-center px-8 pb-12 gap-5"
+      {/* ── Center seam + branding (hidden when doors open) ── */}
+      <AnimatePresence>
+        {!opening && (
+          <motion.div
+            key="ui"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 z-20 flex flex-col items-center justify-end"
             style={{ paddingBottom: "max(3rem, env(safe-area-inset-bottom))" }}
           >
-            {/* App name */}
-            <div className="text-center">
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">
-                Welcome to
-              </p>
-              <h1
-                className="font-display font-black uppercase text-white leading-none"
-                style={{ fontSize: "clamp(2rem, 9vw, 3rem)", textShadow: "0 2px 12px rgba(0,0,0,0.4)" }}
-              >
-                My Digital<br />Closet
-              </h1>
-            </div>
+            {/* Dark gradient for text legibility */}
+            <div
+              className="absolute inset-x-0 bottom-0"
+              style={{
+                height: "50%",
+                background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.65))",
+                pointerEvents: "none",
+              }}
+            />
 
-            {/* Enter button */}
-            <motion.button
-              onClick={onEnter}
-              whileTap={{ scale: 0.97 }}
-              className="w-full py-4 rounded-2xl border-2 border-black font-display font-black
-                         uppercase tracking-tight text-black text-lg
-                         shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-              style={{ background: "#F0C030" }}
-            >
-              Enter Closet ✨
-            </motion.button>
+            <div className="relative flex flex-col items-center gap-5 w-full px-8">
+              {/* App name */}
+              <div className="text-center">
+                <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">
+                  Welcome to
+                </p>
+                <h1
+                  className="font-display font-black uppercase text-white leading-none"
+                  style={{
+                    fontSize: "clamp(2rem, 9vw, 3rem)",
+                    textShadow: "0 2px 12px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  My Digital<br />Closet
+                </h1>
+              </div>
 
-            {/* Legal links */}
-            <div className="flex items-center gap-4">
-              <a
-                href="https://mydigitalcloset.app/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/60 text-xs font-medium"
+              {/* Enter button */}
+              <motion.button
+                onClick={handleEnter}
+                whileTap={{ scale: 0.97 }}
+                className="w-full py-4 rounded-2xl border-2 border-black font-display font-black
+                           uppercase tracking-tight text-black text-lg
+                           shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                style={{ background: "#F0C030" }}
               >
-                Privacy Policy
-              </a>
-              <span className="text-white/30 text-xs">•</span>
-              <a
-                href="https://mydigitalcloset.app/support"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/60 text-xs font-medium"
-              >
-                Support
-              </a>
+                Enter Closet ✨
+              </motion.button>
+
+              {/* Legal links */}
+              <div className="flex items-center gap-4">
+                <a
+                  href="https://mydigitalcloset.app/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/60 text-xs font-medium"
+                >
+                  Privacy Policy
+                </a>
+                <span className="text-white/30 text-xs">•</span>
+                <a
+                  href="https://mydigitalcloset.app/support"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/60 text-xs font-medium"
+                >
+                  Support
+                </a>
+              </div>
             </div>
-          </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

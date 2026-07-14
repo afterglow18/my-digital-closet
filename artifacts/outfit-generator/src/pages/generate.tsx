@@ -36,7 +36,7 @@ const LM = {
     { btnCY: 0.498, boxY: 0.506 },
     { btnCY: 0.690, boxY: 0.697 },
   ],
-  barY:    0.830,
+  barY:    0.858,
   barBot:  1.0,
   saveBtnL: 0.350,
   saveBtnR: 0.650,
@@ -505,8 +505,10 @@ export default function GeneratePage() {
                 height: pH(ir, LM.barBot - LM.barY),
                 zIndex: 18,
                 pointerEvents: "none",
-                background: "#FFFFFF",
-                borderTop: "1.5px solid rgba(0,0,0,0.08)",
+                backgroundImage: "url('/closet-bg.png')",
+                backgroundSize: `${ir.width}px ${ir.height}px`,
+                backgroundPosition: `${-ir.left}px ${-(pY(ir, LM.barY) - ir.top)}px`,
+                backgroundRepeat: "no-repeat",
               }}
             />
 
