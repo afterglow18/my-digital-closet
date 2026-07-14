@@ -167,7 +167,7 @@ export default function SplashScreen({ onEnter }: Props) {
 
               <div className="flex items-center gap-4">
                 <a
-                  href="https://mydigitalcloset.app/privacy"
+                  href="https://app.notion.com/p/My-Digital-Collection-Privacy-Policy-39682db6065380b19dedcb108d4a0ef4"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-white/60 text-xs font-medium"
