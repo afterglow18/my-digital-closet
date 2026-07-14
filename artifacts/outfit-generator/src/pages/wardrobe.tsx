@@ -483,7 +483,6 @@ export default function WardrobePage() {
                 }}
               >
                 <input
-                  autoFocus
                   type="text"
                   placeholder="Name this outfit…"
                   value={saveName}
