@@ -166,6 +166,10 @@ export default function AccountPage() {
 
         <StatusMessage status={exportStatus} />
 
+        <p className="text-xs font-semibold leading-snug" style={{ color: "#CC2200" }}>
+          ⚠️ Deleting the app removes all your wardrobe data. Export a backup first to keep it safe.
+        </p>
+
         {/* Import */}
         <button
           onClick={() => importRef.current?.click()}
