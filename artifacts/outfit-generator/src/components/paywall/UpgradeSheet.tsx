@@ -96,24 +96,17 @@ export function UpgradeSheet({ onClose }: Props) {
       className="fixed inset-0 z-[80] flex flex-col max-w-md mx-auto overflow-hidden"
       style={{ background: "#F8F4ED" }}
     >
-      {/* ── Plaid header ── */}
-      <div className="flex-shrink-0 relative flex items-center justify-center"
-           style={{
-             paddingTop: "max(18px, env(safe-area-inset-top))",
-             paddingBottom: 12,
-             background: PLAID,
-           }}>
-        <HangerIcon />
-        <button onClick={onClose}
-                className="absolute top-0 right-4 w-8 h-8 rounded-full bg-white/90
-                           flex items-center justify-center shadow active:opacity-70 transition-opacity"
-                style={{ marginTop: "max(10px, calc(env(safe-area-inset-top) - 4px))" }}>
-          <X className="w-3.5 h-3.5 text-black" />
-        </button>
-      </div>
+      {/* ── Floating close button ── */}
+      <button onClick={onClose}
+              className="absolute z-10 top-0 right-4 w-8 h-8 rounded-full bg-white/90
+                         flex items-center justify-center shadow active:opacity-70 transition-opacity"
+              style={{ marginTop: "max(10px, env(safe-area-inset-top))" }}>
+        <X className="w-3.5 h-3.5 text-black" />
+      </button>
 
       {/* ── Body — flex column, NO scroll, fills all remaining height ── */}
-      <div className="flex-1 min-h-0 flex flex-col px-4 pt-3 pb-1 gap-2">
+      <div className="flex-1 min-h-0 flex flex-col px-4 pb-1 gap-2"
+           style={{ paddingTop: "max(3rem, calc(env(safe-area-inset-top) + 2rem))" }}>
 
         {/* Headline */}
         <div className="flex-shrink-0">
