@@ -384,7 +384,7 @@ export default function GeneratePage() {
                       fontWeight: 700,
                       letterSpacing: "0.10em",
                       textTransform: "uppercase",
-                      color: "rgba(180,100,120,0.80)",
+                      color: "rgba(58,36,0,0.82)",
                       fontFamily: "var(--font-display)",
                       lineHeight: 1,
                     }}>
