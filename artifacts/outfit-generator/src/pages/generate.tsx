@@ -380,11 +380,11 @@ export default function GeneratePage() {
                     }}
                   >
                     <span style={{
-                      fontSize: Math.max(8, pH(ir, 0.011)),
+                      fontSize: Math.max(7, pH(ir, 0.008)),
                       fontWeight: 700,
-                      letterSpacing: "0.10em",
+                      letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      color: "rgba(58,36,0,0.82)",
+                      color: "rgba(0,0,0,0.78)",
                       fontFamily: "var(--font-display)",
                       lineHeight: 1,
                     }}>
