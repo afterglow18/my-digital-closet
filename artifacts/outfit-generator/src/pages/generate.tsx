@@ -343,25 +343,6 @@ export default function GeneratePage() {
 
               return (
                 <React.Fragment key={key}>
-                  {/* Rod + pill overlay — re-draws background crop at z=20 so the
-                      rod and baked-in label always sit above photo cards */}
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      top:    tapTop,
-                      left:   carLeft,
-                      right:  carRight,
-                      height: Math.max(0, overlayH),
-                      zIndex: 20,
-                      pointerEvents: "none",
-                      backgroundImage: "url('/closet-bg.png')",
-                      backgroundSize: `${ir.width}px ${ir.height}px`,
-                      backgroundPosition: `${bgPosX}px ${bgPosY}px`,
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  />
-
                   {/* Pill label — covers baked-in "+ ADD …" text and shows category name */}
                   <div
                     style={{
