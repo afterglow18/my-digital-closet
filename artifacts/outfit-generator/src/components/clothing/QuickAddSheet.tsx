@@ -179,10 +179,12 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     }
   }, [category, existingCount, createItem, queryClient, handleClose, onCreated]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // allow re-selecting same file
+    for (const file of files) {
+      await handleFile(file);
+    }
   };
 
   if (!open) return null;
@@ -324,11 +326,12 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         className="hidden"
         onChange={handleInputChange}
       />
-      {/* Gallery — opens photo library / file picker */}
+      {/* Gallery — opens photo library / file picker (multiple allowed) */}
       <input
         ref={galleryInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleInputChange}
       />
