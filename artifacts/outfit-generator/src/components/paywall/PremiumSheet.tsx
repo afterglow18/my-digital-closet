@@ -77,14 +77,23 @@ const PLANS: PlanCard[] = [
 export function PremiumSheet({ onClose }: Props) {
   const { purchase } = useEntitlements();
   const [status, setStatus] = useState<"idle" | "pending">("idle");
+  const [error,  setError]  = useState<string | null>(null);
   const [plan, setPlan]     = useState<Plan>("lifetime");
   const activePlan = PLANS.find((p) => p.id === plan)!;
 
   const handlePurchase = useCallback(async () => {
     if (status === "pending") return;
     setStatus("pending");
+    setError(null);
     const result: PurchaseResult = await purchase(plan);
-    if (result === "success") onClose(); else setStatus("idle");
+    if (result === "success") {
+      onClose();
+    } else if (result === "unavailable") {
+      setStatus("idle");
+      setError("Purchases unavailable. Make sure you're signed in with a Sandbox account in Settings → App Store.");
+    } else {
+      setStatus("idle");
+    }
   }, [status, purchase, plan, onClose]);
 
   return (
@@ -225,6 +234,9 @@ export function PremiumSheet({ onClose }: Props) {
           {status === "pending" ? "Opening checkout…" : activePlan.cta}
           {status !== "pending" && <span className="text-lg leading-none">›</span>}
         </button>
+        {error && (
+          <p className="text-xs text-red-600 text-center font-medium px-2">{error}</p>
+        )}
         <button onClick={onClose}
                 className="text-xs font-bold text-black/35 text-center underline underline-offset-2
                            hover:text-black/55 transition-colors py-0.5">
