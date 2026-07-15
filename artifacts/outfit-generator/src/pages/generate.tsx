@@ -362,22 +362,34 @@ export default function GeneratePage() {
                     }}
                   />
 
-                  {/* Text-cover — hides baked-in "+ ADD …" label on Generate page only.
-                      Solid pill-coloured rect centred on the button, z=21. */}
+                  {/* Pill label — covers baked-in "+ ADD …" text and shows category name */}
                   <div
-                    aria-hidden="true"
                     style={{
                       position: "absolute",
-                      top:    pY(ir, lm.btnCY) - pH(ir, 0.009),
+                      top:    pY(ir, lm.btnCY) - pH(ir, 0.012),
                       left:   carLeft + pW(ir, 0.04),
                       right:  carRight + pW(ir, 0.04),
-                      height: pH(ir, 0.018),
+                      height: pH(ir, 0.024),
                       zIndex: 21,
                       pointerEvents: "none",
                       background: PILL_COLORS[rowIdx],
                       borderRadius: 999,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
-                  />
+                  >
+                    <span style={{
+                      fontSize: Math.max(9, pH(ir, 0.013)),
+                      fontWeight: 800,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: "rgba(120,60,70,0.75)",
+                      fontFamily: "var(--font-display)",
+                    }}>
+                      {key === "tops" ? "Tops" : key === "bottoms" ? "Bottoms" : "Shoes"}
+                    </span>
+                  </div>
 
                   {/* Clothing carousel */}
                   {items.length > 0 ? (
