@@ -166,23 +166,19 @@ export default function SplashScreen({ onEnter }: Props) {
               </motion.button>
 
               <div className="flex items-center gap-4">
-                <a
-                  href="https://app.notion.com/p/My-Digital-Collection-Privacy-Policy-39682db6065380b19dedcb108d4a0ef4"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/60 text-xs font-medium"
+                <button
+                  onClick={() => window.open("https://app.notion.com/p/My-Digital-Collection-Privacy-Policy-39682db6065380b19dedcb108d4a0ef4?source=copy_link", "_system")}
+                  className="text-white/60 text-xs font-medium bg-transparent border-none cursor-pointer p-0"
                 >
                   Privacy Policy
-                </a>
+                </button>
                 <span className="text-white/30 text-xs">•</span>
-                <a
-                  href="https://app.notion.com/p/My-Digital-Collection-Support-39782db60653802a9088dcbae84c0527"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/60 text-xs font-medium"
+                <button
+                  onClick={() => window.open("https://app.notion.com/p/My-Digital-Collection-Support-39782db60653802a9088dcbae84c0527", "_system")}
+                  className="text-white/60 text-xs font-medium bg-transparent border-none cursor-pointer p-0"
                 >
                   Support
-                </a>
+                </button>
               </div>
             </div>
           </motion.div>

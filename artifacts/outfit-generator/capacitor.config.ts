@@ -15,6 +15,10 @@ const config: CapacitorConfig = {
     backgroundColor: '#FFFDF7',
     // Allow inline media playback (used for wardrobe image previews)
     allowsInlineMediaPlayback: true,
+    // Export compliance — app uses only standard HTTPS; no custom encryption
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
 
   plugins: {
