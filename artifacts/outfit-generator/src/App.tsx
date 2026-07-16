@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch, Redirect, Router as WouterRouter } from 'wouter';
 import { AnimatePresence } from 'framer-motion';
@@ -60,11 +60,20 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  // Track whether the user has passed the splash screen — used in the
+  // resume handler so we never prompt before the app has been entered.
+  const splashGoneRef = useRef(false);
+  useEffect(() => { splashGoneRef.current = !showSplash; }, [showSplash]);
+
   // Lock the app and prompt biometric auth
   const triggerLock = useCallback(async () => {
+    // Only lock if the user has explicitly enabled the setting.
+    // On first install localStorage returns null → null !== '1' → skip.
     if (localStorage.getItem(LOCK_KEY) !== '1') return;
+    // Never prompt before the splash screen has been dismissed.
+    if (!splashGoneRef.current) return;
     setLocked(true);
-    // Attempt auth immediately — if it succeeds, unlock transparently
+    // Attempt auth immediately — dismiss transparently on success.
     try {
       await NativeBiometric.verifyIdentity({
         reason: 'Unlock My Digital Closet',
@@ -73,30 +82,22 @@ export default function App() {
       });
       setLocked(false);
     } catch {
-      // Auth failed or cancelled — lock screen stays, user can retry
+      // Auth failed or cancelled — lock screen stays, user can retry.
     }
   }, []);
 
-  // Lock on first launch (after splash)
+  // Lock on first launch (after splash) — only if already enabled.
   useEffect(() => {
-    if (!showSplash) {
-      triggerLock();
-    }
+    if (!showSplash) triggerLock();
   }, [showSplash, triggerLock]);
 
-  // Re-lock when the app returns from the background
+  // Re-lock only on Capacitor resume (app returning from background).
+  // Deliberately not using visibilitychange — it fires during WebView
+  // startup on iOS and can trigger a prompt before the user has entered.
   useEffect(() => {
     const onResume = () => triggerLock();
     document.addEventListener('resume', onResume);
-    // Also catch visibility change for web / PWA context
-    const onVisible = () => {
-      if (!document.hidden) triggerLock();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      document.removeEventListener('resume', onResume);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
+    return () => document.removeEventListener('resume', onResume);
   }, [triggerLock]);
 
   const handleAuthenticate = async (): Promise<boolean> => {
