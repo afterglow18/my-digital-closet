@@ -128,7 +128,7 @@ export default function AccountPage() {
                        shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
                        active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
           >
-            Upgrade
+            Lifetime Unlock – $9.99
           </button>
         )}
 
