@@ -16,6 +16,7 @@ import { exportBackup, importBackup, type ImportResult } from "@/lib/backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListClothingQueryKey, getListOutfitsQueryKey } from "@/lib/local-api";
 import { UpgradeSheet } from "@/components/paywall/UpgradeSheet";
+import { useBiometricLock } from "@/hooks/useBiometricLock";
 
 type Status = { kind: "idle" } | { kind: "loading" } | { kind: "ok"; msg: string } | { kind: "err"; msg: string };
 
@@ -23,11 +24,24 @@ export default function AccountPage() {
   const { tier } = useEntitlements();
   const queryClient = useQueryClient();
   const importRef = useRef<HTMLInputElement>(null);
+  const biometric = useBiometricLock();
 
   const [exportStatus,  setExportStatus]  = useState<Status>({ kind: "idle" });
   const [importStatus,  setImportStatus]  = useState<Status>({ kind: "idle" });
   const [restoreStatus, setRestoreStatus] = useState<Status>({ kind: "idle" });
   const [showUpgrade,   setShowUpgrade]   = useState(false);
+  const [bioToggling,   setBioToggling]   = useState(false);
+
+  const handleBiometricToggle = async () => {
+    if (bioToggling) return;
+    setBioToggling(true);
+    if (biometric.isEnabled) {
+      await biometric.disableLock();
+    } else {
+      await biometric.enableLock();
+    }
+    setBioToggling(false);
+  };
 
   // ── Export ──────────────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -201,6 +215,77 @@ export default function AccountPage() {
         <p className="text-xs text-black/40 text-center">
           Importing replaces your current wardrobe with the backup.
         </p>
+      </section>
+
+      {/* ── Privacy & Security ──────────────────────────────────────────────── */}
+      <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🔒</span>
+          <h2 className="font-display font-bold text-lg uppercase tracking-tight">Privacy &amp; Security</h2>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="font-semibold text-sm text-black">
+              Lock with {biometric.isAvailable ? biometric.lockLabel : "Face ID / Touch ID"}
+            </span>
+            <span className="text-xs text-black/50 leading-snug">
+              {biometric.isAvailable
+                ? "Require biometrics when opening the app or returning from background."
+                : "Not available on this device or no biometrics enrolled."}
+            </span>
+          </div>
+
+          {/* Toggle */}
+          <button
+            role="switch"
+            aria-checked={biometric.isEnabled}
+            onClick={handleBiometricToggle}
+            disabled={!biometric.isAvailable || bioToggling}
+            className="relative flex-shrink-0 disabled:opacity-40"
+            style={{ width: 50, height: 28 }}
+          >
+            <span
+              style={{
+                display: "block",
+                width: 50,
+                height: 28,
+                borderRadius: 999,
+                border: "2px solid black",
+                background: biometric.isEnabled ? "#f6db3a" : "#e5e5e5",
+                boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)",
+                transition: "background 0.15s",
+              }}
+            />
+            <span
+              style={{
+                position: "absolute",
+                top: 3,
+                left: biometric.isEnabled ? 24 : 3,
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "white",
+                border: "2px solid black",
+                transition: "left 0.15s",
+                boxShadow: "1px 1px 0px 0px rgba(0,0,0,0.3)",
+              }}
+            />
+            {bioToggling && (
+              <Loader2
+                className="animate-spin"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  margin: "auto",
+                  width: 14,
+                  height: 14,
+                  color: "black",
+                }}
+              />
+            )}
+          </button>
+        </div>
       </section>
 
       {/* ── App info ────────────────────────────────────────────────────────── */}
