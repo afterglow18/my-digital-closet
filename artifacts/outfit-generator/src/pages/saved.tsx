@@ -202,7 +202,7 @@ export default function SavedPage() {
                        shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                        active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
           >
-            Lifetime Unlock – $9.99
+            Unlock Forever – $9.99
           </button>
         </motion.div>
       )}
