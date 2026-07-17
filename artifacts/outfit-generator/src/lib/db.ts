@@ -86,7 +86,7 @@ export function createClothingItem(
     timesWorn: data.timesWorn ?? 0,
     createdAt: new Date().toISOString(),
   };
-  items.push(item);
+  items.unshift(item);
   saveAllClothingItems(items);
   return item;
 }
