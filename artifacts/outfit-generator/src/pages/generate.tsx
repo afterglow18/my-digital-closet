@@ -382,12 +382,12 @@ export default function GeneratePage() {
                     }}
                   >
                     <span style={{
-                      fontSize:      Math.max(8, pH(ir, 0.009)),
-                      fontWeight:    800,
-                      letterSpacing: "0.10em",
+                      fontSize:      Math.max(8, pH(ir, 0.0085)),
+                      fontWeight:    600,
+                      letterSpacing: "0.06em",
                       textTransform: "uppercase",
-                      color:         "rgba(80,40,10,0.85)",
-                      fontFamily:    "var(--font-display)",
+                      color:         "rgba(90,50,20,0.80)",
+                      fontFamily:    "var(--font-sans)",
                       lineHeight:    1,
                     }}>
                       {key === "tops" ? "Tops" : key === "bottoms" ? "Bottoms" : "Shoes"}
