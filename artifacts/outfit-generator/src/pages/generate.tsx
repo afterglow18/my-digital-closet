@@ -370,7 +370,7 @@ export default function GeneratePage() {
                       top:       pY(ir, lm.btnCY) - pH(ir, 0.013),
                       left:      "50%",
                       transform: "translateX(-50%)",
-                      width:     pW(ir, 0.42),
+                      width:     pW(ir, 0.30),
                       height:    pH(ir, 0.026),
                       zIndex:    22,
                       pointerEvents: "none",
