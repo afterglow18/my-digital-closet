@@ -374,7 +374,7 @@ export default function GeneratePage() {
                       height:    pH(ir, 0.026),
                       zIndex:    22,
                       pointerEvents: "none",
-                      background:   "#F3EFED",
+                      background:   "#F7E8E5",
                       borderRadius: 999,
                       display:      "flex",
                       alignItems:   "center",
