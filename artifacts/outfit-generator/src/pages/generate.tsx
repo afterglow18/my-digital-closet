@@ -340,9 +340,9 @@ export default function GeneratePage() {
 
               return (
                 <React.Fragment key={key}>
-                  {/* Rod overlay — redraws closet-bg.png over the strip so no
-                      solid colour bar appears over the rods. Category label
-                      sits inside it with no background of its own. */}
+                  {/* Rod overlay — redraws closet-bg.png over the strip, giving a
+                      natural rod appearance. The pill cover below hides the baked-in
+                      "+ ADD" text without creating a full-width white bar. */}
                   <div
                     aria-hidden="true"
                     style={{
@@ -357,19 +357,38 @@ export default function GeneratePage() {
                       backgroundSize:     `${ir.width}px ${ir.height}px`,
                       backgroundPosition: `${-pW(ir, LM.doorL)}px ${-rowTapTops[rowIdx]}px`,
                       backgroundRepeat:   "no-repeat",
-                      display: "flex",
-                      alignItems: "center",
+                    }}
+                  />
+
+                  {/* Pill cover — sits over just the "+ ADD …" portion of the
+                      baked-in image, hiding that text and showing the category
+                      name in the same font as the wardrobe rods. */}
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      top:       pY(ir, lm.btnCY) - pH(ir, 0.013),
+                      left:      "50%",
+                      transform: "translateX(-50%)",
+                      width:     pW(ir, 0.42),
+                      height:    pH(ir, 0.026),
+                      zIndex:    22,
+                      pointerEvents: "none",
+                      background:   "#F5E2DB",
+                      borderRadius: 999,
+                      display:      "flex",
+                      alignItems:   "center",
                       justifyContent: "center",
                     }}
                   >
                     <span style={{
-                      fontSize: Math.max(7, pH(ir, 0.008)),
-                      fontWeight: 700,
-                      letterSpacing: "0.08em",
+                      fontSize:      Math.max(8, pH(ir, 0.009)),
+                      fontWeight:    800,
+                      letterSpacing: "0.10em",
                       textTransform: "uppercase",
-                      color: "rgba(0,0,0,0.78)",
-                      fontFamily: "var(--font-display)",
-                      lineHeight: 1,
+                      color:         "rgba(80,40,10,0.85)",
+                      fontFamily:    "var(--font-display)",
+                      lineHeight:    1,
                     }}>
                       {key === "tops" ? "Tops" : key === "bottoms" ? "Bottoms" : "Shoes"}
                     </span>
