@@ -383,7 +383,7 @@ export default function GeneratePage() {
                   >
                     <span style={{
                       fontSize:      Math.max(6, pH(ir, 0.006)),
-                      fontWeight:    600,
+                      fontWeight:    700,
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
                       color:         "#000000",
