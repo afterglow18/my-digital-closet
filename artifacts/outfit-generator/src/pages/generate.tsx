@@ -382,7 +382,7 @@ export default function GeneratePage() {
                     }}
                   >
                     <span style={{
-                      fontSize:      Math.max(7, pH(ir, 0.0075)),
+                      fontSize:      Math.max(8, pH(ir, 0.009)),
                       fontWeight:    700,
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
