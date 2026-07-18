@@ -34,7 +34,7 @@ const LM = {
   rows: [
     { btnCY: 0.311, boxY: 0.319 },
     { btnCY: 0.498, boxY: 0.506 },
-    { btnCY: 0.690, boxY: 0.697 },
+    { btnCY: 0.690, boxY: 0.714 },
   ],
   barY:    0.858,
   barBot:  1.0,
@@ -73,9 +73,6 @@ const pW = (ir: ImgRect, f: number) => ir.width  * f;
 const pX = (ir: ImgRect, f: number) => ir.left   + ir.width  * f;
 const pY = (ir: ImgRect, f: number) => ir.top    + ir.height * f;
 
-// Pill fill colours sampled from closet-bg.png at each row's centre pixel.
-// Used to cover the baked-in "+ ADD …" text on the Generate page only.
-const PILL_COLORS = ["#F9EAE6", "#EBE8E8", "#FAEFEB"] as const;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type RowKey = "tops" | "bottoms" | "shoes";
@@ -343,18 +340,23 @@ export default function GeneratePage() {
 
               return (
                 <React.Fragment key={key}>
-                  {/* Pill label — covers baked-in "+ ADD …" text and shows category name */}
+                  {/* Rod overlay — redraws closet-bg.png over the strip so no
+                      solid colour bar appears over the rods. Category label
+                      sits inside it with no background of its own. */}
                   <div
+                    aria-hidden="true"
                     style={{
                       position: "absolute",
-                      top:    pY(ir, lm.btnCY) - pH(ir, 0.012),
-                      left:   carLeft + pW(ir, 0.04),
-                      right:  carRight + pW(ir, 0.04),
-                      height: pH(ir, 0.024),
+                      top:    rowTapTops[rowIdx],
+                      left:   carLeft,
+                      right:  carRight,
+                      height: Math.max(0, rowLayouts[rowIdx].carTop - rowTapTops[rowIdx]),
                       zIndex: 21,
                       pointerEvents: "none",
-                      background: PILL_COLORS[rowIdx],
-                      borderRadius: 999,
+                      backgroundImage: "url('/closet-bg.png')",
+                      backgroundSize:     `${ir.width}px ${ir.height}px`,
+                      backgroundPosition: `${-pW(ir, LM.doorL)}px ${-rowTapTops[rowIdx]}px`,
+                      backgroundRepeat:   "no-repeat",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
