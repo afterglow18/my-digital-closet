@@ -10,7 +10,7 @@
 import React, { useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Download, Upload, RefreshCw, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
-import { useEntitlements, setGlobalTier } from "@/hooks/useEntitlements";
+import { useEntitlements, setGlobalTier, syncTierFromRC, getCurrentTier } from "@/hooks/useEntitlements";
 import { restorePurchases } from "@/lib/revenuecat";
 import { exportBackup, importBackup, type ImportResult } from "@/lib/backup";
 import { useQueryClient } from "@tanstack/react-query";
@@ -80,12 +80,16 @@ export default function AccountPage() {
   const handleRestore = async () => {
     setRestoreStatus({ kind: "loading" });
     try {
-      const isActive = await restorePurchases();
-      if (isActive) {
-        setGlobalTier("unlock");
+      // restorePurchases() tells StoreKit to sync, then reads from RevenueCat.
+      // syncTierFromRC() re-reads after the restore to set the tier authoritatively
+      // (handles "unlock" vs "premium" correctly, and downgrades to free if nothing active).
+      await restorePurchases();
+      await syncTierFromRC();
+      const restoredTier = getCurrentTier();
+      if (restoredTier !== "free") {
         setRestoreStatus({ kind: "ok", msg: "Subscription restored! ✨" });
       } else {
-        setRestoreStatus({ kind: "ok", msg: "You're using the Free plan." });
+        setRestoreStatus({ kind: "ok", msg: "No active subscription found." });
       }
     } catch {
       setRestoreStatus({ kind: "err", msg: "Restore failed. Please try again." });
