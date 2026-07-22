@@ -223,6 +223,10 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     await handleFile(blob);
   }, [handleFile]);
 
+  // ── Permission helpers ────────────────────────────────────────────────────
+  // iOS 14+ returns 'limited' (partial selection) which is still usable.
+  const isPhotoAccessible = (state: string) => state === "granted" || state === "limited";
+
   // ── Take Photo (native: Capacitor Camera; web: <input capture>) ──────────
   const handleTakePhoto = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) {
@@ -230,9 +234,8 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
     try {
-      // Explicitly check & request camera permission so we never rely on
-      // string-matching Capacitor's error messages (which vary across iOS versions).
       let perms = await Camera.checkPermissions();
+
       if (perms.camera === "denied") {
         setErrorMsg("Camera access is off. Go to Settings → My Digital Closet → Camera and enable it, then try again.");
         return;
@@ -244,37 +247,48 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
           return;
         }
       }
-      await openNativePhoto(CameraSource.Camera);
+
+      // Try camera first; if it fails for any non-cancel reason fall back to
+      // the photo library so the user can still add their item.
+      try {
+        await openNativePhoto(CameraSource.Camera);
+      } catch (cameraErr: unknown) {
+        if (isCameraCancel(cameraErr)) return;
+        const cameraMsg = cameraErr instanceof Error ? cameraErr.message : String(cameraErr);
+        console.warn("[quickadd] Camera failed, falling back to photo library:", cameraMsg);
+        await openNativePhoto(CameraSource.Photos);
+      }
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] Take photo failed:", msg);
-      setErrorMsg('Camera unavailable. Use "Upload Photo" to choose from your library instead.');
+      setErrorMsg('Could not open the camera or photo library. Please try again.');
     }
   }, [openNativePhoto]);
 
   // ── Upload Photo (native: Capacitor Photos picker; web: <input>) ──────────
   const handleUploadPhoto = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) {
-      // Web — use the hidden gallery input (shows file picker, no camera risk)
       galleryInputRef.current?.click();
       return;
     }
-    // Native: use Capacitor's photo picker — this shows ONLY the photo library,
-    // no camera action sheet, so no crash risk from WKWebView's <input> picker.
     try {
       let perms = await Camera.checkPermissions();
+
       if (perms.photos === "denied") {
         setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
         return;
       }
-      if (perms.photos !== "granted") {
+      // 'limited' means the user granted partial access — that's fine, we can
+      // still open the picker. Only prompt again if truly un-asked.
+      if (!isPhotoAccessible(perms.photos)) {
         const result = await Camera.requestPermissions({ permissions: ["photos"] });
         if (result.photos === "denied") {
           setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
           return;
         }
       }
+
       await openNativePhoto(CameraSource.Photos);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
