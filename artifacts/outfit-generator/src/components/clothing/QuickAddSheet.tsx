@@ -6,6 +6,11 @@
  *
  * Images are encoded to JPEG (≤2048 px) and saved to Capacitor Filesystem
  * (Documents dir) via imageStorage.ts — no server upload required.
+ *
+ * Camera:
+ *   On native iOS/iPadOS, uses @capacitor/camera (Camera.getPhoto) which
+ *   presents the picker correctly as a popover on iPad and handles permissions.
+ *   Falls back to <input capture> only on web.
  */
 import React, { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +22,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { saveImage } from "@/lib/imageStorage";
 import type { ClothingItem } from "@/lib/local-api";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -89,6 +96,22 @@ async function encodeForUpload(input: File | Blob): Promise<Blob> {
   });
 }
 
+/**
+ * Returns true if the error represents a user cancellation of the camera picker.
+ * Capacitor throws different messages across versions/platforms.
+ */
+function isCameraCancel(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes("cancel") ||
+    msg.includes("dismiss") ||
+    msg.includes("no image picked") ||
+    msg.includes("user denied") ||
+    msg.includes("user did not") ||
+    msg.includes("no photo")
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -112,6 +135,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const [phase,    setPhase]    = useState<Phase>("pick");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Only used as a fallback on web (non-native) — native uses Camera.getPhoto
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -126,7 +150,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   }, [onOpenChange]);
 
   // ── File picked → encode → save locally → create DB record → close ──
-  const handleFile = useCallback(async (file: File) => {
+  const handleFile = useCallback(async (file: File | Blob) => {
     setErrorMsg(null);
     setPhase("uploading");
 
@@ -134,7 +158,10 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     let jpeg: Blob;
     try {
       jpeg = await encodeForUpload(file);
-      console.log(`[quickadd] encoded ${file.name} (${file.type}, ${file.size}B) → JPEG ${jpeg.size}B`);
+      const size = file instanceof File ? file.size : (file as Blob).size;
+      const name = file instanceof File ? file.name : "photo.jpg";
+      const type = file instanceof File ? file.type : "image/jpeg";
+      console.log(`[quickadd] encoded ${name} (${type}, ${size}B) → JPEG ${jpeg.size}B`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] encode failed:", msg);
@@ -178,6 +205,51 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       setPhase("pick");
     }
   }, [category, existingCount, createItem, queryClient, handleClose, onCreated]);
+
+  // ── Take Photo (native: Capacitor Camera; web: <input capture>) ──────────
+  const handleTakePhoto = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) {
+      // Web fallback — use the hidden input
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const photo = await Camera.getPhoto({
+        source:           CameraSource.Camera,
+        resultType:       CameraResultType.DataUrl,
+        quality:          85,
+        width:            2048,
+        height:           2048,
+        correctOrientation: true,
+        allowEditing:     false,
+        // presentationStyle is handled automatically by the Capacitor plugin
+        // (popover on iPad, fullscreen on iPhone)
+      });
+
+      if (!photo.dataUrl) {
+        setErrorMsg("No photo was returned. Please try again.");
+        return;
+      }
+
+      // Convert dataUrl → Blob → handleFile
+      const res  = await fetch(photo.dataUrl);
+      const blob = await res.blob();
+      await handleFile(blob);
+    } catch (err: unknown) {
+      // User cancelled the picker — silent, no error shown
+      if (isCameraCancel(err)) return;
+
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[quickadd] Camera.getPhoto error:", msg);
+
+      if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("denied")) {
+        setErrorMsg("Camera access is denied. Please allow camera access in Settings and try again.");
+      } else {
+        setErrorMsg("Could not open the camera. Please use Upload Photo instead.");
+      }
+    }
+  }, [handleFile]);
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -240,9 +312,9 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
               {/* Two big action buttons */}
               <div className="flex gap-3">
-                {/* Take Photo */}
+                {/* Take Photo — uses Capacitor Camera on native (iPad-safe) */}
                 <button
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={handleTakePhoto}
                   className="flex-1 flex flex-col items-center justify-center gap-3 py-8
                              border-4 border-black rounded-2xl bg-primary
                              shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]
@@ -317,7 +389,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       </div>
 
       {/* Hidden file inputs */}
-      {/* Camera — opens native camera on mobile */}
+      {/* Camera fallback — only used on web; native uses Camera.getPhoto above */}
       <input
         ref={cameraInputRef}
         type="file"
