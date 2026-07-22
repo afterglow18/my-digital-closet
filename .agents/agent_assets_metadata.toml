@@ -36,3 +36,9 @@ id = "Ar8qrssJV16B5Cw2q9Tgo"
 uri = "file://attached_assets/promo_886x1920.mp4"
 type = "video"
 title = "Promo Video — 886 × 1920px"
+
+[[outputs]]
+id = "YrGKaH3wqkiORdoyivTU4"
+uri = "file://attached_assets/app-preview-886x1920.mp4"
+type = "video"
+title = "App Preview 886×1920"
