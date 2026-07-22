@@ -223,46 +223,51 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     await handleFile(blob);
   }, [handleFile]);
 
-  // ── Permission helpers ────────────────────────────────────────────────────
-  // iOS 14+ returns 'limited' (partial selection) which is still usable.
-  const isPhotoAccessible = (state: string) => state === "granted" || state === "limited";
+  // ── Permission denied check (run AFTER a failure, not before) ───────────
+  const isPermissionDenied = async (permission: "camera" | "photos"): Promise<boolean> => {
+    try {
+      const perms = await Camera.checkPermissions();
+      return perms[permission] === "denied";
+    } catch {
+      return false;
+    }
+  };
 
   // ── Take Photo (native: Capacitor Camera; web: <input capture>) ──────────
+  // Let Camera.getPhoto handle the iOS permission prompt internally — calling
+  // requestPermissions() ourselves first causes a view-controller conflict where
+  // the permission dialog hasn't fully dismissed before the camera tries to present.
   const handleTakePhoto = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) {
       cameraInputRef.current?.click();
       return;
     }
     try {
-      let perms = await Camera.checkPermissions();
+      await openNativePhoto(CameraSource.Camera);
+    } catch (err: unknown) {
+      if (isCameraCancel(err)) return;
+      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+      console.warn("[quickadd] Camera failed:", msg);
 
-      if (perms.camera === "denied") {
+      // Check if it's a hard permission denial
+      if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("camera")) {
         setErrorMsg("Camera access is off. Go to Settings → My Digital Closet → Camera and enable it, then try again.");
         return;
       }
-      if (perms.camera !== "granted") {
-        const result = await Camera.requestPermissions({ permissions: ["camera"] });
-        if (result.camera === "denied") {
-          setErrorMsg("Camera access is off. Go to Settings → My Digital Closet → Camera and enable it, then try again.");
-          return;
+
+      // Camera unavailable for another reason — fall back to photo library
+      try {
+        await openNativePhoto(CameraSource.Photos);
+      } catch (fallbackErr: unknown) {
+        if (isCameraCancel(fallbackErr)) return;
+        const fbMsg = (fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)).toLowerCase();
+        console.error("[quickadd] Photo library fallback also failed:", fbMsg);
+        if (fbMsg.includes("denied") || fbMsg.includes("permission") || await isPermissionDenied("photos")) {
+          setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
+        } else {
+          setErrorMsg("Could not open the camera or photo library. Please try again.");
         }
       }
-
-      // Try camera first; if it fails for any non-cancel reason fall back to
-      // the photo library so the user can still add their item.
-      try {
-        await openNativePhoto(CameraSource.Camera);
-      } catch (cameraErr: unknown) {
-        if (isCameraCancel(cameraErr)) return;
-        const cameraMsg = cameraErr instanceof Error ? cameraErr.message : String(cameraErr);
-        console.warn("[quickadd] Camera failed, falling back to photo library:", cameraMsg);
-        await openNativePhoto(CameraSource.Photos);
-      }
-    } catch (err: unknown) {
-      if (isCameraCancel(err)) return;
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[quickadd] Take photo failed:", msg);
-      setErrorMsg('Could not open the camera or photo library. Please try again.');
     }
   }, [openNativePhoto]);
 
@@ -273,28 +278,16 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
     try {
-      let perms = await Camera.checkPermissions();
-
-      if (perms.photos === "denied") {
-        setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
-        return;
-      }
-      // 'limited' means the user granted partial access — that's fine, we can
-      // still open the picker. Only prompt again if truly un-asked.
-      if (!isPhotoAccessible(perms.photos)) {
-        const result = await Camera.requestPermissions({ permissions: ["photos"] });
-        if (result.photos === "denied") {
-          setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
-          return;
-        }
-      }
-
       await openNativePhoto(CameraSource.Photos);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
       console.error("[quickadd] Photo library open failed:", msg);
-      setErrorMsg("Could not open your photo library. Please try again.");
+      if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("photos")) {
+        setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
+      } else {
+        setErrorMsg("Could not open your photo library. Please try again.");
+      }
     }
   }, [openNativePhoto]);
 
