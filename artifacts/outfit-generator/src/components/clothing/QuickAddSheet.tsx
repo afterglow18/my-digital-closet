@@ -207,19 +207,24 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   }, [category, existingCount, createItem, queryClient, handleClose, onCreated]);
 
   // ── Shared native photo helper ─────────────────────────────────────────────
+  // Use CameraResultType.Uri (not DataUrl) — DataUrl encodes the full image as
+  // base64 on-device before returning it, which can silently fail or OOM on iOS
+  // for large images. Uri returns a file path; we fetch webPath as a blob instead.
+  // Width/height are omitted — encodeForUpload() already caps at 2048 px.
   const openNativePhoto = useCallback(async (source: CameraSource) => {
     const PHOTO_OPTS = {
-      resultType:         CameraResultType.DataUrl,
-      quality:            85,
-      width:              2048,
-      height:             2048,
+      resultType:         CameraResultType.Uri,
+      quality:            90,
       correctOrientation: true,
       allowEditing:       false,
     };
     const photo = await Camera.getPhoto({ ...PHOTO_OPTS, source });
-    if (!photo.dataUrl) throw new Error("No photo was returned.");
-    const res  = await fetch(photo.dataUrl);
+    console.log("[quickadd] photo result:", JSON.stringify({ path: photo.path, webPath: photo.webPath, format: photo.format }));
+    const url = photo.webPath ?? photo.path;
+    if (!url) throw new Error("No photo was returned.");
+    const res  = await fetch(url);
     const blob = await res.blob();
+    console.log(`[quickadd] fetched blob: ${blob.size}B type=${blob.type}`);
     await handleFile(blob);
   }, [handleFile]);
 
