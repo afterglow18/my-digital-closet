@@ -67,6 +67,12 @@ workflows:
           /usr/libexec/PlistBuddy \
             -c "Add :NSCameraUsageDescription string 'Allow camera access so you can take photos of your clothing items to add to your digital closet.'" \
             "$PLIST"
+          # Required for Capacitor Camera to save captured photos back to the photo library
+          /usr/libexec/PlistBuddy \
+            -c "Delete :NSPhotoLibraryAddUsageDescription" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy \
+            -c "Add :NSPhotoLibraryAddUsageDescription string 'My Digital Closet saves clothing photos to your photo library.'" \
+            "$PLIST"
 
       - name: Inject app icon
         script: |
