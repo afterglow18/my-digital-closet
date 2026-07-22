@@ -206,14 +206,8 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     }
   }, [category, existingCount, createItem, queryClient, handleClose, onCreated]);
 
-  // ── Take Photo (native: Capacitor Camera; web: <input capture>) ──────────
-  const handleTakePhoto = useCallback(async () => {
-    if (!Capacitor.isNativePlatform()) {
-      // Web fallback — use the hidden input
-      cameraInputRef.current?.click();
-      return;
-    }
-
+  // ── Shared native photo helper ─────────────────────────────────────────────
+  const openNativePhoto = useCallback(async (source: CameraSource) => {
     const PHOTO_OPTS = {
       resultType:         CameraResultType.DataUrl,
       quality:            85,
@@ -222,32 +216,32 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       correctOrientation: true,
       allowEditing:       false,
     };
+    const photo = await Camera.getPhoto({ ...PHOTO_OPTS, source });
+    if (!photo.dataUrl) throw new Error("No photo was returned.");
+    const res  = await fetch(photo.dataUrl);
+    const blob = await res.blob();
+    await handleFile(blob);
+  }, [handleFile]);
 
-    const processPhoto = async (source: CameraSource) => {
-      const photo = await Camera.getPhoto({ ...PHOTO_OPTS, source });
-      if (!photo.dataUrl) throw new Error("No photo was returned.");
-      const res  = await fetch(photo.dataUrl);
-      const blob = await res.blob();
-      await handleFile(blob);
-    };
-
+  // ── Take Photo (native: Capacitor Camera; web: <input capture>) ──────────
+  const handleTakePhoto = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) {
+      cameraInputRef.current?.click();
+      return;
+    }
     try {
-      await processPhoto(CameraSource.Camera);
+      await openNativePhoto(CameraSource.Camera);
     } catch (err: unknown) {
-      // User cancelled — silent
       if (isCameraCancel(err)) return;
-
       const msg = err instanceof Error ? err.message : String(err);
       console.warn("[quickadd] Camera failed, trying photo library fallback. Error:", msg);
-
       if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("denied")) {
         setErrorMsg("Camera access is denied. Please allow camera access in Settings and try again.");
         return;
       }
-
       // Camera unavailable (simulator, hardware error, etc.) — fall back to photo library
       try {
-        await processPhoto(CameraSource.Photos);
+        await openNativePhoto(CameraSource.Photos);
       } catch (fallbackErr: unknown) {
         if (isCameraCancel(fallbackErr)) return;
         const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
@@ -255,7 +249,27 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         setErrorMsg("Could not open the camera or photo library. Please try again.");
       }
     }
-  }, [handleFile]);
+  }, [openNativePhoto]);
+
+  // ── Upload Photo (native: Capacitor Photos picker; web: <input>) ──────────
+  const handleUploadPhoto = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) {
+      // Web — use the hidden gallery input (shows file picker, no camera risk)
+      galleryInputRef.current?.click();
+      return;
+    }
+    // Native: use Capacitor's photo picker — this shows ONLY the photo library,
+    // no Camera option is presented, so there is no crash risk from the WKWebView
+    // action sheet that would appear with <input type="file">.
+    try {
+      await openNativePhoto(CameraSource.Photos);
+    } catch (err: unknown) {
+      if (isCameraCancel(err)) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[quickadd] Photo library open failed:", msg);
+      setErrorMsg("Could not open your photo library. Please try again.");
+    }
+  }, [openNativePhoto]);
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -335,7 +349,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
                 {/* Upload Photo */}
                 <button
-                  onClick={() => galleryInputRef.current?.click()}
+                  onClick={handleUploadPhoto}
                   className="flex-1 flex flex-col items-center justify-center gap-3 py-8
                              border-4 border-black rounded-2xl bg-white
                              shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]
