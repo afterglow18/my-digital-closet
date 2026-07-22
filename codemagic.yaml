@@ -53,9 +53,14 @@ workflows:
 
       - name: Set export compliance
         script: |
+          PLIST="artifacts/outfit-generator/ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" || true
+          # Ensure photo library key is present — Apple will reject without it
           /usr/libexec/PlistBuddy \
-            -c "Add :ITSAppUsesNonExemptEncryption bool false" \
-            artifacts/outfit-generator/ios/App/App/Info.plist
+            -c "Delete :NSPhotoLibraryUsageDescription" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy \
+            -c "Add :NSPhotoLibraryUsageDescription string 'Allow access to your photo library so you can add photos of your clothing items to your digital closet.'" \
+            "$PLIST"
 
       - name: Inject app icon
         script: |
@@ -82,7 +87,9 @@ workflows:
       - name: Set build number
         script: |
           cd artifacts/outfit-generator/ios/App
-          agvtool new-version -all $BUILD_NUMBER
+          # Floor at 125 — builds up to 124 already uploaded to App Store Connect
+          BUILD_NUM=$(( BUILD_NUMBER > 124 ? BUILD_NUMBER : 125 ))
+          agvtool new-version -all $BUILD_NUM
 
       - name: Apply provisioning profiles
         script: |
