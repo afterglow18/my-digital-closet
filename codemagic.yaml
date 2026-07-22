@@ -112,11 +112,19 @@ workflows:
 
       - name: Export IPA
         script: |
+          # Write the .p8 key to disk so xcodebuild can authenticate with
+          # Apple Developer Portal to resolve provisioning profiles automatically.
+          mkdir -p "$HOME/private_keys"
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > "$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
           xcodebuild \
             -exportArchive \
             -archivePath "$CM_BUILD_DIR/build/App.xcarchive" \
             -exportOptionsPlist app-store/ExportOptions.plist \
-            -exportPath "$CM_BUILD_DIR/build/ipa"
+            -exportPath "$CM_BUILD_DIR/build/ipa" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
 
       - name: Upload to TestFlight
         script: |
