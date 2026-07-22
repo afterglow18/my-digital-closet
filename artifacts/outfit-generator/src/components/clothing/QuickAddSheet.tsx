@@ -214,39 +214,45 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
 
-    try {
-      const photo = await Camera.getPhoto({
-        source:           CameraSource.Camera,
-        resultType:       CameraResultType.DataUrl,
-        quality:          85,
-        width:            2048,
-        height:           2048,
-        correctOrientation: true,
-        allowEditing:     false,
-        // presentationStyle is handled automatically by the Capacitor plugin
-        // (popover on iPad, fullscreen on iPhone)
-      });
+    const PHOTO_OPTS = {
+      resultType:         CameraResultType.DataUrl,
+      quality:            85,
+      width:              2048,
+      height:             2048,
+      correctOrientation: true,
+      allowEditing:       false,
+    };
 
-      if (!photo.dataUrl) {
-        setErrorMsg("No photo was returned. Please try again.");
-        return;
-      }
-
-      // Convert dataUrl → Blob → handleFile
+    const processPhoto = async (source: CameraSource) => {
+      const photo = await Camera.getPhoto({ ...PHOTO_OPTS, source });
+      if (!photo.dataUrl) throw new Error("No photo was returned.");
       const res  = await fetch(photo.dataUrl);
       const blob = await res.blob();
       await handleFile(blob);
+    };
+
+    try {
+      await processPhoto(CameraSource.Camera);
     } catch (err: unknown) {
-      // User cancelled the picker — silent, no error shown
+      // User cancelled — silent
       if (isCameraCancel(err)) return;
 
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[quickadd] Camera.getPhoto error:", msg);
+      console.warn("[quickadd] Camera failed, trying photo library fallback. Error:", msg);
 
       if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("denied")) {
         setErrorMsg("Camera access is denied. Please allow camera access in Settings and try again.");
-      } else {
-        setErrorMsg("Could not open the camera. Please use Upload Photo instead.");
+        return;
+      }
+
+      // Camera unavailable (simulator, hardware error, etc.) — fall back to photo library
+      try {
+        await processPhoto(CameraSource.Photos);
+      } catch (fallbackErr: unknown) {
+        if (isCameraCancel(fallbackErr)) return;
+        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+        console.error("[quickadd] Photo library fallback also failed:", fallbackMsg);
+        setErrorMsg("Could not open the camera or photo library. Please try again.");
       }
     }
   }, [handleFile]);
