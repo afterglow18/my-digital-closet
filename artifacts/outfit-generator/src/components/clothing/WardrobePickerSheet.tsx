@@ -7,12 +7,13 @@
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import {
   useListClothing,
   getListClothingQueryKey,
   ListClothingCategory,
   ClothingItem,
+  useDeleteClothingItem,
 } from "@/lib/local-api";
 import { getImageUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +43,7 @@ interface Props {
 export function WardrobePickerSheet({ open, onOpenChange, category, onPick, existingItemIds = [] }: Props) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const queryClient = useQueryClient();
+  const deleteItem = useDeleteClothingItem();
 
   // Fetch all items in this category
   const params = { category: category as ListClothingCategory };
@@ -105,36 +107,49 @@ export function WardrobePickerSheet({ open, onOpenChange, category, onPick, exis
               {items.map((item) => {
                 const alreadyIn = existingItemIds.includes(item.id);
                 return (
-                  <button
-                    key={item.id}
-                    onClick={() => handlePick(item)}
-                    className="flex flex-col gap-1 text-left group"
-                  >
-                    <div className="relative w-full aspect-square border-2 border-black overflow-hidden"
-                      style={{ background: "#FDECEF" }}>
-                      {item.imageObjectPath ? (
-                        <img
-                          src={getImageUrl(item.imageObjectPath)!}
-                          alt={item.name}
-                          className="w-full h-full object-contain transition-opacity group-active:opacity-70"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-2xl">👕</span>
-                        </div>
-                      )}
-                      {alreadyIn && (
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                          <span className="text-white text-xs font-bold uppercase tracking-wide bg-black/60 px-1.5 py-0.5 rounded">
-                            In outfit
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  <div key={item.id} className="flex flex-col gap-1 relative">
+                    <button
+                      onClick={() => handlePick(item)}
+                      className="text-left w-full"
+                    >
+                      <div className="relative w-full aspect-square border-2 border-black overflow-hidden"
+                        style={{ background: "#FDECEF" }}>
+                        {item.imageObjectPath ? (
+                          <img
+                            src={getImageUrl(item.imageObjectPath)!}
+                            alt={item.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-2xl">👕</span>
+                          </div>
+                        )}
+                        {alreadyIn && (
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold uppercase tracking-wide bg-black/60 px-1.5 py-0.5 rounded">
+                              In outfit
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteItem.mutate(item.id, {
+                          onSuccess: () => queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() }),
+                        });
+                      }}
+                      className="absolute top-0.5 right-0.5 w-6 h-6 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-px active:translate-y-px transition-all z-10"
+                      aria-label="Delete item"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                     <span className="text-[10px] font-bold uppercase tracking-wide text-black/60 truncate w-full">
                       {item.name}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
