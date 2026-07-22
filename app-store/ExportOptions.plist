@@ -14,7 +14,7 @@
   <key>provisioningProfiles</key>
   <dict>
     <key>com.mydigitalcloset.app</key>
-    <string>My Digital Closet App</string>
+    <string>My Digital Closet</string>
   </dict>
   <key>uploadSymbols</key>
   <true/>
