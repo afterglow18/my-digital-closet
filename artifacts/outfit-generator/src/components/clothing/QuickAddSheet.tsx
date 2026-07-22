@@ -230,24 +230,26 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
     try {
+      // Explicitly check & request camera permission so we never rely on
+      // string-matching Capacitor's error messages (which vary across iOS versions).
+      let perms = await Camera.checkPermissions();
+      if (perms.camera === "denied") {
+        setErrorMsg("Camera access is off. Go to Settings → My Digital Closet → Camera and enable it, then try again.");
+        return;
+      }
+      if (perms.camera !== "granted") {
+        const result = await Camera.requestPermissions({ permissions: ["camera"] });
+        if (result.camera === "denied") {
+          setErrorMsg("Camera access is off. Go to Settings → My Digital Closet → Camera and enable it, then try again.");
+          return;
+        }
+      }
       await openNativePhoto(CameraSource.Camera);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[quickadd] Camera failed, trying photo library fallback. Error:", msg);
-      if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("denied")) {
-        setErrorMsg("Camera access is denied. Please allow camera access in Settings and try again.");
-        return;
-      }
-      // Camera unavailable (simulator, hardware error, etc.) — fall back to photo library
-      try {
-        await openNativePhoto(CameraSource.Photos);
-      } catch (fallbackErr: unknown) {
-        if (isCameraCancel(fallbackErr)) return;
-        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-        console.error("[quickadd] Photo library fallback also failed:", fallbackMsg);
-        setErrorMsg("Could not open the camera or photo library. Please try again.");
-      }
+      console.error("[quickadd] Take photo failed:", msg);
+      setErrorMsg('Camera unavailable. Use "Upload Photo" to choose from your library instead.');
     }
   }, [openNativePhoto]);
 
@@ -259,9 +261,20 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
     // Native: use Capacitor's photo picker — this shows ONLY the photo library,
-    // no Camera option is presented, so there is no crash risk from the WKWebView
-    // action sheet that would appear with <input type="file">.
+    // no camera action sheet, so no crash risk from WKWebView's <input> picker.
     try {
+      let perms = await Camera.checkPermissions();
+      if (perms.photos === "denied") {
+        setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
+        return;
+      }
+      if (perms.photos !== "granted") {
+        const result = await Camera.requestPermissions({ permissions: ["photos"] });
+        if (result.photos === "denied") {
+          setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
+          return;
+        }
+      }
       await openNativePhoto(CameraSource.Photos);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
