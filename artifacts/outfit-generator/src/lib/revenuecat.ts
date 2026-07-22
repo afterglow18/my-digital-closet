@@ -84,16 +84,25 @@ export async function fetchRCPackages(): Promise<RCPackage[]> {
   }
 
   const productKeys: Array<"monthly" | "annual" | "lifetime"> = ["monthly", "annual", "lifetime"];
-  const rcKeys: Record<string, string> = {
+
+  // Three-tier lookup per plan key:
+  // 1. RC shortcut (matches by packageType — works regardless of package identifier)
+  // 2. Standard RC package identifier ($rc_*)
+  // 3. App Store product identifier (mdc_* — matches even if packageType wasn't set)
+  const rcIdentifiers: Record<string, string> = {
     monthly:  "$rc_monthly",
     annual:   "$rc_annual",
     lifetime: "$rc_lifetime",
+  };
+  const productIdentifiers: Record<string, string> = {
+    monthly:  "mdc_monthly",
+    annual:   "mdc_annual",
+    lifetime: "mdc_lifetime",
   };
 
   const result: RCPackage[] = [];
 
   for (const key of productKeys) {
-    // Try the shortcut property first, then search by standard identifier.
     const shortcut =
       key === "annual"   ? offering.annual   :
       key === "lifetime" ? offering.lifetime  :
@@ -101,7 +110,8 @@ export async function fetchRCPackages(): Promise<RCPackage[]> {
 
     const pkg =
       shortcut ??
-      offering.availablePackages.find((p) => p.identifier === rcKeys[key]) ??
+      offering.availablePackages.find((p) => p.identifier === rcIdentifiers[key]) ??
+      offering.availablePackages.find((p) => p.product.identifier === productIdentifiers[key]) ??
       null;
 
     if (pkg) {
@@ -111,7 +121,12 @@ export async function fetchRCPackages(): Promise<RCPackage[]> {
         priceString: pkg.product.priceString,
       });
     } else {
-      console.warn(`[RevenueCat] Package '${key}' (${rcKeys[key]}) not found in offering '${offering.identifier}'.`);
+      console.warn(
+        `[RevenueCat] Package '${key}' not found. ` +
+        `Tried shortcut, identifier '${rcIdentifiers[key]}', ` +
+        `and productIdentifier '${productIdentifiers[key]}' ` +
+        `in offering '${offering.identifier}'.`,
+      );
     }
   }
 
