@@ -272,7 +272,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         if (fbMsg.includes("denied") || fbMsg.includes("permission") || await isPermissionDenied("photos")) {
           setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
         } else {
-          setErrorMsg(`Debug — camera: "${rawMsg}" / photos: "${fbRaw}"`);
+          setErrorMsg("Could not open the camera or photo library. Please try again.");
         }
       }
     }
@@ -294,7 +294,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("photos")) {
         setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
       } else {
-        setErrorMsg(`Debug — photos: "${rawMsg}"`);
+        setErrorMsg("Could not open your photo library. Please try again.");
       }
     }
   }, [openNativePhoto]);
