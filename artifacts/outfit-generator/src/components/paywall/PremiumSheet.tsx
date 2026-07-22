@@ -9,8 +9,16 @@ import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { X, Loader2, RefreshCw } from "lucide-react";
 import { useRCOfferings } from "@/hooks/useRCOfferings";
+import { restorePurchases } from "@/lib/revenuecat";
 import type { PurchaseProduct } from "@/lib/entitlements";
 import type { PurchaseResult } from "@/hooks/useEntitlements";
+
+const TERMS_URL   = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
+const PRIVACY_URL = "https://app.notion.com/p/My-Digital-Collection-Privacy-Policy-39682db6065380b19dedcb108d4a0ef4?source=copy_link";
+
+function openUrl(url: string) {
+  window.open(url, "_system");
+}
 
 interface Props { onClose: () => void; }
 
@@ -62,6 +70,7 @@ export function PremiumSheet({ onClose }: Props) {
   const [status,  setStatus]  = useState<"idle" | "pending">("idle");
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan>("lifetime");
+  const [restoreStatus, setRestoreStatus] = useState<"idle" | "pending" | "done" | "none">("idle");
 
   const activeMeta = PLAN_META.find((p) => p.id === plan)!;
   const activePrice = priceFor(plan);
@@ -69,6 +78,14 @@ export function PremiumSheet({ onClose }: Props) {
     plan === "monthly"  ? `START MONTHLY – ${activePrice}` :
     plan === "annual"   ? `START YEARLY – ${activePrice}`  :
                           `UNLOCK FOREVER – ${activePrice}`;
+
+  const handleRestore = useCallback(async () => {
+    if (restoreStatus === "pending") return;
+    setRestoreStatus("pending");
+    const tier = await restorePurchases();
+    setRestoreStatus(tier ? "done" : "none");
+    if (tier) setTimeout(onClose, 800);
+  }, [restoreStatus, onClose]);
 
   const handlePurchase = useCallback(async () => {
     if (status === "pending" || loading || !!error) return;
@@ -258,6 +275,29 @@ export function PremiumSheet({ onClose }: Props) {
                            hover:text-black/55 transition-colors py-0.5">
           Maybe Later
         </button>
+
+        {/* Restore Purchases */}
+        <button onClick={handleRestore} disabled={restoreStatus === "pending"}
+                className="text-xs font-bold text-black/35 text-center underline underline-offset-2
+                           hover:text-black/55 transition-colors py-0.5 disabled:opacity-50">
+          {restoreStatus === "pending" ? "Restoring…" :
+           restoreStatus === "done"    ? "✓ Purchases Restored" :
+           restoreStatus === "none"    ? "No purchases found" :
+           "Restore Purchases"}
+        </button>
+
+        {/* Legal links — required by Apple */}
+        <p className="text-center leading-relaxed" style={{ fontSize: 9, color: "rgba(0,0,0,0.28)" }}>
+          <button onClick={() => openUrl(TERMS_URL)}
+                  className="underline underline-offset-1 active:opacity-60">
+            Terms of Use
+          </button>
+          {" · "}
+          <button onClick={() => openUrl(PRIVACY_URL)}
+                  className="underline underline-offset-1 active:opacity-60">
+            Privacy Policy
+          </button>
+        </p>
       </div>
     </motion.div>
   );
