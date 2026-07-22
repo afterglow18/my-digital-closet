@@ -251,8 +251,9 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       await openNativePhoto(CameraSource.Camera);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
-      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-      console.warn("[quickadd] Camera failed:", msg);
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      const msg = rawMsg.toLowerCase();
+      console.warn("[quickadd] Camera failed:", rawMsg);
 
       // Check if it's a hard permission denial
       if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("camera")) {
@@ -265,12 +266,13 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         await openNativePhoto(CameraSource.Photos);
       } catch (fallbackErr: unknown) {
         if (isCameraCancel(fallbackErr)) return;
-        const fbMsg = (fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)).toLowerCase();
-        console.error("[quickadd] Photo library fallback also failed:", fbMsg);
+        const fbRaw = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+        const fbMsg = fbRaw.toLowerCase();
+        console.error("[quickadd] Photo library fallback also failed:", fbRaw);
         if (fbMsg.includes("denied") || fbMsg.includes("permission") || await isPermissionDenied("photos")) {
           setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
         } else {
-          setErrorMsg("Could not open the camera or photo library. Please try again.");
+          setErrorMsg(`Debug — camera: "${rawMsg}" / photos: "${fbRaw}"`);
         }
       }
     }
@@ -286,12 +288,13 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       await openNativePhoto(CameraSource.Photos);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
-      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-      console.error("[quickadd] Photo library open failed:", msg);
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      const msg = rawMsg.toLowerCase();
+      console.error("[quickadd] Photo library open failed:", rawMsg);
       if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("photos")) {
         setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
       } else {
-        setErrorMsg("Could not open your photo library. Please try again.");
+        setErrorMsg(`Debug — photos: "${rawMsg}"`);
       }
     }
   }, [openNativePhoto]);
