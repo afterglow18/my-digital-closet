@@ -137,9 +137,7 @@ export function WardrobePickerSheet({ open, onOpenChange, category, onPick, exis
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteItem.mutate(item.id, {
-                          onSuccess: () => queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() }),
-                        });
+                        deleteItem.mutate({ id: item.id });
                       }}
                       className="absolute top-0.5 right-0.5 w-6 h-6 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-px active:translate-y-px transition-all z-10"
                       aria-label="Delete item"
