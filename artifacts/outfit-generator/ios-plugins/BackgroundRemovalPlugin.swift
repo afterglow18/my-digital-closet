@@ -81,14 +81,15 @@ public class BackgroundRemovalPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            // Generate masked CIImage — background pixels become transparent
-            let maskedCI = try result.generateMaskedImage(
+            // generateMaskedImage returns CVPixelBuffer (not CIImage)
+            let pixelBuffer = try result.generateMaskedImage(
                 ofInstances: result.allInstances,
                 from: handler,
                 croppedToInstancesExtent: false
             )
 
-            // Render to CGImage and encode as PNG to preserve transparency
+            // CVPixelBuffer → CIImage → CGImage → PNG
+            let maskedCI = CIImage(cvPixelBuffer: pixelBuffer)
             let context = CIContext()
             guard let cgOut = context.createCGImage(maskedCI, from: maskedCI.extent) else {
                 call.reject("Failed to render masked image")
