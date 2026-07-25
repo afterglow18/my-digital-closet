@@ -14,7 +14,7 @@
  */
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, Check, Wand2, RotateCcw } from "lucide-react";
+import { X, Loader2, Check, RotateCcw } from "lucide-react";
 import {
   isBackgroundRemovalSupported,
   removeBackground,
@@ -143,21 +143,24 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Preview phase state
-  const [previewBlob,          setPreviewBlob]          = useState<Blob | null>(null);
-  const [previewUrl,           setPreviewUrl]           = useState<string | null>(null);
-  const [bgSupported,          setBgSupported]          = useState(false);
-  const [removingBg,           setRemovingBg]           = useState(false);
-  const [bgRemoved,            setBgRemoved]            = useState(false);
+  const [originalBlob, setOriginalBlob] = useState<Blob | null>(null);
+  const [originalUrl,  setOriginalUrl]  = useState<string | null>(null);
+  const [cleanedBlob,  setCleanedBlob]  = useState<Blob | null>(null);
+  const [cleanedUrl,   setCleanedUrl]   = useState<string | null>(null);
+  const [bgSupported,  setBgSupported]  = useState(false);
+  const [bgProcessing, setBgProcessing] = useState(false);
+  const [bgFailed,     setBgFailed]     = useState(false);
+  // Which version the user has selected — defaults to 'cleaned' once ready
+  const [selected, setSelected] = useState<"original" | "cleaned">("original");
 
   // Check native support once on mount
   useEffect(() => {
     isBackgroundRemovalSupported().then(setBgSupported);
   }, []);
 
-  // Clean up object URL whenever it changes
-  useEffect(() => {
-    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
-  }, [previewUrl]);
+  // Clean up object URLs when they change
+  useEffect(() => { return () => { if (originalUrl) URL.revokeObjectURL(originalUrl); }; }, [originalUrl]);
+  useEffect(() => { return () => { if (cleanedUrl)  URL.revokeObjectURL(cleanedUrl);  }; }, [cleanedUrl]);
 
   // Only used as a fallback on web (non-native) — native uses Camera.getPhoto
   const cameraInputRef  = useRef<HTMLInputElement>(null);
@@ -170,23 +173,23 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleClose = useCallback(() => {
     setPhase("pick");
     setErrorMsg(null);
-    setPreviewBlob(null);
-    setPreviewUrl(null);
-    setBgRemoved(false);
+    setOriginalBlob(null);
+    setOriginalUrl(null);
+    setCleanedBlob(null);
+    setCleanedUrl(null);
+    setBgFailed(false);
+    setSelected("original");
     onOpenChange(false);
   }, [onOpenChange]);
 
-  // ── File picked → encode → show preview ──────────────────────────────────
+  // ── File picked → encode → show preview + auto background removal ────────
   const handleFile = useCallback(async (file: File | Blob) => {
     setErrorMsg(null);
 
     let jpeg: Blob;
     try {
       jpeg = await encodeForUpload(file);
-      const size = file instanceof File ? file.size : (file as Blob).size;
-      const name = file instanceof File ? file.name : "photo.jpg";
-      const type = file instanceof File ? file.type : "image/jpeg";
-      console.log(`[quickadd] encoded ${name} (${type}, ${size}B) → JPEG ${jpeg.size}B`);
+      console.log(`[quickadd] encoded → JPEG ${jpeg.size}B`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] encode failed:", msg);
@@ -195,46 +198,48 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
 
+    // Show the original immediately
     const url = URL.createObjectURL(jpeg);
-    setPreviewBlob(jpeg);
-    setPreviewUrl(url);
-    setBgRemoved(false);
+    setOriginalBlob(jpeg);
+    setOriginalUrl(url);
+    setCleanedBlob(null);
+    setCleanedUrl(null);
+    setBgFailed(false);
+    setSelected("original");
     setPhase("preview");
-  }, []);
 
-  // ── Remove background via native Vision framework ────────────────────────
-  const handleRemoveBackground = useCallback(async () => {
-    if (!previewBlob || removingBg) return;
-    setRemovingBg(true);
-    setErrorMsg(null);
+    // Kick off background removal automatically in the background (iOS 17+ only)
+    if (!bgSupported) return;
+    setBgProcessing(true);
     try {
-      const dataUrl     = await blobToDataUrl(previewBlob);
-      const resultUrl   = await removeBackground(dataUrl);
-      const resultBlob  = await dataUrlToBlob(resultUrl);
-      const newObjectUrl = URL.createObjectURL(resultBlob);
-      setPreviewBlob(resultBlob);
-      setPreviewUrl(newObjectUrl);
-      setBgRemoved(true);
+      const dataUrl    = await blobToDataUrl(jpeg);
+      const resultUrl  = await removeBackground(dataUrl);
+      const resultBlob = await dataUrlToBlob(resultUrl);
+      const resultObjUrl = URL.createObjectURL(resultBlob);
+      setCleanedBlob(resultBlob);
+      setCleanedUrl(resultObjUrl);
+      setSelected("cleaned"); // default to the cleaned version
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[quickadd] removeBackground failed:", msg);
-      setErrorMsg("Background removal failed — save the original or try again.");
+      console.warn("[quickadd] background removal failed silently:", err);
+      setBgFailed(true);
     } finally {
-      setRemovingBg(false);
+      setBgProcessing(false);
     }
-  }, [previewBlob, removingBg]);
+  }, [bgSupported]);
 
-  // ── Save from preview → Filesystem + DB ──────────────────────────────────
+  // ── Save the chosen version → Filesystem + DB ────────────────────────────
   const handleSave = useCallback(async () => {
-    if (!previewBlob) return;
+    const blob = selected === "cleaned" && cleanedBlob ? cleanedBlob : originalBlob;
+    if (!blob) return;
     setErrorMsg(null);
     setPhase("uploading");
 
     try {
-      const ext      = bgRemoved ? "png" : "jpg";
-      const filename = `${category}-${Date.now()}.${ext}`;
-      const imageObjectPath = await saveImage(previewBlob, filename);
-      console.log(`[quickadd] saved locally as ${imageObjectPath}`);
+      const isCleaned = selected === "cleaned" && !!cleanedBlob;
+      const ext        = isCleaned ? "png" : "jpg";
+      const filename   = `${category}-${Date.now()}.${ext}`;
+      const imageObjectPath = await saveImage(blob, filename);
+      console.log(`[quickadd] saved ${isCleaned ? "cleaned PNG" : "original JPEG"} as ${imageObjectPath}`);
 
       const label    = CATEGORY_LABELS[category];
       const n        = existingCount + 1;
@@ -264,7 +269,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       setErrorMsg(`Save failed: ${msg}`);
       setPhase("preview");
     }
-  }, [previewBlob, bgRemoved, category, existingCount, createItem, queryClient, handleClose, onCreated]);
+  }, [selected, cleanedBlob, originalBlob, category, existingCount, createItem, queryClient, handleClose, onCreated]);
 
   // ── Shared native photo helper ─────────────────────────────────────────────
   // Use CameraResultType.Uri (not DataUrl) — DataUrl encodes the full image as
@@ -473,7 +478,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
           )}
 
           {/* ── PREVIEW ── */}
-          {phase === "preview" && previewUrl && (
+          {phase === "preview" && originalUrl && (
             <motion.div
               key="preview"
               initial={{ opacity: 0 }}
@@ -487,45 +492,84 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 </p>
               )}
 
-              {/* Photo preview */}
-              <div className={`relative w-full rounded-2xl border-4 border-black overflow-hidden
-                               shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]
-                               ${bgRemoved ? "bg-[repeating-conic-gradient(#ccc_0%_25%,white_0%_50%)] bg-[length:16px_16px]" : "bg-black"}`}>
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="w-full object-contain max-h-72"
-                />
-                {bgRemoved && (
-                  <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold
-                                  px-2 py-0.5 rounded-full border-2 border-black uppercase tracking-wide">
-                    ✓ BG Removed
-                  </div>
-                )}
-              </div>
-
-              {/* Background removal button — iOS 17+ only */}
+              {/* ── Side-by-side comparison (iOS 17+) ── */}
               {bgSupported && (
-                <button
-                  onClick={bgRemoved ? undefined : handleRemoveBackground}
-                  disabled={removingBg}
-                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl
-                               border-2 border-black font-bold text-sm uppercase tracking-wide
-                               shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                               active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all
-                               disabled:opacity-50
-                               ${bgRemoved
-                                 ? "bg-green-100 text-green-800 cursor-default"
-                                 : "bg-[#e8f5e9] text-black"}`}
-                >
-                  {removingBg ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Removing background…</>
-                  ) : bgRemoved ? (
-                    <><Check className="w-4 h-4" /> Background removed</>
-                  ) : (
-                    <><Wand2 className="w-4 h-4" /> Remove Background</>
-                  )}
-                </button>
+                <>
+                  <p className="text-xs font-bold uppercase tracking-widest text-black/40 text-center">
+                    {bgProcessing ? "Processing…" : bgFailed ? "Original" : "Tap to choose"}
+                  </p>
+
+                  <div className="flex gap-3">
+                    {/* Original card */}
+                    <button
+                      onClick={() => setSelected("original")}
+                      className={`flex-1 flex flex-col gap-2 rounded-2xl border-4 overflow-hidden
+                                  transition-all active:scale-[0.97]
+                                  ${selected === "original"
+                                    ? "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                                    : "border-black/20 opacity-60"}`}
+                    >
+                      <div className="relative bg-black">
+                        <img src={originalUrl} alt="Original" className="w-full object-contain max-h-44" />
+                        {selected === "original" && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
+                                          flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-bold text-xs uppercase tracking-wide text-center pb-2">
+                        Original
+                      </span>
+                    </button>
+
+                    {/* Cleaned card */}
+                    <button
+                      onClick={() => { if (cleanedUrl) setSelected("cleaned"); }}
+                      disabled={bgProcessing || bgFailed}
+                      className={`flex-1 flex flex-col gap-2 rounded-2xl border-4 overflow-hidden
+                                  transition-all active:scale-[0.97] disabled:cursor-default
+                                  ${selected === "cleaned" && cleanedUrl
+                                    ? "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                                    : "border-black/20 opacity-60"}`}
+                    >
+                      <div className="relative"
+                           style={{ background: "repeating-conic-gradient(#d1d5db 0% 25%, white 0% 50%) 0 0 / 12px 12px" }}>
+                        {bgProcessing ? (
+                          <div className="w-full max-h-44 flex items-center justify-center" style={{ minHeight: "11rem" }}>
+                            <Loader2 className="w-8 h-8 animate-spin text-black/40" />
+                          </div>
+                        ) : cleanedUrl ? (
+                          <>
+                            <img src={cleanedUrl} alt="Cleaned" className="w-full object-contain max-h-44" />
+                            {selected === "cleaned" && (
+                              <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
+                                              flex items-center justify-center">
+                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="w-full max-h-44 flex items-center justify-center text-black/30 text-xs"
+                               style={{ minHeight: "11rem" }}>
+                            Unavailable
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-bold text-xs uppercase tracking-wide text-center pb-2">
+                        Cleaned ✨
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* ── Single preview (web / iOS <17) ── */}
+              {!bgSupported && (
+                <div className="rounded-2xl border-4 border-black overflow-hidden bg-black
+                                shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
+                  <img src={originalUrl} alt="Preview" className="w-full object-contain max-h-72" />
+                </div>
               )}
 
               {/* Save / Retake */}
@@ -541,12 +585,15 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 </button>
                 <button
                   onClick={handleSave}
+                  disabled={bgProcessing}
                   className="flex-[2] flex items-center justify-center gap-1.5 py-3 rounded-xl
                              border-2 border-black bg-primary font-bold text-sm uppercase tracking-wide
                              shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                             disabled:opacity-50 transition-all"
                 >
-                  <Check className="w-4 h-4" /> Save to Closet
+                  <Check className="w-4 h-4" />
+                  {bgProcessing ? "Processing…" : "Save to Closet"}
                 </button>
               </div>
             </motion.div>
