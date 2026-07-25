@@ -4,3 +4,4 @@
 - [Stripe integration](stripe-integration.md) — credential field name fix, checkout flow design, stripe-replit-sync warning, product seeding.
 - [Auth system](auth-system.md) — JWT/bcrypt auth, no-fallback-secret rule, ownership-before-delete pattern, single useAuth instance via context.
 - [Module merge architecture](module-merge-architecture.md) — 6-module merged binary; hub at /, each module isolated IndexedDB + welcome gate; shared types/local.ts; idb package required.
+- [Vision background removal API](vision-bgremoval-api.md) — generateMaskedImage returns CVPixelBuffer not CIImage; wrap with CIImage(cvPixelBuffer:) before CIContext.
