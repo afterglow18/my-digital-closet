@@ -492,85 +492,81 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 </p>
               )}
 
-              {/* ── Side-by-side comparison (iOS 17+) ── */}
-              {bgSupported && (
-                <>
-                  <p className="text-xs font-bold uppercase tracking-widest text-black/40 text-center">
-                    {bgProcessing ? "Processing…" : bgFailed ? "Original" : "Tap to choose"}
-                  </p>
+              {/* ── Side-by-side comparison (always shown) ── */}
+              <p className="text-xs font-bold uppercase tracking-widest text-black/40 text-center">
+                {bgProcessing ? "Removing background…" : bgFailed || !bgSupported ? "Original" : cleanedUrl ? "Tap to choose" : "Tap to choose"}
+              </p>
 
-                  <div className="flex gap-3">
-                    {/* Original card */}
-                    <button
-                      onClick={() => setSelected("original")}
-                      className={`flex-1 flex flex-col gap-2 rounded-2xl border-4 overflow-hidden
-                                  transition-all active:scale-[0.97]
-                                  ${selected === "original"
-                                    ? "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                                    : "border-black/20 opacity-60"}`}
-                    >
-                      <div className="relative bg-black">
-                        <img src={originalUrl} alt="Original" className="w-full object-contain max-h-44" />
-                        {selected === "original" && (
+              <div className="flex gap-3">
+                {/* Original card */}
+                <button
+                  onClick={() => setSelected("original")}
+                  className={`flex-1 flex flex-col gap-2 rounded-2xl border-4 overflow-hidden
+                              transition-all active:scale-[0.97]
+                              ${selected === "original"
+                                ? "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                                : "border-black/20 opacity-60"}`}
+                >
+                  <div className="relative bg-black">
+                    <img src={originalUrl} alt="Original" className="w-full object-contain max-h-44" />
+                    {selected === "original" && (
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
+                                      flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      </div>
+                    )}
+                  </div>
+                  <span className="font-bold text-xs uppercase tracking-wide text-center pb-2">
+                    Original
+                  </span>
+                </button>
+
+                {/* Cleaned card */}
+                <button
+                  onClick={() => { if (cleanedUrl) setSelected("cleaned"); }}
+                  disabled={!cleanedUrl}
+                  className={`flex-1 flex flex-col gap-2 rounded-2xl border-4 overflow-hidden
+                              transition-all active:scale-[0.97] disabled:cursor-default
+                              ${selected === "cleaned" && cleanedUrl
+                                ? "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                                : "border-black/20 opacity-60"}`}
+                >
+                  <div className="relative"
+                       style={{ background: "repeating-conic-gradient(#d1d5db 0% 25%, white 0% 50%) 0 0 / 12px 12px" }}>
+                    {bgProcessing ? (
+                      /* Processing on-device */
+                      <div className="w-full flex flex-col items-center justify-center gap-2 text-black/40"
+                           style={{ minHeight: "11rem" }}>
+                        <Loader2 className="w-7 h-7 animate-spin" />
+                        <span className="text-[10px] font-bold uppercase tracking-wide">Processing…</span>
+                      </div>
+                    ) : cleanedUrl ? (
+                      /* Done — show the result */
+                      <>
+                        <img src={cleanedUrl} alt="Cleaned" className="w-full object-contain max-h-44" />
+                        {selected === "cleaned" && (
                           <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
                                           flex items-center justify-center">
                             <Check className="w-3 h-3 text-white" strokeWidth={3} />
                           </div>
                         )}
+                      </>
+                    ) : (
+                      /* Not supported (web) or failed */
+                      <div className="w-full flex flex-col items-center justify-center gap-1.5 px-3 text-center"
+                           style={{ minHeight: "11rem" }}>
+                        <span className="text-2xl">✨</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-black/40 leading-snug">
+                          {bgFailed ? "No subject\ndetected" : "iOS 17+\nonly"}
+                        </span>
                       </div>
-                      <span className="font-bold text-xs uppercase tracking-wide text-center pb-2">
-                        Original
-                      </span>
-                    </button>
-
-                    {/* Cleaned card */}
-                    <button
-                      onClick={() => { if (cleanedUrl) setSelected("cleaned"); }}
-                      disabled={bgProcessing || bgFailed}
-                      className={`flex-1 flex flex-col gap-2 rounded-2xl border-4 overflow-hidden
-                                  transition-all active:scale-[0.97] disabled:cursor-default
-                                  ${selected === "cleaned" && cleanedUrl
-                                    ? "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                                    : "border-black/20 opacity-60"}`}
-                    >
-                      <div className="relative"
-                           style={{ background: "repeating-conic-gradient(#d1d5db 0% 25%, white 0% 50%) 0 0 / 12px 12px" }}>
-                        {bgProcessing ? (
-                          <div className="w-full max-h-44 flex items-center justify-center" style={{ minHeight: "11rem" }}>
-                            <Loader2 className="w-8 h-8 animate-spin text-black/40" />
-                          </div>
-                        ) : cleanedUrl ? (
-                          <>
-                            <img src={cleanedUrl} alt="Cleaned" className="w-full object-contain max-h-44" />
-                            {selected === "cleaned" && (
-                              <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
-                                              flex items-center justify-center">
-                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="w-full max-h-44 flex items-center justify-center text-black/30 text-xs"
-                               style={{ minHeight: "11rem" }}>
-                            Unavailable
-                          </div>
-                        )}
-                      </div>
-                      <span className="font-bold text-xs uppercase tracking-wide text-center pb-2">
-                        Cleaned ✨
-                      </span>
-                    </button>
+                    )}
                   </div>
-                </>
-              )}
-
-              {/* ── Single preview (web / iOS <17) ── */}
-              {!bgSupported && (
-                <div className="rounded-2xl border-4 border-black overflow-hidden bg-black
-                                shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
-                  <img src={originalUrl} alt="Preview" className="w-full object-contain max-h-72" />
-                </div>
-              )}
+                  <span className="font-bold text-xs uppercase tracking-wide text-center pb-2">
+                    Cleaned ✨
+                  </span>
+                </button>
+              </div>
 
               {/* Save / Retake */}
               <div className="flex gap-3">
