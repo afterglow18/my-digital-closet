@@ -30,15 +30,6 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Phone Frame Constraint for Desktop */}
       <div className="w-full max-w-md bg-background h-[100dvh] lg:min-h-[850px] lg:h-[850px] lg:border-[6px] lg:border-black lg:rounded-[3rem] lg:shadow-2xl relative overflow-hidden flex flex-col lg:overflow-y-auto">
 
-        {/* ← Collections — returns to the main hub */}
-        <a
-          href={import.meta.env.BASE_URL || '/'}
-          className="absolute top-3 left-3 z-50 flex items-center gap-1 bg-white/90 backdrop-blur border-2 border-black rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:scale-95 transition-transform"
-          style={{ WebkitTapHighlightColor: 'transparent' }}
-        >
-          ← Collections
-        </a>
-
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-[90px] relative">
           {children}
