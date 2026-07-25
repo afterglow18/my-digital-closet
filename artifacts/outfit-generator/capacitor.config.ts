@@ -18,8 +18,6 @@ const config: CapacitorConfig = {
     // Export compliance — app uses only standard HTTPS; no custom encryption
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      // Required for Face ID — App Store will reject without this key
-      NSFaceIDUsageDescription: "My Digital Closet uses Face ID to keep your wardrobe private.",
       // Required for camera access — missing key causes crash on iOS/iPadOS
       NSCameraUsageDescription: "My Digital Closet uses the camera so you can photograph clothing items to add to your wardrobe.",
       // Required for photo library access (read)

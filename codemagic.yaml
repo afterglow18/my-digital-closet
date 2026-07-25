@@ -73,12 +73,6 @@ workflows:
           /usr/libexec/PlistBuddy \
             -c "Add :NSPhotoLibraryAddUsageDescription string 'My Digital Closet saves clothing photos to your photo library.'" \
             "$PLIST"
-          # Required for Face ID — without this key iOS silently blocks biometric auth
-          /usr/libexec/PlistBuddy \
-            -c "Delete :NSFaceIDUsageDescription" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy \
-            -c "Add :NSFaceIDUsageDescription string 'My Digital Closet uses Face ID to keep your wardrobe private.'" \
-            "$PLIST"
 
       - name: Inject app icon
         script: |
