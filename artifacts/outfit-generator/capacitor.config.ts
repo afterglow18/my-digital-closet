@@ -22,8 +22,10 @@ const config: CapacitorConfig = {
       NSFaceIDUsageDescription: "My Digital Closet uses Face ID to keep your wardrobe private.",
       // Required for camera access — missing key causes crash on iOS/iPadOS
       NSCameraUsageDescription: "My Digital Closet uses the camera so you can photograph clothing items to add to your wardrobe.",
-      // Required for photo library access
+      // Required for photo library access (read)
       NSPhotoLibraryUsageDescription: "My Digital Closet accesses your photo library so you can upload clothing photos to your wardrobe.",
+      // Required for photo library write access — Capacitor Camera saves captured photos to the library
+      NSPhotoLibraryAddUsageDescription: "My Digital Closet saves clothing photos to your photo library.",
     },
   },
 
