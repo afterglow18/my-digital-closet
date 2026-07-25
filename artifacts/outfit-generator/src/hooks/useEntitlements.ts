@@ -29,7 +29,19 @@ import {
   TierCapabilities,
   PurchaseProduct,
 } from "@/lib/entitlements";
-import { checkSubscription, purchaseProduct } from "@/lib/revenuecat";
+import { checkSubscription, purchaseProduct, restorePurchases } from "@/lib/revenuecat";
+
+const PRODUCT_KEY = "mdc_last_product";
+
+/** Store the purchased product name so account pages can show it without an async call. */
+export function writeStoredProduct(product: string): void {
+  try { localStorage.setItem(PRODUCT_KEY, product); } catch {}
+}
+
+/** Read back the last purchased product (e.g. "monthly"), or null if unknown. */
+export function readStoredProduct(): string | null {
+  try { return localStorage.getItem(PRODUCT_KEY); } catch { return null; }
+}
 
 // ── Shared external store ─────────────────────────────────────────────────────
 const STORAGE_KEY = "mdc_tier";
@@ -148,5 +160,13 @@ export function useEntitlements() {
     [],
   );
 
-  return { tier, caps, canAddItem, canSaveOutfit, purchase };
+  /** Restore previous purchases via RevenueCat. Returns active tier or false. */
+  const restore = useCallback(async (): Promise<"unlock" | "premium" | false> => {
+    const result = await restorePurchases();
+    if (result === "premium") setGlobalTier("premium");
+    else if (result === "unlock") setGlobalTier("unlock");
+    return result;
+  }, []);
+
+  return { tier, caps, canAddItem, canSaveOutfit, purchase, restore };
 }
