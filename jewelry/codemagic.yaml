@@ -1,0 +1,84 @@
+workflows:
+  ios-distribution:
+    name: My Digital Jewelry Box – iOS
+    max_build_duration: 60
+    environment:
+      groups:
+        - app_store_credentials
+        - revenuecat_keys
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mydigitaljewelrybox.app
+      vars:
+        XCODE_PROJECT: "artifacts/outfit-generator/ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.mydigitaljewelrybox.app"
+        APPLE_TEAM_ID: "2A78MFVCJS"
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install -g pnpm@11.4.0 --force
+          # Patch pnpm-workspace.yaml in-place:
+          # - Remove Linux/Replit-only platform exclusions (darwin binaries are needed on macOS)
+          # - Remove minimumReleaseAge (not needed in CI)
+          # - Keep catalog, packages, onlyBuiltDependencies, allowBuilds, and all other settings
+          python3 - << 'PYEOF'
+          import re
+
+          with open('pnpm-workspace.yaml', 'r') as f:
+              content = f.read()
+
+          # Remove minimumReleaseAge and minimumReleaseAgeExclude blocks
+          content = re.sub(r'minimumReleaseAge:.*?\n', '', content)
+          content = re.sub(r'minimumReleaseAgeExclude:(\n  -[^\n]*)+\n', '', content)
+
+          # Remove all platform-exclusion overrides (every exclusion has value "-")
+          # This covers esbuild, rollup, lightningcss, tailwind oxide, expo ngrok, etc.
+          content = re.sub(r'[ \t]+"[^"]+": "-"\n', '', content)
+
+          with open('pnpm-workspace.yaml', 'w') as f:
+              f.write(content)
+
+          print("pnpm-workspace.yaml patched successfully")
+          PYEOF
+          # Delete the Linux-generated lockfile so pnpm resolves fresh for macOS ARM64
+          rm -f pnpm-lock.yaml
+          pnpm install
+
+      - name: Build web app
+        script: pnpm --filter @workspace/outfit-generator build
+
+      - name: Sync Capacitor
+        script: |
+          cd artifacts/outfit-generator
+          CAP="./node_modules/.bin/cap"
+          if [ ! -f "$CAP" ]; then
+            npm install -g @capacitor/cli
+            CAP="cap"
+          fi
+          $CAP sync ios
+
+      - name: Set build number
+        script: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
+            artifacts/outfit-generator/ios/App/App/Info.plist
+
+      - name: Set up code signing
+        script: xcode-project use-profiles
+
+      - name: Build and archive
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
