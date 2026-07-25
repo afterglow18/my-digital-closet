@@ -12,9 +12,15 @@
  *   presents the picker correctly as a popover on iPad and handles permissions.
  *   Falls back to <input capture> only on web.
  */
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, Check } from "lucide-react";
+import { X, Loader2, Check, Wand2, RotateCcw } from "lucide-react";
+import {
+  isBackgroundRemovalSupported,
+  removeBackground,
+  blobToDataUrl,
+  dataUrlToBlob,
+} from "@/lib/backgroundRemoval";
 import {
   useCreateClothingItem,
   getListClothingQueryKey,
@@ -40,7 +46,8 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 type Phase =
   | "pick"       // two-button landing screen
-  | "uploading"; // encoding + saving JPEG, creating DB record
+  | "preview"    // encoded photo shown; optional background removal
+  | "uploading"; // saving to Filesystem + DB
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -135,6 +142,23 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const [phase,    setPhase]    = useState<Phase>("pick");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Preview phase state
+  const [previewBlob,          setPreviewBlob]          = useState<Blob | null>(null);
+  const [previewUrl,           setPreviewUrl]           = useState<string | null>(null);
+  const [bgSupported,          setBgSupported]          = useState(false);
+  const [removingBg,           setRemovingBg]           = useState(false);
+  const [bgRemoved,            setBgRemoved]            = useState(false);
+
+  // Check native support once on mount
+  useEffect(() => {
+    isBackgroundRemovalSupported().then(setBgSupported);
+  }, []);
+
+  // Clean up object URL whenever it changes
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
+
   // Only used as a fallback on web (non-native) — native uses Camera.getPhoto
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -146,15 +170,16 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleClose = useCallback(() => {
     setPhase("pick");
     setErrorMsg(null);
+    setPreviewBlob(null);
+    setPreviewUrl(null);
+    setBgRemoved(false);
     onOpenChange(false);
   }, [onOpenChange]);
 
-  // ── File picked → encode → save locally → create DB record → close ──
+  // ── File picked → encode → show preview ──────────────────────────────────
   const handleFile = useCallback(async (file: File | Blob) => {
     setErrorMsg(null);
-    setPhase("uploading");
 
-    // 1. Encode: resize to ≤2048 px and convert to JPEG
     let jpeg: Blob;
     try {
       jpeg = await encodeForUpload(file);
@@ -170,10 +195,45 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       return;
     }
 
-    // 2. Save to Capacitor Filesystem and create the DB record
+    const url = URL.createObjectURL(jpeg);
+    setPreviewBlob(jpeg);
+    setPreviewUrl(url);
+    setBgRemoved(false);
+    setPhase("preview");
+  }, []);
+
+  // ── Remove background via native Vision framework ────────────────────────
+  const handleRemoveBackground = useCallback(async () => {
+    if (!previewBlob || removingBg) return;
+    setRemovingBg(true);
+    setErrorMsg(null);
     try {
-      const filename = `${category}-${Date.now()}.jpg`;
-      const imageObjectPath = await saveImage(jpeg, filename);
+      const dataUrl     = await blobToDataUrl(previewBlob);
+      const resultUrl   = await removeBackground(dataUrl);
+      const resultBlob  = await dataUrlToBlob(resultUrl);
+      const newObjectUrl = URL.createObjectURL(resultBlob);
+      setPreviewBlob(resultBlob);
+      setPreviewUrl(newObjectUrl);
+      setBgRemoved(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[quickadd] removeBackground failed:", msg);
+      setErrorMsg("Background removal failed — save the original or try again.");
+    } finally {
+      setRemovingBg(false);
+    }
+  }, [previewBlob, removingBg]);
+
+  // ── Save from preview → Filesystem + DB ──────────────────────────────────
+  const handleSave = useCallback(async () => {
+    if (!previewBlob) return;
+    setErrorMsg(null);
+    setPhase("uploading");
+
+    try {
+      const ext      = bgRemoved ? "png" : "jpg";
+      const filename = `${category}-${Date.now()}.${ext}`;
+      const imageObjectPath = await saveImage(previewBlob, filename);
       console.log(`[quickadd] saved locally as ${imageObjectPath}`);
 
       const label    = CATEGORY_LABELS[category];
@@ -202,9 +262,9 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] save failed:", msg);
       setErrorMsg(`Save failed: ${msg}`);
-      setPhase("pick");
+      setPhase("preview");
     }
-  }, [category, existingCount, createItem, queryClient, handleClose, onCreated]);
+  }, [previewBlob, bgRemoved, category, existingCount, createItem, queryClient, handleClose, onCreated]);
 
   // ── Shared native photo helper ─────────────────────────────────────────────
   // Use CameraResultType.Uri (not DataUrl) — DataUrl encodes the full image as
@@ -327,7 +387,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         <h2 className="font-display font-bold text-xl uppercase tracking-tight">
           Add {label}
         </h2>
-        {phase === "pick" && (
+        {(phase === "pick" || phase === "preview") && (
           <button
             onClick={handleClose}
             className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
@@ -408,6 +468,86 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                     </li>
                   ))}
                 </ul>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── PREVIEW ── */}
+          {phase === "preview" && previewUrl && (
+            <motion.div
+              key="preview"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col gap-4 p-5"
+            >
+              {errorMsg && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+                  {errorMsg}
+                </p>
+              )}
+
+              {/* Photo preview */}
+              <div className={`relative w-full rounded-2xl border-4 border-black overflow-hidden
+                               shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]
+                               ${bgRemoved ? "bg-[repeating-conic-gradient(#ccc_0%_25%,white_0%_50%)] bg-[length:16px_16px]" : "bg-black"}`}>
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="w-full object-contain max-h-72"
+                />
+                {bgRemoved && (
+                  <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold
+                                  px-2 py-0.5 rounded-full border-2 border-black uppercase tracking-wide">
+                    ✓ BG Removed
+                  </div>
+                )}
+              </div>
+
+              {/* Background removal button — iOS 17+ only */}
+              {bgSupported && (
+                <button
+                  onClick={bgRemoved ? undefined : handleRemoveBackground}
+                  disabled={removingBg}
+                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl
+                               border-2 border-black font-bold text-sm uppercase tracking-wide
+                               shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                               active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all
+                               disabled:opacity-50
+                               ${bgRemoved
+                                 ? "bg-green-100 text-green-800 cursor-default"
+                                 : "bg-[#e8f5e9] text-black"}`}
+                >
+                  {removingBg ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Removing background…</>
+                  ) : bgRemoved ? (
+                    <><Check className="w-4 h-4" /> Background removed</>
+                  ) : (
+                    <><Wand2 className="w-4 h-4" /> Remove Background</>
+                  )}
+                </button>
+              )}
+
+              {/* Save / Retake */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPhase("pick")}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl
+                             border-2 border-black bg-white font-bold text-sm uppercase tracking-wide
+                             shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" /> Retake
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex-[2] flex items-center justify-center gap-1.5 py-3 rounded-xl
+                             border-2 border-black bg-primary font-bold text-sm uppercase tracking-wide
+                             shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                >
+                  <Check className="w-4 h-4" /> Save to Closet
+                </button>
               </div>
             </motion.div>
           )}

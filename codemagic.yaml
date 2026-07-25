@@ -51,6 +51,15 @@ workflows:
           npx cap add ios
           npx cap sync ios
 
+      - name: Inject on-device background removal plugin
+        script: |
+          # Copies BackgroundRemovalPlugin.swift into the Xcode project so it
+          # compiles with the App target. Uses the xcodeproj gem (pre-installed
+          # on Codemagic macOS agents) to update the .pbxproj automatically.
+          gem install xcodeproj --no-document 2>/dev/null || true
+          cd artifacts/outfit-generator
+          ruby ios-plugins/inject-plugin.rb
+
       - name: Set export compliance
         script: |
           PLIST="artifacts/outfit-generator/ios/App/App/Info.plist"
