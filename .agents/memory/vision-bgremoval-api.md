@@ -20,4 +20,7 @@ let context = CIContext()
 guard let cgOut = context.createCGImage(ciImage, from: ciImage.extent) else { ... }
 ```
 
-The xcodeproj injection (inject-plugin.rb) worked correctly on Codemagic — the Swift file compiled and linked. Only the return type was wrong.
+**Plugin registration (critical):** xcodeproj gem injection adds a file reference to the .pbxproj but the class does NOT appear in the ObjC runtime — Capacitor reports "plugin is not implemented on ios". Use a **local CocoaPod** instead:
+1. `BackgroundRemovalPlugin.podspec` alongside the Swift file, declaring `s.dependency 'Capacitor'`
+2. Patch the Podfile (`pod 'BackgroundRemovalPlugin', :path => '...'`) and run `pod install`
+3. CocoaPods compiles the Swift file into the App target and the class is auto-discovered by Capacitor's `objc_getClassList` scan at runtime.
