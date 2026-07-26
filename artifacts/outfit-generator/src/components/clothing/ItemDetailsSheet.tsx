@@ -498,7 +498,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
             />
           </div>
 
-          {/* Clean Up Photo button */}
+          {/* Clean Up Photo button — hidden once the photo has already been cleaned */}
+          {!item.imageObjectPath?.includes("-cleaned-") && (
           <div className="px-4 py-2 bg-white border-t border-black/10 flex flex-col gap-1">
             <button
               onClick={handleCleanUpPhoto}
@@ -526,6 +527,7 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
               <p className="text-xs text-red-600 text-center">{bgError}</p>
             )}
           </div>
+          )}
         </div>
       )}
 
