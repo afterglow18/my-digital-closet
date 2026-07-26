@@ -1,77 +1,59 @@
 #!/usr/bin/env ruby
 # inject-plugin.rb
 #
-# Copies BackgroundRemovalPlugin.swift into the iOS App target and registers
-# it in the Xcode project so it compiles with the App target.
+# Registers BackgroundRemovalPlugin as a local CocoaPod so it is compiled
+# into the App target by `pod install`.
 #
-# Run from the repo root AFTER `cap add ios && cap sync`:
+# Run from the repo root AFTER `cap add ios && cap sync ios`:
 #   ruby artifacts/outfit-generator/ios-plugins/inject-plugin.rb
 #
-# Requires the xcodeproj gem (pre-installed on Codemagic macOS agents).
+# No third-party gems required — only stdlib + system `pod` CLI.
 
-require 'xcodeproj'
-require 'fileutils'
+PODFILE_PATH = File.expand_path('../../ios/App/Podfile', __FILE__)
+POD_DIR      = File.expand_path('../../ios/App', __FILE__)
+# Path is relative to the Podfile location (ios/App/Podfile → ios-plugins/)
+RELATIVE_POD_PATH = '../../ios-plugins'
+POD_LINE         = "  pod 'BackgroundRemovalPlugin', :path => '#{RELATIVE_POD_PATH}'\n"
 
-PLUGIN_SRC   = File.expand_path('../BackgroundRemovalPlugin.swift', __FILE__)
-PROJECT_DIR  = File.expand_path('../../ios/App', __FILE__)
-APP_DIR      = File.join(PROJECT_DIR, 'App')
-PROJECT_PATH = File.join(PROJECT_DIR, 'App.xcodeproj')
-DEST_FILE    = 'BackgroundRemovalPlugin.swift'
-DEST_PATH    = File.join(APP_DIR, DEST_FILE)
+abort "Podfile not found at #{PODFILE_PATH} — run `cap add ios` first." unless File.exist?(PODFILE_PATH)
 
-abort "Xcode project not found at #{PROJECT_PATH} — run `cap add ios` first." unless Dir.exist?(PROJECT_PATH)
-abort "Source plugin not found at #{PLUGIN_SRC}" unless File.exist?(PLUGIN_SRC)
+content = File.read(PODFILE_PATH)
+puts "--- Current Podfile ---"
+puts content
+puts "-----------------------"
 
-# 1. Copy Swift file into App target directory
-FileUtils.cp(PLUGIN_SRC, DEST_PATH)
-puts "Copied #{DEST_FILE} → #{DEST_PATH}"
-abort "File copy failed!" unless File.exist?(DEST_PATH)
+if content.include?('BackgroundRemovalPlugin')
+  puts "BackgroundRemovalPlugin already present in Podfile — skipping patch."
+else
+  # Insert the pod line just before the closing `end` of the `target 'App' do` block.
+  # Capacitor's generated Podfile ends with:
+  #   target 'App' do
+  #     capacitor_pods
+  #   end        ← we insert our pod before this final `end`
+  patched = content.sub(/^(end\s*)$/) { POD_LINE + $1 }
 
-# 2. Open project and add the file reference
-project = Xcodeproj::Project.open(PROJECT_PATH)
-target  = project.targets.find { |t| t.name == 'App' }
-abort 'Could not find App target in Xcode project.' unless target
-
-group = project.main_group.find_subpath('App', true)
-
-# Check for existing reference — match by last component to handle both relative/absolute
-existing = group.files.find do |f|
-  File.basename(f.path.to_s) == DEST_FILE
-end
-
-if existing
-  puts "#{DEST_FILE} already in project group — checking compile sources phase..."
-  # Ensure it's in the build phase even if the group reference already existed
-  phase = target.source_build_phase
-  unless phase.files_references.any? { |f| f && File.basename(f.path.to_s) == DEST_FILE }
-    phase.add_file_reference(existing)
-    puts "Added existing reference to compile sources build phase."
-  else
-    puts "Already in compile sources build phase — no changes needed."
+  if patched == content
+    # Fallback: append before last line containing bare `end`
+    lines = content.lines
+    idx   = lines.rindex { |l| l.strip == 'end' }
+    abort "Could not locate closing `end` in Podfile — manual patch required." unless idx
+    lines.insert(idx, POD_LINE)
+    patched = lines.join
   end
-else
-  ref = group.new_reference(DEST_FILE)
-  ref.source_tree = '<group>'
-  target.source_build_phase.add_file_reference(ref)
-  puts "Added #{DEST_FILE} to App group and compile sources build phase."
+
+  File.write(PODFILE_PATH, patched)
+  puts "Patched Podfile — added BackgroundRemovalPlugin local pod."
+  puts "--- Patched Podfile ---"
+  puts File.read(PODFILE_PATH)
+  puts "-----------------------"
 end
 
-project.save
-puts "Xcode project saved."
+# Run pod install so the plugin is compiled into the Xcode workspace
+puts "\nRunning `pod install` in #{POD_DIR} ..."
+success = system("cd '#{POD_DIR}' && pod install --repo-update 2>&1")
+abort "`pod install` failed — see output above." unless success
 
-# 3. Verify the file reference appears in the saved .pbxproj
-pbxproj = File.join(PROJECT_PATH, 'project.pbxproj')
-content  = File.read(pbxproj)
-if content.include?(DEST_FILE)
-  puts "✓ Verified: #{DEST_FILE} is present in project.pbxproj"
-else
-  abort "✗ FAILED: #{DEST_FILE} not found in project.pbxproj after save — injection did not work."
-end
-
-# 4. Print summary
-puts ""
-puts "=== Injection complete ==="
-puts "  Plugin file : #{DEST_PATH}"
-puts "  Project     : #{PROJECT_PATH}"
-puts "  Target      : #{target.name}"
-puts "  Swift class : BackgroundRemovalPlugin (jsName: BackgroundRemoval)"
+puts "\n=== BackgroundRemovalPlugin injection complete ==="
+puts "  Podspec : #{File.expand_path('../BackgroundRemovalPlugin.podspec', __FILE__)}"
+puts "  Podfile : #{PODFILE_PATH}"
+puts "  Swift   : BackgroundRemovalPlugin (jsName: BackgroundRemoval)"

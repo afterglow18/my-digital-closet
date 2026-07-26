@@ -53,10 +53,9 @@ workflows:
 
       - name: Inject on-device background removal plugin
         script: |
-          # Copies BackgroundRemovalPlugin.swift into the Xcode project so it
-          # compiles with the App target. Uses the xcodeproj gem (pre-installed
-          # on Codemagic macOS agents) to update the .pbxproj automatically.
-          gem install xcodeproj --no-document 2>/dev/null || true
+          # Registers BackgroundRemovalPlugin as a local CocoaPod so it is
+          # compiled and auto-discovered by the Capacitor bridge at runtime.
+          # inject-plugin.rb patches the Podfile and runs pod install.
           cd artifacts/outfit-generator
           ruby ios-plugins/inject-plugin.rb
 
