@@ -56,23 +56,7 @@ workflows:
           PODFILE="ios/App/Podfile"
           echo "--- Podfile (before patch) ---"
           cat "$PODFILE"
-          if grep -q "BackgroundRemovalPlugin" "$PODFILE"; then
-            echo "BackgroundRemovalPlugin already in Podfile."
-          else
-            python3 - "$PODFILE" <<'PYEOF'
-import sys, re
-path = sys.argv[1]
-txt  = open(path).read()
-pod_line = "  pod 'BackgroundRemovalPlugin', :path => '../../ios-plugins'\n"
-# Insert before the last bare 'end' line (closes the target 'App' do block)
-patched = re.sub(r'\nend\s*$', '\n' + pod_line + 'end\n', txt)
-if patched == txt:
-    print("WARNING: could not find closing 'end' — appending manually")
-    patched = txt.rstrip('\n') + '\n' + pod_line + 'end\n'
-open(path, 'w').write(patched)
-print("Podfile patched.")
-PYEOF
-          fi
+          python3 ios-plugins/patch_podfile.py "$PODFILE"
           echo "--- Podfile (after patch) ---"
           cat "$PODFILE"
 
