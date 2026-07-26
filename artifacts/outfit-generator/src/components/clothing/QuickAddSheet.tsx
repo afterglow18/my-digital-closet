@@ -431,18 +431,9 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
       {/* Body */}
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <AnimatePresence mode="wait" initial={false}>
-
           {/* ── PICK ── */}
           {phase === "pick" && (
-            <motion.div
-              key="pick"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex flex-col p-5 gap-5"
-            >
+            <div className="flex flex-col p-5 gap-5">
               {errorMsg && (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
                   {errorMsg}
@@ -500,19 +491,12 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                   ))}
                 </ul>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* ── ENCODING ── */}
           {phase === "encoding" && (
-            <motion.div
-              key="encoding"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex-1 flex flex-col items-center justify-center gap-5 p-6"
-            >
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 p-6">
               <div className="w-28 h-28 border-4 border-black rounded-3xl bg-white
                               flex items-center justify-center
                               shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -522,19 +506,12 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 <p className="font-display font-bold text-2xl uppercase tracking-tight">Processing…</p>
                 <p className="text-sm text-muted-foreground mt-1">Getting your photo ready.</p>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* ── PREVIEW ── */}
           {phase === "preview" && (
-            <motion.div
-              key="preview"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex flex-col gap-4 p-5"
-            >
+            <div className="flex flex-col gap-4 p-5">
               {errorMsg && (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
                   {errorMsg}
@@ -640,19 +617,12 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                   {bgProcessing ? "Processing…" : "Save to Closet"}
                 </button>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* ── UPLOADING ── */}
           {phase === "uploading" && (
-            <motion.div
-              key="uploading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex-1 flex flex-col items-center justify-center gap-5 p-6"
-            >
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 p-6">
               <div className="w-28 h-28 border-4 border-black rounded-3xl bg-white
                               flex items-center justify-center
                               shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -662,10 +632,8 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 <p className="font-display font-bold text-2xl uppercase tracking-tight">Saving…</p>
                 <p className="text-sm text-muted-foreground mt-1">Adding to your closet.</p>
               </div>
-            </motion.div>
+            </div>
           )}
-
-        </AnimatePresence>
       </div>
 
       {/* Hidden file inputs */}
