@@ -36,7 +36,6 @@ minimumReleaseAgeExclude:
 
 packages:
   - artifacts/*
-  - artifacts/outfit-generator/ios-plugins
   - lib/*
   - lib/integrations/*
   - scripts

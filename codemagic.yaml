@@ -54,9 +54,6 @@ workflows:
           # running pod install. background-removal-plugin (workspace:*) is
           # linked into node_modules by pnpm, so it is picked up automatically.
           npx cap sync ios
-          # Verify the plugin pod was discovered (cap sync adds it to Podfile)
-          echo "--- BackgroundRemovalPlugin in Podfile ---"
-          grep -i "BackgroundRemoval" ios/App/Podfile || true
 
       - name: Set export compliance
         script: |
