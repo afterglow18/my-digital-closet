@@ -1,95 +1,85 @@
 /**
  * backgroundRemoval.ts
  *
- * On-device background removal powered by Apple Vision's
- * VNGenerateForegroundInstanceMaskRequest (iOS 17.0+).
+ * On-device background removal powered by @imgly/background-removal —
+ * a pure JS/WebAssembly library that runs inside WKWebView (Capacitor iOS)
+ * with no native plugins, no CocoaPods, and no native registration required.
  *
- * • Works only on native iOS — web always returns { supported: false }.
- * • Photos never leave the device; no API key or network call required.
- * • Returns a PNG data-URL with transparent background so the item can be
- *   composited onto any colour in the wardrobe views.
+ * How it works:
+ *  • On first use the library downloads ONNX model + WASM runtime from the
+ *    imgly CDN (~15 MB for "medium" quality). WKWebView caches them between
+ *    app launches, so subsequent uses are instant.
+ *  • Inference runs fully on-device — photos never leave the user's phone.
+ *  • Falls back gracefully to the original image if anything fails.
  *
- * Usage:
- *   const ok = await isBackgroundRemovalSupported();
- *   if (ok) {
- *     const pngDataUrl = await removeBackground(jpegDataUrl);
- *   }
+ * Works on: iOS 15+ (WKWebView), Android, and regular browsers.
  */
 
-import { registerPlugin, Capacitor } from "@capacitor/core";
+import { removeBackground as imglyRemoveBackground } from "@imgly/background-removal";
 
-// ── Plugin interface ──────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface BackgroundRemovalPlugin {
-  isSupported(): Promise<{ supported: boolean }>;
-  removeBackground(opts: { dataUrl: string }): Promise<{ dataUrl: string }>;
-}
-
-const BackgroundRemoval = registerPlugin<BackgroundRemovalPlugin>(
-  "BackgroundRemoval",
-  {
-    // Web stub — the feature is native-only
-    web: () => ({
-      isSupported:      async () => ({ supported: false }),
-      removeBackground: async () => { throw new Error("Native only"); },
-    }),
-  }
-);
+export type RemovalProgress =
+  | { stage: "loading"; pct: number }   // downloading model / WASM
+  | { stage: "inferring" }              // running the segmentation model
+  | { stage: "done" };
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Returns true only on native iOS 17.0+.
- * Safe to call on web — returns false immediately.
+ * Always returns true — the JS library works on every platform.
+ * Kept for API compatibility with the old native-plugin version.
  */
 export async function isBackgroundRemovalSupported(): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) {
-    console.log("[bgremoval] isNativePlatform=false — web stub active");
-    return false;
-  }
-  try {
-    const { supported } = await BackgroundRemoval.isSupported();
-    console.log(`[bgremoval] isSupported() → ${supported}`);
-    return supported;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[bgremoval] isSupported() threw:", msg);
-    // Re-throw so callers can surface a useful error message
-    throw err;
-  }
+  return true;
 }
 
 /**
- * Returns a diagnostic string for why background removal is unavailable.
- * Empty string means it IS available.
- * Safe to call on web — returns an explanation immediately.
+ * Returns an empty string (no error) — kept for API compatibility.
  */
 export async function getBackgroundRemovalError(): Promise<string> {
-  if (!Capacitor.isNativePlatform()) return "web (non-native)";
-  try {
-    const { supported } = await BackgroundRemoval.isSupported();
-    return supported ? "" : "iOS < 17";
-  } catch (err) {
-    return err instanceof Error ? err.message : String(err);
-  }
+  return "";
 }
 
 /**
- * Remove the background from a base64 data-URL image.
- * Returns a PNG data-URL with transparent background.
+ * Remove the background from a JPEG/PNG data-URL.
+ * Returns a PNG data-URL with a transparent background.
  *
- * Throws if:
- *  - running on web
- *  - iOS < 17
- *  - no foreground subject is detected
- *  - Vision request fails
+ * Throws only if the library itself throws (network error on first load,
+ * or a completely unreadable image). QuickAddSheet catches and falls back.
+ *
+ * @param dataUrl   Base64 data-URL of the source image
+ * @param onProgress Optional progress callback
  */
-export async function removeBackground(dataUrl: string): Promise<string> {
-  const { dataUrl: result } = await BackgroundRemoval.removeBackground({ dataUrl });
-  return result;
+export async function removeBackground(
+  dataUrl: string,
+  onProgress?: (p: RemovalProgress) => void,
+): Promise<string> {
+  onProgress?.({ stage: "loading", pct: 0 });
+
+  // Convert data-URL to Blob — the library accepts Blob directly
+  const sourceBlob = await dataUrlToBlob(dataUrl);
+
+  onProgress?.({ stage: "inferring" });
+
+  // imgly library: returns a Blob with transparent PNG
+  const resultBlob = await imglyRemoveBackground(sourceBlob, {
+    // Use the imgly CDN for ONNX model + WASM runtime.
+    // WKWebView caches these between launches so first-load is ~15 MB once.
+    // The default CDN is used when publicPath is omitted in v1.7.
+    model: "isnet_fp16",
+    output: {
+      format: "image/png",
+      quality: 0.9,
+    },
+  });
+
+  onProgress?.({ stage: "done" });
+
+  return blobToDataUrl(resultBlob);
 }
 
-// ── Helpers shared with QuickAddSheet ────────────────────────────────────────
+// ── Helpers shared with QuickAddSheet ─────────────────────────────────────────
 
 /** Convert a Blob to a base64 data-URL string. */
 export function blobToDataUrl(blob: Blob): Promise<string> {
