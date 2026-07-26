@@ -288,6 +288,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
   // track whether a background save is in progress (for cleanup on unmount)
   const bgSaveAbortRef = useRef(false);
+  // set to true when the user skips while analysis is still running
+  const bgAnalysisAbortRef = useRef(false);
 
   const updateItem  = useUpdateClothingItem();
   const deleteItem  = useDeleteClothingItem();
@@ -348,12 +350,15 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
     const displayUrl = getImageUrl(item.imageObjectPath);
     if (!displayUrl) return;
 
+    bgAnalysisAbortRef.current = false;
     setBgError(null);
     setBgRemoving(true);
     try {
       const srcBlob        = await fetch(displayUrl).then((r) => r.blob());
       const originalDataUrl = await blobToDataUrl(srcBlob);
       const cleanedDataUrl  = await removeBackground(originalDataUrl);
+      // User tapped "Keep Original" while WASM was running — discard result
+      if (bgAnalysisAbortRef.current) return;
       setCompareState({ originalDataUrl, cleanedDataUrl });
     } catch (err) {
       console.error("[details] bg removal failed:", err);
@@ -508,6 +513,15 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing Photo…</>
                 : <><Sparkles className="w-4 h-4" /> Clean Up Photo ✨</>}
             </button>
+            {bgRemoving && (
+              <button
+                onClick={() => { bgAnalysisAbortRef.current = true; setBgRemoving(false); }}
+                className="w-full py-1.5 text-xs font-semibold text-black/40
+                           hover:text-black/70 transition-colors"
+              >
+                Keep Original
+              </button>
+            )}
             {bgError && (
               <p className="text-xs text-red-600 text-center">{bgError}</p>
             )}
