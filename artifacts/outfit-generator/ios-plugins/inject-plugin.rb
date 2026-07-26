@@ -9,8 +9,9 @@
 #
 # No third-party gems required — only stdlib + system `pod` CLI.
 
-PODFILE_PATH = File.expand_path('../ios/App/Podfile', __FILE__)
-POD_DIR      = File.expand_path('../ios/App', __FILE__)
+SCRIPT_DIR   = File.dirname(File.expand_path(__FILE__))
+PODFILE_PATH = File.expand_path('../ios/App/Podfile', SCRIPT_DIR)
+POD_DIR      = File.expand_path('../ios/App', SCRIPT_DIR)
 # Path is relative to the Podfile location (ios/App/Podfile → ios-plugins/)
 RELATIVE_POD_PATH = '../../ios-plugins'
 POD_LINE         = "  pod 'BackgroundRemovalPlugin', :path => '#{RELATIVE_POD_PATH}'\n"
