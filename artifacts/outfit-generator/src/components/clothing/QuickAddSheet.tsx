@@ -28,6 +28,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { saveImage } from "@/lib/imageStorage";
 import type { ClothingItem } from "@/lib/local-api";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import type { GalleryImageOptions } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -389,14 +390,34 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     }
   }, [openNativePhoto]);
 
-  // ── Upload Photo (native: Capacitor Photos picker; web: <input>) ──────────
+  // ── Upload Photo (native: Capacitor pickImages multi-select; web: <input>) ──
   const handleUploadPhoto = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) {
       galleryInputRef.current?.click();
       return;
     }
     try {
-      await openNativePhoto(CameraSource.Photos);
+      // pickImages allows the user to select multiple photos at once on iOS.
+      const opts: GalleryImageOptions = { quality: 90, correctOrientation: true };
+      const { photos } = await Camera.pickImages(opts);
+      if (!photos || photos.length === 0) return;
+
+      // Fetch each GalleryPhoto as a Blob and load into the queue
+      const blobs: Blob[] = [];
+      for (const photo of photos) {
+        const url = photo.webPath ?? photo.path;
+        if (!url) continue;
+        const res  = await fetch(url);
+        const blob = await res.blob();
+        blobs.push(blob);
+      }
+      if (blobs.length === 0) return;
+
+      fileQueueRef.current = blobs;
+      queueIdxRef.current  = 0;
+      setQueueIdx(0);
+      setQueueTotal(blobs.length);
+      await handleFile(blobs[0]);
     } catch (err: unknown) {
       if (isCameraCancel(err)) return;
       const rawMsg = err instanceof Error ? err.message : String(err);
@@ -408,7 +429,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         setErrorMsg("Could not open your photo library. Please try again.");
       }
     }
-  }, [openNativePhoto]);
+  }, [openNativePhoto, handleFile]);
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);

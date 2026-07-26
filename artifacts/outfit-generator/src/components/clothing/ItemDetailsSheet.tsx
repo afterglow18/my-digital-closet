@@ -6,8 +6,14 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, Heart, Trash2, Save, ChevronDown,
+  X, Heart, Trash2, Save, ChevronDown, Sparkles, Loader2,
 } from "lucide-react";
+import {
+  removeBackground,
+  blobToDataUrl,
+  dataUrlToBlob,
+} from "@/lib/backgroundRemoval";
+import { saveImage, deleteImage } from "@/lib/imageStorage";
 import {
   ClothingItem,
   ClothingItemUpdateCategory,
@@ -149,6 +155,8 @@ function isDirty(form: FormState, item: ClothingItem): boolean {
 export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetProps) {
   const [form, setForm]           = useState<FormState | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [bgRemoving, setBgRemoving] = useState(false);
+  const [bgError,    setBgError]    = useState<string | null>(null);
 
   const updateItem  = useUpdateClothingItem();
   const deleteItem  = useDeleteClothingItem();
@@ -195,6 +203,48 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
         },
       }
     );
+  };
+
+  // ── Remove background from the existing saved image ──────────────────────
+  const handleRemoveBg = async () => {
+    if (!item.imageObjectPath) return;
+    const { getImageUrl } = await import("@/lib/utils");
+    const displayUrl = getImageUrl(item.imageObjectPath);
+    if (!displayUrl) return;
+
+    setBgError(null);
+    setBgRemoving(true);
+    try {
+      const srcBlob  = await fetch(displayUrl).then((r) => r.blob());
+      const dataUrl  = await blobToDataUrl(srcBlob);
+      const resultUrl = await removeBackground(dataUrl);
+      const resultBlob = await dataUrlToBlob(resultUrl);
+
+      const newFilename = await saveImage(
+        resultBlob,
+        `${item.category}-${item.id}-cleaned-${Date.now()}.png`,
+      );
+      await deleteImage(item.imageObjectPath);
+
+      await new Promise<void>((resolve, reject) => {
+        updateItem.mutate(
+          { id: item.id, data: { imageObjectPath: newFilename } },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+              queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+              resolve();
+            },
+            onError: (err) => reject(err),
+          },
+        );
+      });
+    } catch (err) {
+      console.error("[details] bg removal failed:", err);
+      setBgError("Could not remove background. Please try again.");
+    } finally {
+      setBgRemoving(false);
+    }
   };
 
   const handleDelete = () => {
@@ -268,18 +318,40 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
 
       {/* ── Photo ── */}
       {item.imageObjectPath && (
-        <div
-          className="w-full h-52 flex-shrink-0 border-b-2 border-black"
-          style={{
-            backgroundImage: "repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%)",
-            backgroundSize: "16px 16px",
-          }}
-        >
-          <img
-            src={getImageUrl(item.imageObjectPath)!}
-            alt={item.name}
-            className="w-full h-full object-contain"
-          />
+        <div className="flex-shrink-0 border-b-2 border-black">
+          <div
+            className="w-full h-52"
+            style={{
+              backgroundImage: "repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%)",
+              backgroundSize: "16px 16px",
+            }}
+          >
+            <img
+              src={getImageUrl(item.imageObjectPath)!}
+              alt={item.name}
+              className="w-full h-full object-contain"
+            />
+          </div>
+
+          {/* Remove Background button */}
+          <div className="px-4 py-2 bg-white border-t border-black/10 flex flex-col gap-1">
+            <button
+              onClick={handleRemoveBg}
+              disabled={bgRemoving}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                         border-2 border-black bg-[#f9f4ee] font-bold text-sm uppercase tracking-wide
+                         shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                         active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                         disabled:opacity-50 transition-all"
+            >
+              {bgRemoving
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing Background…</>
+                : <><Sparkles className="w-4 h-4" /> Remove Background ✨</>}
+            </button>
+            {bgError && (
+              <p className="text-xs text-red-600 text-center">{bgError}</p>
+            )}
+          </div>
         </div>
       )}
 
