@@ -153,6 +153,13 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   // Which version the user has selected — defaults to 'cleaned' once ready
   const [selected, setSelected] = useState<"original" | "cleaned">("original");
 
+  // Generation counter — incremented each time handleFile is called.
+  // Every async background-removal chain captures its own generation at start;
+  // if the counter has advanced by the time an await resolves, a newer photo
+  // has been taken and this result is stale — discard it rather than clobbering
+  // the current photo's state.
+  const bgGenRef = useRef(0);
+
   // Clean up object URLs when they change
   useEffect(() => { return () => { if (originalUrl) URL.revokeObjectURL(originalUrl); }; }, [originalUrl]);
   useEffect(() => { return () => { if (cleanedUrl)  URL.revokeObjectURL(cleanedUrl);  }; }, [cleanedUrl]);
@@ -166,12 +173,15 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
   // ── Reset ────────────────────────────────────────────────────────────────
   const handleClose = useCallback(() => {
+    // Advance generation so any in-flight background removal discards its result
+    bgGenRef.current += 1;
     setPhase("pick");
     setErrorMsg(null);
     setOriginalBlob(null);
     setOriginalUrl(null);
     setCleanedBlob(null);
     setCleanedUrl(null);
+    setBgProcessing(false);  // must reset — close can happen mid-removal
     setBgFailed(false);
     setSelected("original");
     onOpenChange(false);
@@ -203,21 +213,34 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     setSelected("original");
     setPhase("preview");
 
-    // Kick off background removal (JS/WASM — works on every platform)
+    // Kick off background removal (JS/WASM — works on every platform).
+    // Capture the current generation so stale results from a previous photo
+    // (which may still be running) are silently discarded rather than
+    // overwriting this photo's state.
+    const myGen = ++bgGenRef.current;
     setBgProcessing(true);
     try {
-      const dataUrl    = await blobToDataUrl(jpeg);
-      const resultUrl  = await removeBackground(dataUrl);
-      const resultBlob = await dataUrlToBlob(resultUrl);
+      const dataUrl  = await blobToDataUrl(jpeg);
+      if (bgGenRef.current !== myGen) return; // newer photo taken — bail out
+
+      const resultUrl = await removeBackground(dataUrl);
+      if (bgGenRef.current !== myGen) return;
+
+      const resultBlob   = await dataUrlToBlob(resultUrl);
       const resultObjUrl = URL.createObjectURL(resultBlob);
+      if (bgGenRef.current !== myGen) { URL.revokeObjectURL(resultObjUrl); return; }
+
       setCleanedBlob(resultBlob);
       setCleanedUrl(resultObjUrl);
       setSelected("cleaned"); // default to the cleaned version
     } catch (err) {
+      if (bgGenRef.current !== myGen) return; // stale — ignore
       console.warn("[quickadd] background removal failed silently:", err);
       setBgFailed(true);
     } finally {
-      setBgProcessing(false);
+      // Only clear the spinner for our own generation; a newer photo's
+      // setBgProcessing(true) must not be cancelled by our finally block.
+      if (bgGenRef.current === myGen) setBgProcessing(false);
     }
   }, []);
 
