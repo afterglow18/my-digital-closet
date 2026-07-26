@@ -10,11 +10,13 @@ Pod::Spec.new do |s|
   s.license                = { :type => 'MIT' }
   s.author                 = { 'My Digital Closet' => 'dev@mydigitalcloset.com' }
 
-  # Both Swift files live alongside this podspec:
-  #   BackgroundRemovalPlugin.swift       — the Vision plugin
-  #   MyDigitalClosetViewController.swift — custom bridge VC that registers it
+  # BackgroundRemovalPlugin.swift — Vision plugin implementation
+  # BackgroundRemovalPlugin.m    — ObjC CAP_PLUGIN macro that registers the
+  #                                plugin eagerly via +load (required because
+  #                                Swift classes in dynamic pod frameworks are
+  #                                NOT auto-discovered by Capacitor's ObjC scan)
   s.source                 = { :path => '.' }
-  s.source_files           = '*.swift'
+  s.source_files           = '*.swift', '*.m'
 
   s.ios.deployment_target  = '15.0'
   s.swift_version          = '5.9'

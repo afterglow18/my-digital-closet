@@ -54,18 +54,9 @@ workflows:
           # running pod install. background-removal-plugin (workspace:*) is
           # linked into node_modules by pnpm, so it is picked up automatically.
           npx cap sync ios
-
-          # Patch Main.storyboard so the app launches with our custom bridge
-          # view controller (MyDigitalClosetViewController) instead of the
-          # default CAPBridgeViewController. The custom VC calls
-          # bridge?.registerPluginType(BackgroundRemovalPlugin.self) in
-          # capacitorDidLoad(), which is the reliable registration path that
-          # bypasses Swift's lazy ObjC class registration in pod frameworks.
-          python3 ios-plugins/patch_storyboard.py \
-            ios/App/App/Base.lproj/Main.storyboard
-          echo "--- Storyboard view-controller class after patch ---"
-          grep -E "customClass|MyDigital|CAPBridge" \
-            ios/App/App/Base.lproj/Main.storyboard || true
+          # Verify the plugin pod was discovered (cap sync adds it to Podfile)
+          echo "--- BackgroundRemovalPlugin in Podfile ---"
+          grep -i "BackgroundRemoval" ios/App/Podfile || true
 
       - name: Set export compliance
         script: |
