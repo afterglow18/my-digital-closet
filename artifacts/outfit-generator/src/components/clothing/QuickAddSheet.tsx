@@ -161,6 +161,14 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   // the current photo's state.
   const bgGenRef = useRef(0);
 
+  // Multi-photo queue — populated when the user selects several files at once.
+  // fileQueueRef holds the blobs; queueIdxRef is the current position.
+  // queueIdx/queueTotal are display-only state mirrors of those refs.
+  const fileQueueRef  = useRef<Blob[]>([]);
+  const queueIdxRef   = useRef(0);
+  const [queueIdx,   setQueueIdx]   = useState(0);
+  const [queueTotal, setQueueTotal] = useState(0);
+
   // Clean up object URLs when they change
   useEffect(() => { return () => { if (originalUrl) URL.revokeObjectURL(originalUrl); }; }, [originalUrl]);
   useEffect(() => { return () => { if (cleanedUrl)  URL.revokeObjectURL(cleanedUrl);  }; }, [cleanedUrl]);
@@ -176,6 +184,11 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleClose = useCallback(() => {
     // Advance generation so any in-flight background removal discards its result
     bgGenRef.current += 1;
+    // Clear the queue so stale files don't process after close
+    fileQueueRef.current = [];
+    queueIdxRef.current  = 0;
+    setQueueIdx(0);
+    setQueueTotal(0);
     setPhase("pick");
     setErrorMsg(null);
     setOriginalBlob(null);
@@ -287,7 +300,15 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         );
       });
 
-      handleClose();
+      // Advance to the next photo in the queue, or close if done.
+      const nextIdx = queueIdxRef.current + 1;
+      if (nextIdx < fileQueueRef.current.length) {
+        queueIdxRef.current = nextIdx;
+        setQueueIdx(nextIdx);
+        await handleFile(fileQueueRef.current[nextIdx]);
+      } else {
+        handleClose();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] save failed:", msg);
@@ -392,9 +413,14 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // allow re-selecting same file
-    for (const file of files) {
-      await handleFile(file);
-    }
+    if (files.length === 0) return;
+    // Store the whole batch and kick off the first photo.
+    // handleSave will advance through the rest automatically.
+    fileQueueRef.current = files;
+    queueIdxRef.current  = 0;
+    setQueueIdx(0);
+    setQueueTotal(files.length);
+    await handleFile(files[0]);
   };
 
   if (!open) return null;
@@ -519,9 +545,16 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               )}
 
               {/* ── Side-by-side comparison (always shown) ── */}
-              <p className="text-xs font-bold uppercase tracking-widest text-black/40 text-center">
-                {bgProcessing ? "This will take a moment…" : bgFailed ? "Original" : "Tap to choose"}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-black/40 text-center">
+                  {bgProcessing ? "This will take a moment…" : bgFailed ? "Original" : "Tap to choose"}
+                </p>
+                {queueTotal > 1 && (
+                  <span className="text-xs font-bold uppercase tracking-widest text-black/30">
+                    · {queueIdx + 1} of {queueTotal}
+                  </span>
+                )}
+              </div>
 
               <div className="flex gap-3">
                 {/* Original card */}
@@ -593,16 +626,29 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 </button>
               </div>
 
-              {/* Save / Retake */}
+              {/* Save / Retake or Skip */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => setPhase("pick")}
+                  onClick={queueTotal > 1
+                    ? async () => {
+                        // Skip this photo — advance to next in queue without saving
+                        const nextIdx = queueIdxRef.current + 1;
+                        if (nextIdx < fileQueueRef.current.length) {
+                          queueIdxRef.current = nextIdx;
+                          setQueueIdx(nextIdx);
+                          await handleFile(fileQueueRef.current[nextIdx]);
+                        } else {
+                          handleClose();
+                        }
+                      }
+                    : () => setPhase("pick")}
                   className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl
                              border-2 border-black bg-white font-bold text-sm uppercase tracking-wide
                              shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
                              active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
                 >
-                  <RotateCcw className="w-4 h-4" /> Retake
+                  <RotateCcw className="w-4 h-4" />
+                  {queueTotal > 1 ? "Skip" : "Retake"}
                 </button>
                 <button
                   onClick={handleSave}
