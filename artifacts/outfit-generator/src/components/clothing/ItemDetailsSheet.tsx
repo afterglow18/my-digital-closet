@@ -505,7 +505,7 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
                          disabled:opacity-50 transition-all"
             >
               {bgRemoving
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing Photo…</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing Photo…</>
                 : <><Sparkles className="w-4 h-4" /> Clean Up Photo ✨</>}
             </button>
             {bgError && (
