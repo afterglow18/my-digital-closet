@@ -45,6 +45,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 type Phase =
   | "pick"       // two-button landing screen
+  | "encoding"   // photo picked; encoding + initial canvas resize in progress
   | "preview"    // encoded photo shown; optional background removal
   | "uploading"; // saving to Filesystem + DB
 
@@ -191,19 +192,17 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleFile = useCallback(async (file: File | Blob) => {
     setErrorMsg(null);
 
-    // Switch to preview and start the spinner BEFORE encoding so the user
-    // sees immediate feedback instead of sitting on the pick screen for 1-3 s.
-    // originalUrl stays null until encoding finishes; the original card shows
-    // a spinner in that state, then fills in once the blob is ready.
+    // Show the "encoding" loading screen immediately — before any async work —
+    // so the user sees a full-screen spinner rather than a blank or frozen pick screen.
     const myGen = ++bgGenRef.current;
     setOriginalBlob(null);
     setOriginalUrl(null);
     setCleanedBlob(null);
     setCleanedUrl(null);
     setBgFailed(false);
-    setBgProcessing(true);
+    setBgProcessing(false);
     setSelected("original");
-    setPhase("preview");
+    setPhase("encoding");
 
     let jpeg: Blob;
     try {
@@ -213,7 +212,6 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] encode failed:", msg);
       if (bgGenRef.current !== myGen) return;
-      setBgProcessing(false);
       setErrorMsg(`Could not read the photo: ${msg}`);
       setPhase("pick");
       return;
@@ -221,10 +219,11 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
     if (bgGenRef.current !== myGen) return;
 
-    // Encoding done — show the original photo
+    // Encoding done — show the original and switch to the comparison screen
     const url = URL.createObjectURL(jpeg);
     setOriginalBlob(jpeg);
     setOriginalUrl(url);
+    setPhase("preview");
 
     // Kick off background removal (JS/WASM — works on every platform).
     // Generation already captured above; stale results are discarded.
@@ -503,6 +502,27 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
             </motion.div>
           )}
 
+          {/* ── ENCODING ── */}
+          {phase === "encoding" && (
+            <motion.div
+              key="encoding"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col items-center justify-center gap-5 p-6"
+            >
+              <div className="w-28 h-28 border-4 border-black rounded-3xl bg-white
+                              flex items-center justify-center
+                              shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                <Loader2 className="w-12 h-12 animate-spin" strokeWidth={1.5} />
+              </div>
+              <div className="text-center">
+                <p className="font-display font-bold text-2xl uppercase tracking-tight">Processing…</p>
+                <p className="text-sm text-muted-foreground mt-1">Getting your photo ready.</p>
+              </div>
+            </motion.div>
+          )}
+
           {/* ── PREVIEW ── */}
           {phase === "preview" && (
             <motion.div
@@ -534,20 +554,11 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                                 : "border-black/20 opacity-60"}`}
                 >
                   <div className="relative bg-black">
-                    {originalUrl ? (
-                      <>
-                        <img src={originalUrl} alt="Original" className="w-full object-contain max-h-44" />
-                        {selected === "original" && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
-                                          flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="w-full flex flex-col items-center justify-center gap-2 text-white/50"
-                           style={{ minHeight: "11rem" }}>
-                        <Loader2 className="w-7 h-7 animate-spin" />
+                    <img src={originalUrl!} alt="Original" className="w-full object-contain max-h-44" />
+                    {selected === "original" && (
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
+                                      flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
                       </div>
                     )}
                   </div>
