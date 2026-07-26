@@ -417,7 +417,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         <h2 className="font-display font-bold text-xl uppercase tracking-tight">
           Add {label}
         </h2>
-        {(phase === "pick" || phase === "preview") && (
+        {(phase === "pick" || phase === "encoding" || phase === "preview") && (
           <button
             onClick={handleClose}
             className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
@@ -431,7 +431,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
       {/* Body */}
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
 
           {/* ── PICK ── */}
           {phase === "pick" && (
