@@ -16,7 +16,7 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Check, RotateCcw } from "lucide-react";
 import {
-  isBackgroundRemovalSupported,
+  getBackgroundRemovalError,
   removeBackground,
   blobToDataUrl,
   dataUrlToBlob,
@@ -150,12 +150,23 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const [bgSupported,  setBgSupported]  = useState(false);
   const [bgProcessing, setBgProcessing] = useState(false);
   const [bgFailed,     setBgFailed]     = useState(false);
+  // Diagnostic: why background removal is unavailable (empty = it IS available)
+  const [bgError,      setBgError]      = useState<string>("");
   // Which version the user has selected — defaults to 'cleaned' once ready
   const [selected, setSelected] = useState<"original" | "cleaned">("original");
 
-  // Check native support once on mount
+  // Check native support once on mount — store the error reason for diagnostics
   useEffect(() => {
-    isBackgroundRemovalSupported().then(setBgSupported);
+    getBackgroundRemovalError().then((err) => {
+      if (err) {
+        setBgSupported(false);
+        setBgError(err);
+        console.log("[quickadd] background removal unavailable:", err);
+      } else {
+        setBgSupported(true);
+        setBgError("");
+      }
+    });
   }, []);
 
   // Clean up object URLs when they change
@@ -178,6 +189,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     setCleanedBlob(null);
     setCleanedUrl(null);
     setBgFailed(false);
+    setBgError("");
     setSelected("original");
     onOpenChange(false);
   }, [onOpenChange]);
@@ -556,8 +568,12 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                       <div className="w-full flex flex-col items-center justify-center gap-1.5 px-3 text-center"
                            style={{ minHeight: "11rem" }}>
                         <span className="text-2xl">✨</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-black/40 leading-snug">
-                          {bgFailed ? "No subject\ndetected" : "iOS 17+\nonly"}
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-black/40 leading-snug whitespace-pre-line">
+                          {bgFailed
+                            ? "No subject\ndetected"
+                            : bgError
+                              ? bgError
+                              : "iOS 17+\nonly"}
                         </span>
                       </div>
                     )}

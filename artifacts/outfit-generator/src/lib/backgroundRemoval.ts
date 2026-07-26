@@ -43,12 +43,34 @@ const BackgroundRemoval = registerPlugin<BackgroundRemovalPlugin>(
  * Safe to call on web — returns false immediately.
  */
 export async function isBackgroundRemovalSupported(): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) return false;
+  if (!Capacitor.isNativePlatform()) {
+    console.log("[bgremoval] isNativePlatform=false — web stub active");
+    return false;
+  }
   try {
     const { supported } = await BackgroundRemoval.isSupported();
+    console.log(`[bgremoval] isSupported() → ${supported}`);
     return supported;
-  } catch {
-    return false;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[bgremoval] isSupported() threw:", msg);
+    // Re-throw so callers can surface a useful error message
+    throw err;
+  }
+}
+
+/**
+ * Returns a diagnostic string for why background removal is unavailable.
+ * Empty string means it IS available.
+ * Safe to call on web — returns an explanation immediately.
+ */
+export async function getBackgroundRemovalError(): Promise<string> {
+  if (!Capacitor.isNativePlatform()) return "web (non-native)";
+  try {
+    const { supported } = await BackgroundRemoval.isSupported();
+    return supported ? "" : "iOS < 17";
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
   }
 }
 
