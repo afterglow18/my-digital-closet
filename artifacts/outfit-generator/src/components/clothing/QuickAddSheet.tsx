@@ -582,14 +582,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                 >
                   <div className="relative"
                        style={{ background: "repeating-conic-gradient(#d1d5db 0% 25%, white 0% 50%) 0 0 / 12px 12px" }}>
-                    {bgProcessing ? (
-                      /* Processing on-device */
-                      <div className="w-full flex flex-col items-center justify-center gap-2 text-black/40"
-                           style={{ minHeight: "11rem" }}>
-                        <Loader2 className="w-7 h-7 animate-spin" />
-                        <span className="text-[10px] font-bold uppercase tracking-wide">Processing…</span>
-                      </div>
-                    ) : cleanedUrl ? (
+                    {cleanedUrl ? (
                       /* Done — show the result */
                       <>
                         <img src={cleanedUrl} alt="Cleaned" className="w-full object-contain max-h-44" />
@@ -600,14 +593,20 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                           </div>
                         )}
                       </>
-                    ) : (
-                      /* Removal failed — show fallback */
-                      <div className="w-full flex flex-col items-center justify-center gap-1.5 px-3 text-center"
+                    ) : bgFailed ? (
+                      /* Removal failed */
+                      <div className="w-full flex flex-col items-center justify-center gap-2 px-3 text-center"
                            style={{ minHeight: "11rem" }}>
-                        <span className="text-2xl">✨</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-black/40 leading-snug whitespace-pre-line">
-                          {bgFailed ? "Could not remove\nbackground" : ""}
+                        <span className="text-sm font-bold uppercase tracking-wide text-black/40">
+                          Could not remove background
                         </span>
+                      </div>
+                    ) : (
+                      /* Processing — shown while encoding or running the model */
+                      <div className="w-full flex flex-col items-center justify-center gap-2 text-black/50"
+                           style={{ minHeight: "11rem" }}>
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span className="text-sm font-bold uppercase tracking-wide">Processing</span>
                       </div>
                     )}
                   </div>
