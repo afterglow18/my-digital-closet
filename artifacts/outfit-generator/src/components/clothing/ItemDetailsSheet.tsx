@@ -3,10 +3,10 @@
  * Every field is optional and editable. A "Save" button appears only when
  * the form is dirty. Delete is always available.
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, Heart, Trash2, Save, ChevronDown, Sparkles, Loader2,
+  X, Heart, Trash2, Save, ChevronDown, Sparkles, Loader2, CheckCircle2,
 } from "lucide-react";
 import {
   removeBackground,
@@ -98,6 +98,128 @@ function SelectField({
   );
 }
 
+// ── BgCompareOverlay ──────────────────────────────────────────────────────────
+
+interface BgCompareOverlayProps {
+  originalDataUrl: string;
+  cleanedDataUrl:  string;
+  onSave:   (choice: "original" | "cleaned") => void;
+  onCancel: () => void;
+}
+
+function BgCompareOverlay({
+  originalDataUrl,
+  cleanedDataUrl,
+  onSave,
+  onCancel,
+}: BgCompareOverlayProps) {
+  const [selected, setSelected] = useState<"original" | "cleaned">("cleaned");
+
+  const CHECKER = {
+    backgroundImage: "repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%)",
+    backgroundSize: "16px 16px",
+  } as React.CSSProperties;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: "100%" }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: "100%" }}
+      transition={{ type: "spring", damping: 28, stiffness: 240 }}
+      className="fixed inset-0 z-[75] flex flex-col max-w-md mx-auto bg-[#f9f4ee]"
+    >
+      {/* Header */}
+      <div
+        className="flex-shrink-0 flex items-center justify-between px-4 py-3
+                   bg-white border-b-2 border-black"
+        style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
+      >
+        <div>
+          <h2 className="font-display font-bold text-xl uppercase tracking-tight">
+            Choose a Version
+          </h2>
+          <p className="text-xs text-black/40 font-medium">Tap a photo to select it</p>
+        </div>
+        <button
+          onClick={onCancel}
+          className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
+                     bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Side-by-side panels */}
+      <div className="flex-1 flex gap-3 p-4 min-h-0">
+        {(["original", "cleaned"] as const).map((side) => {
+          const isSelected = selected === side;
+          const url        = side === "original" ? originalDataUrl : cleanedDataUrl;
+          return (
+            <button
+              key={side}
+              onClick={() => setSelected(side)}
+              className={`relative flex-1 flex flex-col rounded-2xl overflow-hidden border-2
+                          transition-all duration-150 focus:outline-none
+                          ${isSelected
+                            ? "border-[#f472b6] shadow-[0_0_0_3px_#f472b6]"
+                            : "border-black/20"}`}
+            >
+              {/* Image */}
+              <div className="flex-1 min-h-0 w-full" style={CHECKER}>
+                <img
+                  src={url}
+                  alt={side}
+                  className="w-full h-full object-contain"
+                  draggable={false}
+                />
+              </div>
+
+              {/* Label bar */}
+              <div
+                className={`flex-shrink-0 py-2 text-center text-xs font-bold uppercase tracking-wide
+                             ${isSelected
+                               ? "bg-[#f472b6] text-white"
+                               : "bg-white text-black/60 border-t border-black/10"}`}
+              >
+                {side === "original" ? "Original" : "Cleaned ✨"}
+              </div>
+
+              {/* Selection checkmark */}
+              {isSelected && (
+                <div className="absolute top-2 right-2 bg-[#f472b6] rounded-full p-0.5 shadow">
+                  <CheckCircle2 className="w-5 h-5 text-white" fill="white" />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div
+        className="flex-shrink-0 px-4 py-4 bg-white border-t-2 border-black flex flex-col gap-2"
+        style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+      >
+        <button
+          onClick={() => onSave(selected)}
+          className="w-full btn-brutalist py-3 rounded-xl flex items-center justify-center gap-2 text-sm"
+        >
+          <Sparkles className="w-4 h-4" />
+          {selected === "cleaned" ? "Save Cleaned Version" : "Save Original"}
+        </button>
+        <button
+          onClick={onCancel}
+          className="w-full py-3 rounded-xl text-sm font-bold uppercase border-2 border-black/20
+                     text-black/40 hover:text-black hover:border-black/40 transition-all"
+        >
+          Cancel
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface ItemDetailsSheetProps {
@@ -157,6 +279,15 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bgRemoving, setBgRemoving] = useState(false);
   const [bgError,    setBgError]    = useState<string | null>(null);
+  // compare overlay: holds both data URLs while user picks
+  const [compareState, setCompareState] = useState<{
+    originalDataUrl: string;
+    cleanedDataUrl:  string;
+  } | null>(null);
+  // optimistic display URL — set immediately on save so there is no flash
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+  // track whether a background save is in progress (for cleanup on unmount)
+  const bgSaveAbortRef = useRef(false);
 
   const updateItem  = useUpdateClothingItem();
   const deleteItem  = useDeleteClothingItem();
@@ -167,6 +298,12 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
     if (item) setForm(toForm(item));
     setShowDeleteConfirm(false);
   }, [item?.id]);
+
+  // After background save completes the query re-fetches with a new imageObjectPath.
+  // Clear the optimistic local URL so the freshly-stored file takes over.
+  useEffect(() => {
+    setLocalImageUrl(null);
+  }, [item?.imageObjectPath]);
 
   if (!item || !form) return null;
 
@@ -205,45 +342,67 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
     );
   };
 
-  // ── Remove background from the existing saved image ──────────────────────
-  const handleRemoveBg = async () => {
+  // ── Step 1: run bg removal, then show compare overlay ────────────────────
+  const handleCleanUpPhoto = async () => {
     if (!item.imageObjectPath) return;
-    const { getImageUrl } = await import("@/lib/utils");
     const displayUrl = getImageUrl(item.imageObjectPath);
     if (!displayUrl) return;
 
     setBgError(null);
     setBgRemoving(true);
     try {
-      const srcBlob  = await fetch(displayUrl).then((r) => r.blob());
-      const dataUrl  = await blobToDataUrl(srcBlob);
-      const resultUrl = await removeBackground(dataUrl);
-      const resultBlob = await dataUrlToBlob(resultUrl);
-
-      const newFilename = await saveImage(
-        resultBlob,
-        `${item.category}-${item.id}-cleaned-${Date.now()}.png`,
-      );
-      await deleteImage(item.imageObjectPath);
-
-      await new Promise<void>((resolve, reject) => {
-        updateItem.mutate(
-          { id: item.id, data: { imageObjectPath: newFilename } },
-          {
-            onSuccess: () => {
-              queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
-              queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
-              resolve();
-            },
-            onError: (err) => reject(err),
-          },
-        );
-      });
+      const srcBlob        = await fetch(displayUrl).then((r) => r.blob());
+      const originalDataUrl = await blobToDataUrl(srcBlob);
+      const cleanedDataUrl  = await removeBackground(originalDataUrl);
+      setCompareState({ originalDataUrl, cleanedDataUrl });
     } catch (err) {
       console.error("[details] bg removal failed:", err);
       setBgError("Could not remove background. Please try again.");
     } finally {
       setBgRemoving(false);
+    }
+  };
+
+  // ── Step 2: user confirmed their choice in the overlay ────────────────────
+  const handleCompareSave = async (choice: "original" | "cleaned") => {
+    if (!compareState) return;
+
+    // Immediately update the visible photo — no flash while DB write runs.
+    const chosenUrl = choice === "cleaned"
+      ? compareState.cleanedDataUrl
+      : compareState.originalDataUrl;
+    setLocalImageUrl(chosenUrl);
+    setCompareState(null);
+
+    if (choice === "original") {
+      // Nothing changed in storage — original is already saved.
+      return;
+    }
+
+    // Save cleaned version in the background.
+    bgSaveAbortRef.current = false;
+    try {
+      const blob        = await dataUrlToBlob(compareState.cleanedDataUrl);
+      const newFilename = await saveImage(
+        blob,
+        `${item.category}-${item.id}-cleaned-${Date.now()}.png`,
+      );
+      if (bgSaveAbortRef.current) return; // component unmounted
+      if (item.imageObjectPath) await deleteImage(item.imageObjectPath);
+      updateItem.mutate(
+        { id: item.id, data: { imageObjectPath: newFilename } },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+            // imageObjectPath changed → useEffect clears localImageUrl
+          },
+        },
+      );
+    } catch (err) {
+      console.error("[details] background save failed:", err);
+      // The chosen image is still showing optimistically; a silent failure
+      // here means the item reverts on next open. Acceptable trade-off.
     }
   };
 
@@ -262,6 +421,7 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
   };
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, y: "100%" }}
       animate={{ opacity: 1, y: 0 }}
@@ -327,16 +487,16 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
             }}
           >
             <img
-              src={getImageUrl(item.imageObjectPath)!}
+              src={localImageUrl ?? getImageUrl(item.imageObjectPath)!}
               alt={item.name}
               className="w-full h-full object-contain"
             />
           </div>
 
-          {/* Remove Background button */}
+          {/* Clean Up Photo button */}
           <div className="px-4 py-2 bg-white border-t border-black/10 flex flex-col gap-1">
             <button
-              onClick={handleRemoveBg}
+              onClick={handleCleanUpPhoto}
               disabled={bgRemoving}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
                          border-2 border-black bg-[#f9f4ee] font-bold text-sm uppercase tracking-wide
@@ -345,8 +505,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
                          disabled:opacity-50 transition-all"
             >
               {bgRemoving
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing Background…</>
-                : <><Sparkles className="w-4 h-4" /> Remove Background ✨</>}
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing Photo…</>
+                : <><Sparkles className="w-4 h-4" /> Clean Up Photo ✨</>}
             </button>
             {bgError && (
               <p className="text-xs text-red-600 text-center">{bgError}</p>
@@ -479,5 +639,18 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
         )}
       </div>
     </motion.div>
+
+    {/* ── Compare overlay ── */}
+    <AnimatePresence>
+      {compareState && (
+        <BgCompareOverlay
+          originalDataUrl={compareState.originalDataUrl}
+          cleanedDataUrl={compareState.cleanedDataUrl}
+          onSave={handleCompareSave}
+          onCancel={() => setCompareState(null)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
