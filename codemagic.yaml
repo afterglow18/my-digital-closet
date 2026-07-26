@@ -55,6 +55,18 @@ workflows:
           # linked into node_modules by pnpm, so it is picked up automatically.
           npx cap sync ios
 
+          # Patch Main.storyboard so the app launches with our custom bridge
+          # view controller (MyDigitalClosetViewController) instead of the
+          # default CAPBridgeViewController. The custom VC calls
+          # bridge?.registerPluginType(BackgroundRemovalPlugin.self) in
+          # capacitorDidLoad(), which is the reliable registration path that
+          # bypasses Swift's lazy ObjC class registration in pod frameworks.
+          python3 ios-plugins/patch_storyboard.py \
+            ios/App/App/Base.lproj/Main.storyboard
+          echo "--- Storyboard view-controller class after patch ---"
+          grep -E "customClass|MyDigital|CAPBridge" \
+            ios/App/App/Base.lproj/Main.storyboard || true
+
       - name: Set export compliance
         script: |
           PLIST="artifacts/outfit-generator/ios/App/App/Info.plist"

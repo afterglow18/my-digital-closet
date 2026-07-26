@@ -10,9 +10,11 @@ Pod::Spec.new do |s|
   s.license                = { :type => 'MIT' }
   s.author                 = { 'My Digital Closet' => 'dev@mydigitalcloset.com' }
 
-  # The Swift source lives alongside this podspec
+  # Both Swift files live alongside this podspec:
+  #   BackgroundRemovalPlugin.swift       — the Vision plugin
+  #   MyDigitalClosetViewController.swift — custom bridge VC that registers it
   s.source                 = { :path => '.' }
-  s.source_files           = 'BackgroundRemovalPlugin.swift'
+  s.source_files           = '*.swift'
 
   s.ios.deployment_target  = '15.0'
   s.swift_version          = '5.9'
