@@ -1,0 +1,11 @@
+{
+  "name": "background-removal-plugin",
+  "version": "1.0.0",
+  "description": "On-device background removal via Apple Vision for Capacitor",
+  "main": "web.js",
+  "capacitor": {
+    "ios": {
+      "src": "."
+    }
+  }
+}

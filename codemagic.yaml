@@ -49,17 +49,10 @@ workflows:
           cd artifacts/outfit-generator
           rm -rf ios
           npx cap add ios
-
-          # Patch the Podfile to include BackgroundRemovalPlugin as a local
-          # CocoaPod BEFORE cap sync runs pod install, so it compiles into
-          # the App target and is auto-discovered by the Capacitor bridge.
-          PODFILE="ios/App/Podfile"
-          echo "--- Podfile (before patch) ---"
-          cat "$PODFILE"
-          python3 ios-plugins/patch_podfile.py "$PODFILE"
-          echo "--- Podfile (after patch) ---"
-          cat "$PODFILE"
-
+          # cap sync reads node_modules for packages with a "capacitor" field
+          # in package.json and automatically adds them to the Podfile before
+          # running pod install. background-removal-plugin (workspace:*) is
+          # linked into node_modules by pnpm, so it is picked up automatically.
           npx cap sync ios
 
       - name: Set export compliance
