@@ -132,10 +132,9 @@ interface Props {
 }
 
 const PHOTO_TIPS = [
-  "Lay the item flat or hang it against a plain background.",
-  "Use a plain, consistent background (bed, sheet, or blanket).",
-  "Smooth out wrinkles.",
-  "Take the photo directly from above.",
+  "Lay the item flat or hang it neatly.",
+  "Use a plain, consistent background.",
+  "Take the photo directly from the front or above, depending on the item.",
   "Make sure the entire item is visible.",
 ] as const;
 
