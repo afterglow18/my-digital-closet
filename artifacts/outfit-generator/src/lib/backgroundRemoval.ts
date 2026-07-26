@@ -17,6 +17,39 @@
 
 import { removeBackground as imglyRemoveBackground } from "@imgly/background-removal";
 
+// ── ONNX Runtime configuration ────────────────────────────────────────────────
+//
+// Problem: @imgly/background-removal runs ONNX inference on the main JS thread
+// by default, freezing the entire UI (no taps, no React updates) for several
+// seconds. ONNX Runtime Web has a wasm.proxy = true flag that moves inference
+// into a sub-worker — but imgly unconditionally resets it to false internally
+// right before creating the session (it only enables the proxy for WebGPU,
+// which iOS Safari/WKWebView doesn't have).
+//
+// Fix (three parts):
+//  1. Object.defineProperty with a no-op setter so imgly's `proxy = false`
+//     write is silently swallowed and the value stays true.
+//  2. numThreads = 1 — iOS Safari has no SharedArrayBuffer, so WASM
+//     multi-threading causes a silent crash.
+//  3. Dynamic import() so onnxruntime-web is never parsed at module load time,
+//     which would trigger Vite pre-bundling mid-session and reload the page.
+
+let ortConfigured = false;
+
+async function configureOrt(): Promise<void> {
+  if (ortConfigured) return;
+  ortConfigured = true;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — onnxruntime-web types aren't resolved via dynamic import
+  const ort = await import("onnxruntime-web");
+  Object.defineProperty(ort.env.wasm, "proxy", {
+    get: () => true,
+    set: () => {},   // blocks imgly from resetting it to false
+    configurable: true,
+  });
+  ort.env.wasm.numThreads = 1; // iOS Safari: no SharedArrayBuffer → must be 1
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type RemovalProgress =
@@ -55,6 +88,10 @@ export async function removeBackground(
   dataUrl: string,
   onProgress?: (p: RemovalProgress) => void,
 ): Promise<string> {
+  // Configure ONNX Runtime once before first inference (proxy + threads).
+  // Must happen before imglyRemoveBackground creates its session.
+  await configureOrt();
+
   onProgress?.({ stage: "loading", pct: 0 });
 
   // Convert data-URL to Blob — the library accepts Blob directly
