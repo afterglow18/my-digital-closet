@@ -511,7 +511,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
               {/* ── Side-by-side comparison (always shown) ── */}
               <p className="text-xs font-bold uppercase tracking-widest text-black/40 text-center">
-                {bgProcessing ? "Removing background…" : bgFailed ? "Original" : "Tap to choose"}
+                {bgProcessing ? "This will take a moment…" : bgFailed ? "Original" : "Tap to choose"}
               </p>
 
               <div className="flex gap-3">
