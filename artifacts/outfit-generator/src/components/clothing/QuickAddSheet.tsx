@@ -191,6 +191,20 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
   const handleFile = useCallback(async (file: File | Blob) => {
     setErrorMsg(null);
 
+    // Switch to preview and start the spinner BEFORE encoding so the user
+    // sees immediate feedback instead of sitting on the pick screen for 1-3 s.
+    // originalUrl stays null until encoding finishes; the original card shows
+    // a spinner in that state, then fills in once the blob is ready.
+    const myGen = ++bgGenRef.current;
+    setOriginalBlob(null);
+    setOriginalUrl(null);
+    setCleanedBlob(null);
+    setCleanedUrl(null);
+    setBgFailed(false);
+    setBgProcessing(true);
+    setSelected("original");
+    setPhase("preview");
+
     let jpeg: Blob;
     try {
       jpeg = await encodeForUpload(file);
@@ -198,27 +212,22 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[quickadd] encode failed:", msg);
+      if (bgGenRef.current !== myGen) return;
+      setBgProcessing(false);
       setErrorMsg(`Could not read the photo: ${msg}`);
       setPhase("pick");
       return;
     }
 
-    // Show the original immediately
+    if (bgGenRef.current !== myGen) return;
+
+    // Encoding done — show the original photo
     const url = URL.createObjectURL(jpeg);
     setOriginalBlob(jpeg);
     setOriginalUrl(url);
-    setCleanedBlob(null);
-    setCleanedUrl(null);
-    setBgFailed(false);
-    setSelected("original");
-    setPhase("preview");
 
     // Kick off background removal (JS/WASM — works on every platform).
-    // Capture the current generation so stale results from a previous photo
-    // (which may still be running) are silently discarded rather than
-    // overwriting this photo's state.
-    const myGen = ++bgGenRef.current;
-    setBgProcessing(true);
+    // Generation already captured above; stale results are discarded.
     try {
       const dataUrl  = await blobToDataUrl(jpeg);
       if (bgGenRef.current !== myGen) return; // newer photo taken — bail out
@@ -495,7 +504,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
           )}
 
           {/* ── PREVIEW ── */}
-          {phase === "preview" && originalUrl && (
+          {phase === "preview" && (
             <motion.div
               key="preview"
               initial={{ opacity: 0 }}
@@ -525,11 +534,20 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
                                 : "border-black/20 opacity-60"}`}
                 >
                   <div className="relative bg-black">
-                    <img src={originalUrl} alt="Original" className="w-full object-contain max-h-44" />
-                    {selected === "original" && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
-                                      flex items-center justify-center">
-                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    {originalUrl ? (
+                      <>
+                        <img src={originalUrl} alt="Original" className="w-full object-contain max-h-44" />
+                        {selected === "original" && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black
+                                          flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full flex flex-col items-center justify-center gap-2 text-white/50"
+                           style={{ minHeight: "11rem" }}>
+                        <Loader2 className="w-7 h-7 animate-spin" />
                       </div>
                     )}
                   </div>
