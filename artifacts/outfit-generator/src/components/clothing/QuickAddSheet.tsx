@@ -431,7 +431,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
       {/* Body */}
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <AnimatePresence mode="sync">
+        <AnimatePresence mode="wait" initial={false}>
 
           {/* ── PICK ── */}
           {phase === "pick" && (
@@ -440,6 +440,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               className="flex flex-col p-5 gap-5"
             >
               {errorMsg && (
@@ -509,6 +510,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               className="flex-1 flex flex-col items-center justify-center gap-5 p-6"
             >
               <div className="w-28 h-28 border-4 border-black rounded-3xl bg-white
@@ -530,6 +532,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               className="flex flex-col gap-4 p-5"
             >
               {errorMsg && (
@@ -648,6 +651,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               className="flex-1 flex flex-col items-center justify-center gap-5 p-6"
             >
               <div className="w-28 h-28 border-4 border-black rounded-3xl bg-white
