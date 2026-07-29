@@ -150,24 +150,38 @@ export default function SavedPage() {
     );
   };
 
+  /** "YYYY-MM-DD" in the device's local timezone — changes at local midnight. */
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
   const handleWearToday = (outfitId: number, items: ClothingItem[]) => {
     if (items.length === 0) return;
+    // Optimistic: show logged state instantly
     setWornTodayIds((prev) => new Set([...prev, outfitId]));
+    // Increment every item's wear count
     items.forEach((item) => {
       updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1 } });
     });
+    // Persist today's date on the outfit so it survives app restarts
+    renameOutfit.mutate({ id: outfitId, data: { lastWornDate: todayStr } });
     queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
   };
 
   const handleUnwearToday = (outfitId: number, items: ClothingItem[]) => {
+    // Remove optimistic state
     setWornTodayIds((prev) => {
       const next = new Set(prev);
       next.delete(outfitId);
       return next;
     });
+    // Decrement every item's wear count (floor at 0)
     items.forEach((item) => {
       updateItem.mutate({ id: item.id, data: { timesWorn: Math.max(0, (item.timesWorn ?? 1) - 1) } });
     });
+    // Clear the persisted date so the button reactivates
+    renameOutfit.mutate({ id: outfitId, data: { lastWornDate: null } });
     queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
   };
 
@@ -528,7 +542,7 @@ export default function SavedPage() {
                     {outfit.items?.length ?? 0} piece{(outfit.items?.length ?? 0) !== 1 ? "s" : ""}
                   </span>
                   <AnimatePresence mode="wait">
-                    {wornTodayIds.has(outfit.id) ? (
+                    {(wornTodayIds.has(outfit.id) || outfit.lastWornDate === todayStr) ? (
                       <motion.div
                         key="logged"
                         initial={{ opacity: 0, scale: 0.85 }}

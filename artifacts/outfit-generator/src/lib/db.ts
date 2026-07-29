@@ -32,6 +32,7 @@ export interface Outfit {
   notes?: string | null;
   items?: ClothingItem[];
   createdAt?: string | null;
+  lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
 }
 
 // Internal format for stored outfits (item IDs, not full objects)
@@ -41,6 +42,7 @@ export interface StoredOutfit {
   notes?: string | null;
   itemIds: number[];
   createdAt?: string | null;
+  lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
 }
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -141,6 +143,7 @@ function hydrateOutfit(stored: StoredOutfit): Outfit {
     name: stored.name,
     notes: stored.notes,
     createdAt: stored.createdAt,
+    lastWornDate: stored.lastWornDate,
     items: stored.itemIds.map((id) => itemMap.get(id)).filter(Boolean) as ClothingItem[],
   };
 }
@@ -164,7 +167,7 @@ export function createOutfit(name: string, itemIds: number[]): Outfit {
 
 export function updateOutfit(
   id: number,
-  data: { name?: string; notes?: string | null },
+  data: { name?: string; notes?: string | null; lastWornDate?: string | null },
 ): Outfit | null {
   const stored = getAllStoredOutfits();
   const idx = stored.findIndex((o) => o.id === id);
