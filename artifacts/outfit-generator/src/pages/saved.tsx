@@ -78,6 +78,9 @@ export default function SavedPage() {
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
+  // Remembers the date that was in lastWornDate *before* "Wearing This Today"
+  // was tapped, so Unwear can restore it within the same session.
+  const prevWornDatesRef = useRef<Map<number, string | null>>(new Map());
   const [replacingSlot, setReplacingSlot] = useState<{ outfitId: number; category: SlotKey } | null>(null);
   const [detailsItem, setDetailsItem] = useState<ClothingItem | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -156,8 +159,16 @@ export default function SavedPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
 
-  const handleWearToday = (outfitId: number, items: ClothingItem[]) => {
+  /** Formats "YYYY-MM-DD" → "M/D/YY" */
+  const formatShortDate = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return `${m}/${d}/${String(y).slice(2)}`;
+  };
+
+  const handleWearToday = (outfitId: number, items: ClothingItem[], currentLastWornDate?: string | null) => {
     if (items.length === 0) return;
+    // Remember the old date so Unwear can restore it this session
+    prevWornDatesRef.current.set(outfitId, currentLastWornDate ?? null);
     // Optimistic: show logged state instantly
     setWornTodayIds((prev) => new Set([...prev, outfitId]));
     // Increment every item's wear count
@@ -170,6 +181,9 @@ export default function SavedPage() {
   };
 
   const handleUnwearToday = (outfitId: number, items: ClothingItem[]) => {
+    // Restore the date that was showing before "Wearing This Today" was tapped
+    const restoredDate = prevWornDatesRef.current.get(outfitId) ?? null;
+    prevWornDatesRef.current.delete(outfitId);
     // Remove optimistic state
     setWornTodayIds((prev) => {
       const next = new Set(prev);
@@ -180,8 +194,8 @@ export default function SavedPage() {
     items.forEach((item) => {
       updateItem.mutate({ id: item.id, data: { timesWorn: Math.max(0, (item.timesWorn ?? 1) - 1) } });
     });
-    // Clear the persisted date so the button reactivates
-    renameOutfit.mutate({ id: outfitId, data: { lastWornDate: null } });
+    // Restore the previous date (or null if it was never worn before)
+    renameOutfit.mutate({ id: outfitId, data: { lastWornDate: restoredDate } });
     queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
   };
 
@@ -543,6 +557,7 @@ export default function SavedPage() {
                   </span>
                   <AnimatePresence mode="wait">
                     {(wornTodayIds.has(outfit.id) || outfit.lastWornDate === todayStr) ? (
+                      /* ── Worn today: Logged + Unwear ── */
                       <motion.div
                         key="logged"
                         initial={{ opacity: 0, scale: 0.85 }}
@@ -562,20 +577,31 @@ export default function SavedPage() {
                         </button>
                       </motion.div>
                     ) : (
-                      <motion.button
+                      /* ── Not worn today: optional last-worn label + button ── */
+                      <motion.div
                         key="wear-btn"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={() => handleWearToday(outfit.id, outfit.items ?? [])}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-black
-                                   bg-primary text-xs font-bold uppercase tracking-wide
-                                   shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                                   active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                        className="flex items-center gap-2"
                       >
-                        <Shirt className="w-3.5 h-3.5" />
-                        Wearing This Today
-                      </motion.button>
+                        {outfit.lastWornDate && (
+                          <span className="text-[10px] font-medium text-black/35 whitespace-nowrap">
+                            Last worn: {formatShortDate(outfit.lastWornDate)}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleWearToday(outfit.id, outfit.items ?? [], outfit.lastWornDate)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-black
+                                     bg-primary text-xs font-bold uppercase tracking-wide
+                                     shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all
+                                     whitespace-nowrap"
+                        >
+                          <Shirt className="w-3.5 h-3.5" />
+                          Wearing This Today
+                        </button>
+                      </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
