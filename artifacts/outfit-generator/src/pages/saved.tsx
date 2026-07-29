@@ -5,10 +5,12 @@ import {
   useRenameOutfit,
   useAddItemToOutfit,
   useRemoveItemFromOutfit,
+  useUpdateClothingItem,
   getListOutfitsQueryKey,
+  getListClothingQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { Trash2, Bookmark, Plus, Pencil, Check, X } from "lucide-react";
+import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,8 +74,10 @@ export default function SavedPage() {
   const removeItemFromOutfit = useRemoveItemFromOutfit();
   const addItemToOutfit = useAddItemToOutfit();
   const queryClient = useQueryClient();
+  const updateItem = useUpdateClothingItem();
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
   const [replacingSlot, setReplacingSlot] = useState<{ outfitId: number; category: SlotKey } | null>(null);
   const [detailsItem, setDetailsItem] = useState<ClothingItem | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -144,6 +148,26 @@ export default function SavedPage() {
       { id: outfitId, itemId },
       { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) }
     );
+  };
+
+  const handleWearToday = (outfitId: number, items: ClothingItem[]) => {
+    if (items.length === 0) return;
+    // Show confirmation immediately — no waiting for mutations
+    setWornTodayIds((prev) => new Set([...prev, outfitId]));
+    // Increment timesWorn on every item in the outfit
+    items.forEach((item) => {
+      updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1 } });
+    });
+    // Invalidate clothing list so wardrobe counts stay in sync
+    queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+    // Auto-reset confirmation after 2.5 s
+    setTimeout(() => {
+      setWornTodayIds((prev) => {
+        const next = new Set(prev);
+        next.delete(outfitId);
+        return next;
+      });
+    }, 2500);
   };
 
   const handlePickedItem = (item: ClothingItem) => {
@@ -497,11 +521,39 @@ export default function SavedPage() {
                   })()}
                 </div>
 
-                {/* Footer: item count */}
-                <div className="px-3 pb-3">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wide">
+                {/* Footer: Wearing This Today + item count */}
+                <div className="px-3 pb-3 pt-1 flex items-center justify-between gap-2 border-t border-black/10">
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wide shrink-0">
                     {outfit.items?.length ?? 0} piece{(outfit.items?.length ?? 0) !== 1 ? "s" : ""}
                   </span>
+                  <AnimatePresence mode="wait">
+                    {wornTodayIds.has(outfit.id) ? (
+                      <motion.div
+                        key="logged"
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.85 }}
+                        className="flex items-center gap-1 text-xs font-bold text-green-600"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Logged!
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        key="wear-btn"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => handleWearToday(outfit.id, outfit.items ?? [])}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-black
+                                   bg-primary text-xs font-bold uppercase tracking-wide
+                                   shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                                   active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                      >
+                        <Shirt className="w-3.5 h-3.5" />
+                        Wearing This Today
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             );
