@@ -152,22 +152,23 @@ export default function SavedPage() {
 
   const handleWearToday = (outfitId: number, items: ClothingItem[]) => {
     if (items.length === 0) return;
-    // Show confirmation immediately — no waiting for mutations
     setWornTodayIds((prev) => new Set([...prev, outfitId]));
-    // Increment timesWorn on every item in the outfit
     items.forEach((item) => {
       updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1 } });
     });
-    // Invalidate clothing list so wardrobe counts stay in sync
     queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
-    // Auto-reset confirmation after 2.5 s
-    setTimeout(() => {
-      setWornTodayIds((prev) => {
-        const next = new Set(prev);
-        next.delete(outfitId);
-        return next;
-      });
-    }, 2500);
+  };
+
+  const handleUnwearToday = (outfitId: number, items: ClothingItem[]) => {
+    setWornTodayIds((prev) => {
+      const next = new Set(prev);
+      next.delete(outfitId);
+      return next;
+    });
+    items.forEach((item) => {
+      updateItem.mutate({ id: item.id, data: { timesWorn: Math.max(0, (item.timesWorn ?? 1) - 1) } });
+    });
+    queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
   };
 
   const handlePickedItem = (item: ClothingItem) => {
@@ -533,9 +534,18 @@ export default function SavedPage() {
                         initial={{ opacity: 0, scale: 0.85 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.85 }}
-                        className="flex items-center gap-1 text-xs font-bold text-green-600"
+                        className="flex items-center gap-2"
                       >
-                        <Check className="w-3.5 h-3.5" /> Logged!
+                        <span className="flex items-center gap-1 text-xs font-bold text-green-600">
+                          <Check className="w-3.5 h-3.5" /> Logged!
+                        </span>
+                        <button
+                          onClick={() => handleUnwearToday(outfit.id, outfit.items ?? [])}
+                          className="text-[10px] font-bold uppercase tracking-wide text-black/40
+                                     underline underline-offset-2 hover:text-black/70 transition-colors"
+                        >
+                          Unwear
+                        </button>
                       </motion.div>
                     ) : (
                       <motion.button
