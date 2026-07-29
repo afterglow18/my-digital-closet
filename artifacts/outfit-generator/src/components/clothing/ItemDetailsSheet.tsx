@@ -240,6 +240,7 @@ interface FormState {
   notes: string;
   isFavorite: boolean;
   category: string;
+  timesWorn: string;
 }
 
 function toForm(item: ClothingItem): FormState {
@@ -255,6 +256,7 @@ function toForm(item: ClothingItem): FormState {
     notes:         item.notes         ?? "",
     isFavorite:    item.isFavorite    ?? false,
     category:      item.category      ?? "",
+    timesWorn:     String(item.timesWorn ?? 0),
   };
 }
 
@@ -270,7 +272,8 @@ function isDirty(form: FormState, item: ClothingItem): boolean {
     form.purchaseDate  !== (item.purchaseDate  ?? "") ||
     form.notes         !== (item.notes         ?? "") ||
     form.isFavorite    !== (item.isFavorite    ?? false) ||
-    form.category      !== (item.category      ?? "")
+    form.category      !== (item.category      ?? "")  ||
+    form.timesWorn     !== String(item.timesWorn ?? 0)
   );
 }
 
@@ -332,6 +335,7 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
           notes:         form.notes.trim(),
           isFavorite:    form.isFavorite,
           category:      (form.category || item.category) as ClothingItemUpdateCategory,
+          timesWorn:     Math.max(0, parseInt(form.timesWorn, 10) || 0),
         },
       },
       {
@@ -581,7 +585,7 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
           />
         </div>
 
-        {/* Category (editable) + Times Worn (read-only) */}
+        {/* Category + Times Worn */}
         <div className="grid grid-cols-2 gap-3">
           <SelectField
             label="Category"
@@ -589,12 +593,13 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
             onChange={patch("category") as (v: string) => void}
             options={CATEGORY_OPTIONS}
           />
-          <div className="flex flex-col gap-1 opacity-50 pointer-events-none">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-black/40">Times Worn</span>
-            <div className="border-2 border-black/20 rounded-lg px-3 py-2 text-sm font-medium bg-white/50">
-              {item.timesWorn ?? 0}
-            </div>
-          </div>
+          <Field
+            label="Times Worn"
+            type="number"
+            value={form.timesWorn}
+            onChange={patch("timesWorn") as (v: string) => void}
+            placeholder="0"
+          />
         </div>
 
       </div>
