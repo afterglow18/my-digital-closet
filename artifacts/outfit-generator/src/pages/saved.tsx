@@ -599,7 +599,7 @@ export default function SavedPage() {
                                      whitespace-nowrap"
                         >
                           <Shirt className="w-3.5 h-3.5" />
-                          Wearing This Today
+                          Wearing Today
                         </button>
                       </motion.div>
                     )}
