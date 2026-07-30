@@ -573,7 +573,7 @@ export default function SavedPage() {
                           className="text-[10px] font-bold uppercase tracking-wide text-black/40
                                      underline underline-offset-2 hover:text-black/70 transition-colors"
                         >
-                          Unwear
+                          Undo Wear
                         </button>
                       </motion.div>
                     ) : (
