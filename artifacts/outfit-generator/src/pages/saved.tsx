@@ -565,7 +565,7 @@ export default function SavedPage() {
                         exit={{ opacity: 0, scale: 0.85 }}
                         className="flex items-center gap-2"
                       >
-                        <span className="flex items-center gap-1 text-xs font-bold text-green-600">
+                        <span className="flex items-center gap-1 text-xs font-bold text-yellow-500">
                           <Check className="w-3.5 h-3.5" /> Logged!
                         </span>
                         <button
