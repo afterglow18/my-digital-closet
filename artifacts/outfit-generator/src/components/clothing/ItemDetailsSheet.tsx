@@ -593,27 +593,24 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
             onChange={patch("category") as (v: string) => void}
             options={CATEGORY_OPTIONS}
           />
-          <Field
-            label="Times Worn"
-            type="number"
-            value={form.timesWorn}
-            onChange={patch("timesWorn") as (v: string) => void}
-            placeholder="0"
-          />
+          <div className="flex flex-col gap-1">
+            <Field
+              label="Times Worn"
+              type="number"
+              value={form.timesWorn}
+              onChange={patch("timesWorn") as (v: string) => void}
+              placeholder="0"
+            />
+            {item.lastWornDate && (() => {
+              const [y, m, d] = item.lastWornDate.split("-").map(Number);
+              return (
+                <span className="text-[10px] font-semibold text-black/40 pl-1">
+                  Last worn: {m}/{d}/{String(y).slice(2)}
+                </span>
+              );
+            })()}
+          </div>
         </div>
-
-        {/* Last Worn Date (read-only, only shown if ever worn) */}
-        {item.lastWornDate && (() => {
-          const [y, m, d] = item.lastWornDate.split("-").map(Number);
-          return (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-black/40">Last Worn</span>
-              <span className="text-[11px] font-semibold text-black/60">
-                {m}/{d}/{String(y).slice(2)}
-              </span>
-            </div>
-          );
-        })()}
 
       </div>
 
