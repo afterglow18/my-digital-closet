@@ -78,9 +78,11 @@ export default function SavedPage() {
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
-  // Remembers the date that was in lastWornDate *before* "Wearing This Today"
-  // was tapped, so Unwear can restore it within the same session.
+  // Remembers the outfit date before "Wearing Today" so Undo can restore it.
   const prevWornDatesRef = useRef<Map<number, string | null>>(new Map());
+  // Remembers each item's lastWornDate before "Wearing Today" stamps today on them.
+  // Map<outfitId, Map<itemId, prevDate>>
+  const prevItemWornDatesRef = useRef<Map<number, Map<number, string | null>>>(new Map());
   const [replacingSlot, setReplacingSlot] = useState<{ outfitId: number; category: SlotKey } | null>(null);
   const [detailsItem, setDetailsItem] = useState<ClothingItem | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -171,6 +173,10 @@ export default function SavedPage() {
     prevWornDatesRef.current.set(outfitId, currentLastWornDate ?? null);
     // Optimistic: show logged state instantly
     setWornTodayIds((prev) => new Set([...prev, outfitId]));
+    // Remember each item's previous lastWornDate before overwriting
+    const itemDates = new Map<number, string | null>();
+    items.forEach((item) => itemDates.set(item.id, item.lastWornDate ?? null));
+    prevItemWornDatesRef.current.set(outfitId, itemDates);
     // Increment every item's wear count and stamp today's date on each
     items.forEach((item) => {
       updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1, lastWornDate: todayStr } });
@@ -190,9 +196,12 @@ export default function SavedPage() {
       next.delete(outfitId);
       return next;
     });
-    // Decrement every item's wear count (floor at 0)
+    // Decrement every item's wear count and restore their previous lastWornDate
+    const itemDates = prevItemWornDatesRef.current.get(outfitId);
+    prevItemWornDatesRef.current.delete(outfitId);
     items.forEach((item) => {
-      updateItem.mutate({ id: item.id, data: { timesWorn: Math.max(0, (item.timesWorn ?? 1) - 1) } });
+      const prevDate = itemDates?.get(item.id) ?? null;
+      updateItem.mutate({ id: item.id, data: { timesWorn: Math.max(0, (item.timesWorn ?? 1) - 1), lastWornDate: prevDate } });
     });
     // Restore the previous date (or null if it was never worn before)
     renameOutfit.mutate({ id: outfitId, data: { lastWornDate: restoredDate } });
