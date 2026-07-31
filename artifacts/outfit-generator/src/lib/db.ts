@@ -23,6 +23,7 @@ export interface ClothingItem {
   notes?: string | null;
   isFavorite?: boolean | null;
   timesWorn?: number | null;
+  lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
   createdAt?: string | null;
 }
 

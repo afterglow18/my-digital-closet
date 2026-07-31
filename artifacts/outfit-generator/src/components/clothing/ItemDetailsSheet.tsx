@@ -602,6 +602,19 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
           />
         </div>
 
+        {/* Last Worn Date (read-only, only shown if ever worn) */}
+        {item.lastWornDate && (() => {
+          const [y, m, d] = item.lastWornDate.split("-").map(Number);
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-black/40">Last Worn</span>
+              <span className="text-[11px] font-semibold text-black/60">
+                {m}/{d}/{String(y).slice(2)}
+              </span>
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* ── Footer actions ── */}

@@ -171,9 +171,9 @@ export default function SavedPage() {
     prevWornDatesRef.current.set(outfitId, currentLastWornDate ?? null);
     // Optimistic: show logged state instantly
     setWornTodayIds((prev) => new Set([...prev, outfitId]));
-    // Increment every item's wear count
+    // Increment every item's wear count and stamp today's date on each
     items.forEach((item) => {
-      updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1 } });
+      updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1, lastWornDate: todayStr } });
     });
     // Persist today's date on the outfit so it survives app restarts
     renameOutfit.mutate({ id: outfitId, data: { lastWornDate: todayStr } });
