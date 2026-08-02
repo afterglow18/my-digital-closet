@@ -117,7 +117,7 @@ export function UpgradeSheet({ onClose }: Props) {
         className="flex-shrink-0 w-full"
         style={{
           paddingTop: "env(safe-area-inset-top)",
-          height: "calc(env(safe-area-inset-top) + 72px)",
+          height: "calc(env(safe-area-inset-top) + 48px)",
           background: "#F0C030",
           backgroundImage: [
             "repeating-linear-gradient(0deg,  transparent, transparent 13px, rgba(0,0,0,0.10) 13px, rgba(0,0,0,0.10) 15px)",
@@ -137,15 +137,15 @@ export function UpgradeSheet({ onClose }: Props) {
       </button>
 
       {/* ── Body ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-4 pb-1 gap-2" style={{ paddingTop: "1rem" }}>
+      <div className="flex-1 min-h-0 flex flex-col px-4 pb-0 gap-1.5" style={{ paddingTop: "0.6rem" }}>
 
         {/* Headline */}
         <div className="flex-shrink-0">
           <h1 className="font-display font-black uppercase leading-none tracking-tight"
-              style={{ fontSize: "clamp(1.55rem, 7.5vw, 2.1rem)", color: "#0a0a0a" }}>
+              style={{ fontSize: "clamp(1.25rem, 6vw, 1.65rem)", color: "#0a0a0a" }}>
             Unlock Your Unlimited<br />Digital Closet
           </h1>
-          <p className="text-xs text-black/45 font-semibold mt-1">
+          <p className="text-[11px] text-black/45 font-semibold mt-0.5">
             A premium feature — unlock it once.
           </p>
         </div>
@@ -153,19 +153,19 @@ export function UpgradeSheet({ onClose }: Props) {
         {/* Dark features card */}
         <div className="flex-shrink-0 rounded-2xl overflow-hidden flex flex-col"
              style={{ background: "#0a0a0a" }}>
-          <div className="px-4 pt-3 pb-2 flex-shrink-0">
+          <div className="px-3 pt-2 pb-1 flex-shrink-0">
             <p className="font-bold text-[10px] tracking-widest uppercase"
                style={{ color: "#F0C030" }}>
               Upgrade to Premium &amp; Get:
             </p>
           </div>
           <div className="flex-shrink-0" style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
-          <ul className="flex flex-col gap-1 px-4 py-2">
+          <ul className="flex flex-col gap-0.5 px-3 py-1.5">
             {FEATURES.map((text, i) => (
               <React.Fragment key={text}>
-                <li className="flex items-center gap-3 py-0.5">
+                <li className="flex items-center gap-2.5 py-0.5">
                   <GoldCheck />
-                  <span className="text-white font-semibold text-[13px] leading-snug">{text}</span>
+                  <span className="text-white font-semibold text-[12px] leading-snug">{text}</span>
                 </li>
                 {i < FEATURES.length - 1 && (
                   <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginLeft: 32 }} />
@@ -198,7 +198,7 @@ export function UpgradeSheet({ onClose }: Props) {
             </button>
           </div>
         ) : (
-          <div className="flex-shrink-0 flex gap-2">
+          <div className="flex-shrink-0 flex gap-1.5">
             {PLAN_META.map((p) => {
               const selected   = plan === p.id;
               const isLifetime = p.id === "lifetime";
@@ -210,7 +210,7 @@ export function UpgradeSheet({ onClose }: Props) {
                           background:  isLifetime ? "#F0C030" : "#fff",
                           border:      `2px solid ${selected ? "#0a0a0a" : "rgba(0,0,0,0.12)"}`,
                           boxShadow:   selected ? "3px 3px 0 rgba(0,0,0,0.85)" : "none",
-                          padding:     "8px 7px 8px",
+                          padding:     "6px 6px 7px",
                         }}>
                   {p.bestValue && (
                     <span className="absolute top-0 right-0 font-black text-white text-[7px]
@@ -260,11 +260,11 @@ export function UpgradeSheet({ onClose }: Props) {
       </div>
 
       {/* ── CTA footer ── */}
-      <div className="flex-shrink-0 px-4 pt-2 flex flex-col gap-1.5"
-           style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
+      <div className="flex-shrink-0 px-4 pt-1 flex flex-col gap-1"
+           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
         <button onClick={handlePurchase}
                 disabled={status === "pending" || loading || !!error}
-                className="w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-tight
+                className="w-full py-3 rounded-2xl font-black text-sm uppercase tracking-tight
                            border-4 border-black text-black flex items-center justify-center gap-2
                            active:translate-x-0.5 active:translate-y-0.5 transition-all
                            disabled:opacity-60 disabled:cursor-not-allowed"
