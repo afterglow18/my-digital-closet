@@ -83,6 +83,14 @@ export default function SavedPage() {
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
   const { data: allItems = [] } = useListClothing({});
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
+  // Keep the open details sheet in sync with live item data (e.g. lastWornDate
+  // stamped by "Wearing Today" on an outfit card while the sheet is open).
+  useEffect(() => {
+    if (!detailsItem) return;
+    const fresh = allItems.find((i) => i.id === detailsItem.id);
+    if (fresh && fresh !== detailsItem) setDetailsItem(fresh);
+  }, [allItems]); // eslint-disable-line
+
   // Scroll to top the instant the user starts searching
   useEffect(() => { if (searchQuery) window.scrollTo({ top: 0 }); }, [!!searchQuery]); // eslint-disable-line
 
