@@ -137,7 +137,7 @@ export function UpgradeSheet({ onClose }: Props) {
       </button>
 
       {/* ── Body ── */}
-      <div className="flex-1 min-h-0 flex flex-col px-4 pb-1 gap-2" style={{ paddingTop: "1rem" }}>
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-4 pb-1 gap-2" style={{ paddingTop: "1rem" }}>
 
         {/* Headline */}
         <div className="flex-shrink-0">
@@ -151,7 +151,7 @@ export function UpgradeSheet({ onClose }: Props) {
         </div>
 
         {/* Dark features card */}
-        <div className="flex-1 min-h-0 rounded-2xl overflow-hidden flex flex-col"
+        <div className="flex-shrink-0 rounded-2xl overflow-hidden flex flex-col"
              style={{ background: "#0a0a0a" }}>
           <div className="px-4 pt-3 pb-2 flex-shrink-0">
             <p className="font-bold text-[10px] tracking-widest uppercase"
@@ -160,7 +160,7 @@ export function UpgradeSheet({ onClose }: Props) {
             </p>
           </div>
           <div className="flex-shrink-0" style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
-          <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center gap-2 px-4 py-3">
+          <ul className="flex flex-col gap-1 px-4 py-2">
             {FEATURES.map((text, i) => (
               <React.Fragment key={text}>
                 <li className="flex items-center gap-3 py-0.5">
