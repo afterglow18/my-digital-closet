@@ -112,6 +112,22 @@ export function UpgradeSheet({ onClose }: Props) {
       className="fixed inset-0 z-[80] flex flex-col max-w-md mx-auto overflow-hidden"
       style={{ background: "#F8F4ED" }}
     >
+      {/* ── Yellow plaid header strip ── */}
+      <div
+        className="flex-shrink-0 w-full"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          height: "calc(env(safe-area-inset-top) + 72px)",
+          background: "#F0C030",
+          backgroundImage: [
+            "repeating-linear-gradient(0deg,  transparent, transparent 13px, rgba(0,0,0,0.10) 13px, rgba(0,0,0,0.10) 15px)",
+            "repeating-linear-gradient(90deg, transparent, transparent 13px, rgba(0,0,0,0.10) 13px, rgba(0,0,0,0.10) 15px)",
+            "repeating-linear-gradient(0deg,  transparent, transparent  5px, rgba(255,255,255,0.22)  5px, rgba(255,255,255,0.22)  7px)",
+            "repeating-linear-gradient(90deg, transparent, transparent  5px, rgba(255,255,255,0.22)  5px, rgba(255,255,255,0.22)  7px)",
+          ].join(", "),
+        }}
+      />
+
       {/* ── Floating close button ── */}
       <button onClick={onClose}
               className="absolute z-10 top-0 right-4 w-8 h-8 rounded-full bg-white/90
@@ -121,8 +137,7 @@ export function UpgradeSheet({ onClose }: Props) {
       </button>
 
       {/* ── Body ── */}
-      <div className="flex-1 min-h-0 flex flex-col px-4 pb-1 gap-2"
-           style={{ paddingTop: "max(3rem, calc(env(safe-area-inset-top) + 2rem))" }}>
+      <div className="flex-1 min-h-0 flex flex-col px-4 pb-1 gap-2" style={{ paddingTop: "1rem" }}>
 
         {/* Headline */}
         <div className="flex-shrink-0">
@@ -145,7 +160,7 @@ export function UpgradeSheet({ onClose }: Props) {
             </p>
           </div>
           <div className="flex-shrink-0" style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
-          <ul className="flex-1 flex flex-col justify-evenly px-4 py-1">
+          <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center gap-2 px-4 py-3">
             {FEATURES.map((text, i) => (
               <React.Fragment key={text}>
                 <li className="flex items-center gap-3 py-0.5">
