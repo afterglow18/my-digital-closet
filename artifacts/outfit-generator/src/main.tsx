@@ -17,6 +17,12 @@ async function main() {
   // Initialize RevenueCat in the background (non-blocking on failure).
   initializeRevenueCat().catch(console.warn);
 
+  // Start the vision indexer in the background — stamps color/label data on
+  // unanalyzed photos so they show up in search. Non-blocking on failure.
+  import('./lib/visionIndexer').then(({ runVisionIndexer }) => {
+    runVisionIndexer().catch(console.warn);
+  });
+
   createRoot(document.getElementById('root')!).render(<App />);
 }
 

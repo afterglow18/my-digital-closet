@@ -24,6 +24,10 @@ export interface ClothingItem {
   isFavorite?: boolean | null;
   timesWorn?: number | null;
   lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
+  // Vision indexer fields (safe default: undefined = unanalyzed)
+  visionLabels?:  string[];
+  visionText?:    string[];
+  visionVersion?: number;        // 0=unanalyzed, 1=iOS, 4=web, 5=web-empty
   createdAt?: string | null;
 }
 

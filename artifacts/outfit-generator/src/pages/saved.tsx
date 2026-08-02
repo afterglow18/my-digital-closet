@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   useListOutfits,
+  useListClothing,
   useDeleteOutfit,
   useRenameOutfit,
   useAddItemToOutfit,
@@ -10,7 +11,8 @@ import {
   getListClothingQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt } from "lucide-react";
+import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt, Search } from "lucide-react";
+import { search as searchFn } from "@/lib/search";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -77,7 +79,19 @@ export default function SavedPage() {
   const updateItem = useUpdateClothingItem();
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [detailsFromSearch, setDetailsFromSearch] = useState(false);
+  const { data: allItems = [] } = useListClothing({});
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
+  // Scroll to top the instant the user starts searching
+  useEffect(() => { if (searchQuery) window.scrollTo({ top: 0 }); }, [!!searchQuery]); // eslint-disable-line
+
+  // Memoized search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    return searchFn(searchQuery, allItems, outfits ?? []);
+  }, [searchQuery, allItems, outfits]);
+
   // Remembers the outfit date before "Wearing Today" so Undo can restore it.
   const prevWornDatesRef = useRef<Map<number, string | null>>(new Map());
   // Remembers each item's lastWornDate before "Wearing Today" stamps today on them.
@@ -242,8 +256,114 @@ export default function SavedPage() {
         </div>
       </header>
 
-      {/* Upgrade nudge when at outfit limit */}
-      {atLimit && !isLoading && (
+      {/* ── Search bar ── */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search…"
+          className="w-full pl-9 pr-9 py-2.5 rounded-full border-2 border-black bg-white text-sm font-medium
+                     focus:outline-none focus:ring-2 focus:ring-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                     placeholder:text-black/30 placeholder:font-normal"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center
+                       rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+
+      {/* ── Search results ── */}
+      {searchResults && (
+        <div className="flex flex-col gap-6">
+          {searchResults.items.length === 0 && searchResults.groups.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm font-bold text-black/40 uppercase tracking-wide">No results</p>
+              <p className="text-xs text-black/30 mt-1">Try a different search term</p>
+            </div>
+          ) : (
+            <>
+              {searchResults.items.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-3">Items</h3>
+                  <div className="flex flex-col gap-2">
+                    {searchResults.items.map(({ item }) => (
+                      <button
+                        key={item.id}
+                        onClick={() => { setDetailsFromSearch(true); setDetailsItem(item); }}
+                        className="flex items-center gap-3 bg-white border-2 border-black rounded-xl p-3
+                                   shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                                   active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all text-left"
+                      >
+                        <div
+                          className="w-12 h-12 border border-black/20 rounded overflow-hidden flex-shrink-0"
+                          style={{ background: '#FDECEF' }}
+                        >
+                          {item.imageObjectPath ? (
+                            <img src={getImageUrl(item.imageObjectPath)!} alt={item.name} className="w-full h-full object-contain" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-lg opacity-30">👚</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{item.name || '—'}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-black/40">{item.category}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {searchResults.groups.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-3">Saved Looks</h3>
+                  <div className="flex flex-col gap-2">
+                    {searchResults.groups.map(({ outfit }) => (
+                      <button
+                        key={outfit.id}
+                        onClick={() => setSearchQuery('')}
+                        className="flex items-center gap-3 bg-white border-2 border-black rounded-xl p-3
+                                   shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                                   active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all text-left"
+                      >
+                        <div className="flex gap-1 flex-shrink-0">
+                          {(outfit.items ?? []).slice(0, 3).map((ti) => (
+                            <div
+                              key={ti.id}
+                              className="w-10 h-10 border border-black/20 rounded overflow-hidden"
+                              style={{ background: '#FDECEF' }}
+                            >
+                              {ti.imageObjectPath ? (
+                                <img src={getImageUrl(ti.imageObjectPath)!} alt={ti.name} className="w-full h-full object-contain" />
+                              ) : (
+                                <div className="w-full h-full" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight truncate">
+                          {outfit.name}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Normal content (hidden during search) ── */}
+      {!searchResults && atLimit && !isLoading && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -269,7 +389,7 @@ export default function SavedPage() {
         </motion.div>
       )}
 
-      {isLoading ? (
+      {!searchResults && (isLoading ? (
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-52 bg-muted animate-pulse border-2 border-black rounded-xl" />
@@ -628,7 +748,7 @@ export default function SavedPage() {
             Go to your digital closet, pick pieces from each row, and save the combo.
           </p>
         </div>
-      )}
+      ))}
 
       {/* Upgrade sheet */}
       <AnimatePresence>
@@ -659,7 +779,8 @@ export default function SavedPage() {
           <ItemDetailsSheet
             key={detailsItem.id}
             item={detailsItem}
-            onClose={() => setDetailsItem(null)}
+            onClose={() => { setDetailsItem(null); setDetailsFromSearch(false); }}
+            showAddToLookbook={detailsFromSearch}
           />
         )}
       </AnimatePresence>

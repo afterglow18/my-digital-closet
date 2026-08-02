@@ -7,7 +7,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Heart, Trash2, Save, ChevronDown, Sparkles, Loader2, CheckCircle2,
+  Shirt, Check, BookmarkPlus,
 } from "lucide-react";
+import { AddToLookbookSheet } from './AddToLookbookSheet';
 import {
   removeBackground,
   blobToDataUrl,
@@ -226,6 +228,9 @@ interface ItemDetailsSheetProps {
   item: ClothingItem | null;
   onClose: () => void;
   onDeleted?: () => void;
+  /** When true (search results, favorites): show "Add to Lookbook" instead of "Clean Up Photo".
+   *  "Wearing Today" always shows regardless. */
+  showAddToLookbook?: boolean;
 }
 
 interface FormState {
@@ -277,7 +282,7 @@ function isDirty(form: FormState, item: ClothingItem): boolean {
   );
 }
 
-export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetProps) {
+export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook = false }: ItemDetailsSheetProps) {
   const [form, setForm]           = useState<FormState | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bgRemoving, setBgRemoving] = useState(false);
@@ -293,6 +298,51 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
   const bgSaveAbortRef = useRef(false);
   // set to true when the user skips while analysis is still running
   const bgAnalysisAbortRef = useRef(false);
+
+  // ── Wearing Today (item-level) ────────────────────────────────────────────
+  const [showLookbookSheet, setShowLookbookSheet] = useState(false);
+  const [itemWornToday, setItemWornToday] = useState(false);
+  const prevItemWornRef = useRef<{ timesWorn: number; lastWornDate: string | null } | null>(null);
+
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  const formatShortDate = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return `${m}/${d}/${String(y).slice(2)}`;
+  };
+
+  const handleWearItem = () => {
+    if (!item) return;
+    const newTimesWorn = (item.timesWorn ?? 0) + 1;
+    prevItemWornRef.current = { timesWorn: item.timesWorn ?? 0, lastWornDate: item.lastWornDate ?? null };
+    setItemWornToday(true);
+    setForm((prev) => prev ? { ...prev, timesWorn: String(newTimesWorn) } : prev);
+    updateItem.mutate(
+      { id: item.id, data: { timesWorn: newTimesWorn, lastWornDate: todayStr } },
+      { onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+      }},
+    );
+  };
+
+  const handleUnwearItem = () => {
+    if (!item || !prevItemWornRef.current) return;
+    const prev = prevItemWornRef.current;
+    setItemWornToday(false);
+    setForm((f) => f ? { ...f, timesWorn: String(prev.timesWorn) } : f);
+    updateItem.mutate(
+      { id: item.id, data: { timesWorn: prev.timesWorn, lastWornDate: prev.lastWornDate } },
+      { onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+      }},
+    );
+    prevItemWornRef.current = null;
+  };
 
   const updateItem  = useUpdateClothingItem();
   const deleteItem  = useDeleteClothingItem();
@@ -501,39 +551,97 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
               className="w-full h-full object-contain"
             />
           </div>
-
-          {/* Clean Up Photo button — hidden once the photo has already been cleaned */}
-          {!item.imageObjectPath?.includes("-cleaned-") && (
-          <div className="px-4 py-2 bg-white border-t border-black/10 flex flex-col gap-1">
-            <button
-              onClick={handleCleanUpPhoto}
-              disabled={bgRemoving}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
-                         border-2 border-black bg-[#f9f4ee] font-bold text-sm uppercase tracking-wide
-                         shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                         active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                         disabled:opacity-50 transition-all"
-            >
-              {bgRemoving
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing Photo…</>
-                : <><Sparkles className="w-4 h-4" /> Clean Up Photo ✨</>}
-            </button>
-            {bgRemoving && (
-              <button
-                onClick={() => { bgAnalysisAbortRef.current = true; setBgRemoving(false); }}
-                className="w-full py-1.5 text-xs font-semibold text-black/40
-                           hover:text-black/70 transition-colors"
-              >
-                Keep Original
-              </button>
-            )}
-            {bgError && (
-              <p className="text-xs text-red-600 text-center">{bgError}</p>
-            )}
-          </div>
-          )}
         </div>
       )}
+
+      {/* ── Action buttons (always shown) ── */}
+      <div className="flex-shrink-0 border-b-2 border-black px-4 py-2 bg-white flex flex-col gap-2">
+        {/* Button 1: Add to Lookbook OR Clean Up Photo */}
+        {showAddToLookbook ? (
+          <button
+            onClick={() => setShowLookbookSheet(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                       border-2 border-black bg-[#f9f4ee] font-bold text-sm uppercase tracking-wide
+                       shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+          >
+            <BookmarkPlus className="w-4 h-4" /> Add to Lookbook
+          </button>
+        ) : (
+          item.imageObjectPath && !item.imageObjectPath.includes('-cleaned-') && (
+            <>
+              <button
+                onClick={handleCleanUpPhoto}
+                disabled={bgRemoving}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                           border-2 border-black bg-[#f9f4ee] font-bold text-sm uppercase tracking-wide
+                           shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                           disabled:opacity-50 transition-all"
+              >
+                {bgRemoving
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing Photo…</>
+                  : <><Sparkles className="w-4 h-4" /> Clean Up Photo ✨</>}
+              </button>
+              {bgRemoving && (
+                <button
+                  onClick={() => { bgAnalysisAbortRef.current = true; setBgRemoving(false); }}
+                  className="w-full py-1.5 text-xs font-semibold text-black/40 hover:text-black/70 transition-colors"
+                >
+                  Keep Original
+                </button>
+              )}
+              {bgError && <p className="text-xs text-red-600 text-center">{bgError}</p>}
+            </>
+          )
+        )}
+        {/* Button 2: Wearing Today (always shown) */}
+        <AnimatePresence mode="wait">
+          {(itemWornToday || item.lastWornDate === todayStr) ? (
+            <motion.div
+              key="logged"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex items-center gap-2"
+            >
+              <span className="flex items-center gap-1 text-xs font-bold text-yellow-500">
+                <Check className="w-3.5 h-3.5" /> Logged!
+              </span>
+              <button
+                onClick={handleUnwearItem}
+                className="text-[10px] font-bold uppercase tracking-wide text-black/40
+                           underline underline-offset-2 hover:text-black/70 transition-colors"
+              >
+                Undo
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="wear-btn"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-between gap-2"
+            >
+              {item.lastWornDate && item.lastWornDate !== todayStr && (
+                <span className="text-[10px] font-medium text-black/40 whitespace-nowrap">
+                  Last worn: {formatShortDate(item.lastWornDate)}
+                </span>
+              )}
+              <button
+                onClick={handleWearItem}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-black
+                           bg-primary text-xs font-bold uppercase tracking-wide
+                           shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                <Shirt className="w-3.5 h-3.5" /> Wearing Today
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* ── Form ── */}
       <div className="flex-1 px-4 py-5 flex flex-col gap-4">
@@ -680,6 +788,13 @@ export function ItemDetailsSheet({ item, onClose, onDeleted }: ItemDetailsSheetP
           onSave={handleCompareSave}
           onCancel={() => setCompareState(null)}
         />
+      )}
+    </AnimatePresence>
+
+    {/* ── Add to Lookbook sheet ── */}
+    <AnimatePresence>
+      {showLookbookSheet && (
+        <AddToLookbookSheet item={item} onClose={() => setShowLookbookSheet(false)} />
       )}
     </AnimatePresence>
     </>

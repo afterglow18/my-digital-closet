@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AnimatePresence } from 'framer-motion';
@@ -32,6 +33,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        <Toaster position="bottom-center" richColors={false} />
         <AppLayout>
           <Switch>
             <Route path="/" component={WardrobePage} />
