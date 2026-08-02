@@ -595,52 +595,6 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
             </>
           )
         )}
-        {/* Button 2: Wearing Today (always shown) */}
-        <AnimatePresence mode="wait">
-          {(itemWornToday || item.lastWornDate === todayStr) ? (
-            <motion.div
-              key="logged"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-2"
-            >
-              <span className="flex items-center gap-1 text-xs font-bold text-yellow-500">
-                <Check className="w-3.5 h-3.5" /> Logged!
-              </span>
-              <button
-                onClick={handleUnwearItem}
-                className="text-[10px] font-bold uppercase tracking-wide text-black/40
-                           underline underline-offset-2 hover:text-black/70 transition-colors"
-              >
-                Undo
-              </button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="wear-btn"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-between gap-2"
-            >
-              {item.lastWornDate && item.lastWornDate !== todayStr && (
-                <span className="text-[10px] font-medium text-black/40 whitespace-nowrap">
-                  Last worn: {formatShortDate(item.lastWornDate)}
-                </span>
-              )}
-              <button
-                onClick={handleWearItem}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-black
-                           bg-primary text-xs font-bold uppercase tracking-wide
-                           shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-              >
-                <Shirt className="w-3.5 h-3.5" /> Wearing Today
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* ── Form ── */}
