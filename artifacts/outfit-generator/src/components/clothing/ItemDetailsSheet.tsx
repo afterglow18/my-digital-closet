@@ -565,7 +565,7 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
                        shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
                        active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
           >
-            <BookmarkPlus className="w-4 h-4" /> Add to Lookbook
+            <Heart className="w-4 h-4 fill-yellow-400 text-yellow-400" /> Add to Lookbook
           </button>
         ) : (
           item.imageObjectPath && !item.imageObjectPath.includes('-cleaned-') && (
