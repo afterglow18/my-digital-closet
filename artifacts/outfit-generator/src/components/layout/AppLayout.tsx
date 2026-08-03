@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Shirt, Sparkles, Bookmark, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGetWardrobeStats } from "@/lib/local-api";
+import { useUnreadNotifCount } from "@/hooks/useNotifications";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,11 +31,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         .reduce((sum: number, c: { count: number }) => sum + c.count, 0)
     : undefined;
 
+  const unreadNotifCount = useUnreadNotifCount();
+
   const navItems = [
-    { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount },
+    { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black" },
     { href: "/generate", label: "Generate", icon: Sparkles },
     { href: "/saved", label: "Saved", icon: Bookmark },
-    { href: "/community", label: "Discover", icon: Globe },
+    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || undefined, badgeClass: "bg-red-500 text-white" },
   ];
 
   return (
@@ -85,7 +88,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
                         {/* Badge */}
                         {item.badge !== undefined && item.badge > 0 && (
-                          <div className="absolute -top-2 -right-2 bg-secondary text-black text-[10px] font-bold border-2 border-black w-5 h-5 flex items-center justify-center rounded-full shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                          <div className={cn("absolute -top-2 -right-2 text-[10px] font-bold border-2 border-black w-5 h-5 flex items-center justify-center rounded-full shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]", item.badgeClass ?? "bg-secondary text-black")}>
                             {item.badge > 99 ? "99+" : item.badge}
                           </div>
                         )}
