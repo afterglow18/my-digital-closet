@@ -9,7 +9,7 @@
 
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Bell, Heart } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useNotifications,
@@ -126,7 +126,7 @@ export function NotificationsSheet({ onClose }: NotificationsSheetProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 flex-shrink-0 border-b border-black/8">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
+            <Heart className="w-5 h-5" />
             <h2 className="font-display font-black text-lg uppercase tracking-tight">
               Notifications
             </h2>
