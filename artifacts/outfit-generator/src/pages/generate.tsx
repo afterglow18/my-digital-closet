@@ -261,7 +261,7 @@ export default function GeneratePage() {
       {/* ── Background image ── */}
       <img
         src="/closet-bg.png"
-        alt="My Digital Closet+"
+        alt="My Digital Closet"
         style={{
           position: "absolute",
           top:    ready ? ir.top    : 0,
