@@ -43,6 +43,43 @@ interface Props {
   existingItemIds?: number[];
 }
 
+function ItemTile({ item, existingItemIds, onPick, onDelete }: {
+  item: ClothingItem;
+  existingItemIds: number[];
+  onPick: (item: ClothingItem) => void;
+  onDelete: (id: number) => void;
+}) {
+  const alreadyIn = existingItemIds.includes(item.id);
+  return (
+    <div className="flex flex-col gap-1 relative">
+      <button onClick={() => onPick(item)} className="text-left w-full">
+        <div className="relative w-full aspect-square border-2 border-black overflow-hidden" style={{ background: "#FDECEF" }}>
+          {item.imageObjectPath ? (
+            <img src={getImageUrl(item.imageObjectPath)!} alt={item.name} className="w-full h-full object-contain" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-2xl">👕</span>
+            </div>
+          )}
+          {alreadyIn && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+              <span className="text-white text-xs font-bold uppercase tracking-wide bg-black/60 px-1.5 py-0.5 rounded">In outfit</span>
+            </div>
+          )}
+        </div>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+        className="absolute top-0.5 right-0.5 w-6 h-6 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-px active:translate-y-px transition-all z-10"
+        aria-label="Delete item"
+      >
+        <Trash2 className="w-3 h-3" />
+      </button>
+      <span className="text-[10px] font-bold uppercase tracking-wide text-black/60 truncate w-full">{item.name}</span>
+    </div>
+  );
+}
+
 export function WardrobePickerSheet({ open, onOpenChange, category, categories, onPick, existingItemIds = [] }: Props) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const queryClient = useQueryClient();
@@ -112,54 +149,39 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
               <span className="text-sm text-muted-foreground animate-pulse">Loading your closet…</span>
             </div>
           ) : items && items.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
-              {items.map((item) => {
-                const alreadyIn = existingItemIds.includes(item.id);
+            showAll ? (
+              // Grouped by category: others → tops → bottoms → shoes
+              (() => {
+                const CAT_ORDER: Category[] = ["dresses", "outerwear", "accessories", "tops", "bottoms", "shoes"];
+                const grouped: Partial<Record<Category, ClothingItem[]>> = {};
+                for (const item of items) {
+                  const cat = item.category as Category;
+                  if (!grouped[cat]) grouped[cat] = [];
+                  grouped[cat]!.push(item);
+                }
+                const sections = CAT_ORDER.filter(c => grouped[c]?.length);
                 return (
-                  <div key={item.id} className="flex flex-col gap-1 relative">
-                    <button
-                      onClick={() => handlePick(item)}
-                      className="text-left w-full"
-                    >
-                      <div className="relative w-full aspect-square border-2 border-black overflow-hidden"
-                        style={{ background: "#FDECEF" }}>
-                        {item.imageObjectPath ? (
-                          <img
-                            src={getImageUrl(item.imageObjectPath)!}
-                            alt={item.name}
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-2xl">👕</span>
-                          </div>
-                        )}
-                        {alreadyIn && (
-                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                            <span className="text-white text-xs font-bold uppercase tracking-wide bg-black/60 px-1.5 py-0.5 rounded">
-                              In outfit
-                            </span>
-                          </div>
-                        )}
+                  <div className="flex flex-col gap-5">
+                    {sections.map(cat => (
+                      <div key={cat}>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-black/40 mb-2">
+                          {CATEGORY_LABELS[cat]}
+                        </p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {grouped[cat]!.map(item => <ItemTile key={item.id} item={item} existingItemIds={existingItemIds} onPick={handlePick} onDelete={id => deleteItem.mutate({ id })} />)}
+                        </div>
                       </div>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteItem.mutate({ id: item.id });
-                      }}
-                      className="absolute top-0.5 right-0.5 w-6 h-6 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-px active:translate-y-px transition-all z-10"
-                      aria-label="Delete item"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-black/60 truncate w-full">
-                      {item.name}
-                    </span>
+                    ))}
                   </div>
                 );
-              })}
+              })()
+            ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {items.map((item) => (
+                <ItemTile key={item.id} item={item} existingItemIds={existingItemIds} onPick={handlePick} onDelete={id => deleteItem.mutate({ id })} />
+              ))}
             </div>
+            )
           ) : (
             <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
               <span className="text-4xl">👗</span>
