@@ -178,6 +178,7 @@ export async function publishOutfit(outfit: Outfit, uid: string): Promise<void> 
         description: outfit.notes ?? null,
         item_names:  itemNames,
         image_url:   null, // V1: no outfit cover image
+        status:      "active",
       },
       { onConflict: "user_id,local_id" },
     );
