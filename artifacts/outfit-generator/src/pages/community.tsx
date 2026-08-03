@@ -26,6 +26,7 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
+import { shareContent, APP_STORE_URL } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -229,7 +230,17 @@ export default function CommunityPage() {
               </button>
             )}
             <button
-              onClick={() => { if (user) navigate("/"); else setShowAuth(true); }}
+              onClick={() => {
+                if (user) {
+                  shareContent(
+                    APP_STORE_URL,
+                    "✨ Come see what everyone's wearing on My Digital Closet!",
+                    "My Digital Closet",
+                  );
+                } else {
+                  setShowAuth(true);
+                }
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
