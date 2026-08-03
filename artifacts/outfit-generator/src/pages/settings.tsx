@@ -418,8 +418,7 @@ export default function SettingsPage() {
               <Row
                 emoji="❤️"
                 label="Heart Notifications"
-                sublabel="Get notified when someone ❤️s your posts"
-                value={<span className="text-[10px] font-bold uppercase tracking-wide text-green-600 px-2 py-0.5 rounded-full bg-green-50">Active</span>}
+                value={<span className="text-[11px] font-semibold text-green-600">Active</span>}
                 onClick={() => navigate("/community")}
                 chevron
               />
