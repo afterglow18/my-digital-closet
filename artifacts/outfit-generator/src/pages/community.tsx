@@ -16,8 +16,8 @@
  */
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
-import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users, Heart } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users, Heart, X } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
@@ -57,6 +57,7 @@ export default function CommunityPage() {
   const [, navigate]        = useLocation();
   const [showAuth,    setShowAuth]    = useState(false);
   const [showNotifs,  setShowNotifs]  = useState(false);
+  const [showNudge,   setShowNudge]   = useState(false);
   const unreadCount = useUnreadNotifCount();
   const [heartNotifsEnabled] = useHeartNotifsEnabled();
   const setAboveNav = useContext(AboveNavSlotContext);
@@ -428,9 +429,40 @@ export default function CommunityPage() {
         {showAuth && (
           <AuthSheet
             onClose={() => setShowAuth(false)}
-            onSuccess={() => navigate("/")}
+            onSuccess={() => setShowNudge(true)}
             defaultTab="signup"
           />
+        )}
+      </AnimatePresence>
+
+      {/* Post-sign-in nudge */}
+      <AnimatePresence>
+        {showNudge && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-24 left-4 right-4 z-50 bg-black text-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3"
+          >
+            <Shirt className="shrink-0 w-5 h-5 text-white/70" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm leading-tight">Share your style</p>
+              <p className="text-xs text-white/60 leading-tight mt-0.5">Add items from your closet to Discover</p>
+            </div>
+            <button
+              onClick={() => { setShowNudge(false); navigate("/"); }}
+              className="shrink-0 bg-white text-black text-xs font-bold px-3 py-1.5 rounded-lg"
+            >
+              Add Items
+            </button>
+            <button
+              onClick={() => setShowNudge(false)}
+              className="shrink-0 text-white/50 hover:text-white p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
