@@ -612,73 +612,58 @@ export default function SavedPage() {
                     </div>
                   </div>
 
-                  {/* Extras — grouped by category, small thumbnails */}
+                  {/* Extras — 5-slot grid */}
                   {(() => {
-                    // Group extra items by category
-                    const bycat: Record<string, ClothingItem[]> = {};
-                    for (const item of extras) {
-                      if (!bycat[item.category]) bycat[item.category] = [];
-                      bycat[item.category].push(item);
-                    }
-                    const cats = Object.keys(bycat);
+                    const MAX_EXTRAS = 5;
+                    const filledSlots = extras.slice(0, MAX_EXTRAS);
+                    const emptyCount = Math.max(0, MAX_EXTRAS - filledSlots.length);
+                    const canAdd = filledSlots.length < MAX_EXTRAS;
                     return (
-                      <div className="pt-1.5 border-t border-black/10">
-                        {/* Header row */}
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Extras</span>
-                          <button
-                            onClick={() => setExtrasPickerOutfitId(outfit.id)}
-                            className="flex items-center gap-0.5 px-2 py-0.5 border-2 border-black rounded-full bg-primary text-[8px] font-bold uppercase tracking-wide shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-px active:translate-y-px transition-all"
-                          >
-                            <Plus className="w-2.5 h-2.5" /> Add
-                          </button>
-                        </div>
-
-                        {cats.length === 0 ? (
-                          /* Empty state */
-                          <button
-                            onClick={() => setExtrasPickerOutfitId(outfit.id)}
-                            className="w-full flex items-center justify-center gap-1.5 py-2 border-2 border-dashed border-black/20 rounded-lg text-[9px] font-bold uppercase text-black/25 hover:border-black/40 hover:bg-black/5 transition-colors"
-                          >
-                            <Plus className="w-3 h-3" /> Layer jackets, accessories &amp; more
-                          </button>
-                        ) : (
-                          <div className="flex flex-col gap-1.5">
-                            {cats.map((cat) => (
-                              <div key={cat} className="flex items-center gap-1.5">
-                                {/* Category label */}
-                                <span className="text-[8px] font-bold uppercase text-black/35 w-10 shrink-0 truncate">
-                                  {SLOT_LABELS[cat as SlotKey] ?? cat}
-                                </span>
-                                {/* Thumbnails */}
-                                <div className="flex gap-1 flex-wrap">
-                                  {bycat[cat].map((item) => (
-                                    <div key={item.id} className="relative">
-                                      <button onClick={() => setDetailsItem(item)}>
-                                        <div className="w-9 h-9 border-2 border-black overflow-hidden" style={{ background: "#FDECEF" }}>
-                                          {item.imageObjectPath ? (
-                                            <img src={getImageUrl(item.imageObjectPath)!} alt={item.name} className="w-full h-full object-contain" />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                              <span className="text-[7px] font-bold text-black/30">—</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </button>
-                                      <button
-                                        onClick={() => handleRemoveItem(outfit.id, item.id)}
-                                        className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-white border border-black rounded-full flex items-center justify-center shadow-sm z-10"
-                                      >
-                                        <X className="w-2 h-2" />
-                                      </button>
-                                      {item.isFavorite && <span className="absolute top-0 left-0 text-[7px] leading-none">❤️</span>}
+                      <div className="pt-1 border-t border-black/10">
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {filledSlots.map((item) => (
+                            <div key={item.id} className="flex flex-col items-center gap-0.5 relative">
+                              <button onClick={() => setDetailsItem(item)} className="w-full">
+                                <div className="w-full aspect-square border-2 border-black overflow-hidden" style={{ background: "#FDECEF" }}>
+                                  {item.imageObjectPath ? (
+                                    <img src={getImageUrl(item.imageObjectPath)!} alt={item.name} className="w-full h-full object-contain" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <span className="text-[8px] font-bold uppercase text-black/30">—</span>
                                     </div>
-                                  ))}
+                                  )}
                                 </div>
+                              </button>
+                              <button onClick={() => handleRemoveItem(outfit.id, item.id)}
+                                className="absolute top-0 right-0 w-4 h-4 bg-white border border-black rounded-full flex items-center justify-center shadow-sm z-10">
+                                <X className="w-2 h-2" />
+                              </button>
+                              <span className="text-[8px] font-bold uppercase text-muted-foreground truncate w-full text-center">
+                                {SLOT_LABELS[item.category as SlotKey] ?? "Extra"}
+                              </span>
+                              {item.isFavorite && <span className="absolute top-0 left-0 text-[9px] leading-none">⭐</span>}
+                            </div>
+                          ))}
+                          {canAdd && Array.from({ length: emptyCount }).map((_, i) => (
+                            <button
+                              key={`empty-${i}`}
+                              onClick={() => setExtrasPickerOutfitId(outfit.id)}
+                              className="flex flex-col items-center gap-0.5"
+                            >
+                              <div
+                                className="w-full aspect-square border-2 border-dashed border-black/25 rounded flex items-center justify-center"
+                                style={{ background: "#FAFAFA" }}
+                              >
+                                <Plus className="w-3.5 h-3.5 text-black/25" />
                               </div>
-                            ))}
-                          </div>
-                        )}
+                              {i === 0 && filledSlots.length === 0 ? (
+                                <span className="text-[8px] font-bold uppercase text-black/25 whitespace-nowrap">+ Extras</span>
+                              ) : (
+                                <span className="text-[8px]">&nbsp;</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     );
                   })()}
