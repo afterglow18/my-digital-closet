@@ -61,18 +61,13 @@ workflows:
           PBXPROJ="artifacts/outfit-generator/ios/App/App.xcodeproj/project.pbxproj"
 
           # 1. Write the entitlements file (Capacitor no longer creates it).
-          cat > "$ENTITLEMENTS" << 'ENTEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>com.apple.developer.applesignin</key>
-	<array>
-		<string>Default</string>
-	</array>
-</dict>
-</plist>
-ENTEOF
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+            '<plist version="1.0"><dict/></plist>' \
+            > "$ENTITLEMENTS"
+          /usr/libexec/PlistBuddy -c "Add :com.apple.developer.applesignin array" "$ENTITLEMENTS"
+          /usr/libexec/PlistBuddy -c "Add :com.apple.developer.applesignin:0 string Default" "$ENTITLEMENTS"
 
           # 2. Register the entitlements file in the Xcode project so
           #    xcodebuild picks it up during archive (Capacitor omits this).
