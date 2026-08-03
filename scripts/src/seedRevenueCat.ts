@@ -1,5 +1,5 @@
 /**
- * Seed script — creates RevenueCat entities for My Digital Closet.
+ * Seed script — creates RevenueCat entities for My Digital Closet+.
  *
  * Products:
  *   • mdc_monthly  — $1.99/month  (package: $rc_monthly)
@@ -41,10 +41,10 @@ import {
 } from "@replit/revenuecat-sdk";
 
 // ── App config ────────────────────────────────────────────────────────────────
-const PROJECT_NAME       = "My Digital Closet";
-const APP_STORE_APP_NAME = "My Digital Closet";
+const PROJECT_NAME       = "My Digital Closet+";
+const APP_STORE_APP_NAME = "My Digital Closet+";
 const APP_STORE_BUNDLE_ID = "com.mydigitalcloset.communitydev";
-const PLAY_STORE_APP_NAME    = "My Digital Closet Android";
+const PLAY_STORE_APP_NAME    = "My Digital Closet+ Android";
 const PLAY_STORE_PACKAGE_NAME = "com.mydigitalcloset.communitydev";
 
 // ── Entitlement ───────────────────────────────────────────────────────────────
@@ -60,8 +60,8 @@ const PRODUCTS = [
   {
     identifier:          "mdc_monthly",
     playStoreIdentifier: "mdc_monthly:monthly",
-    displayName:         "My Digital Closet Monthly",
-    title:               "My Digital Closet Monthly",
+    displayName:         "My Digital Closet+ Monthly",
+    title:               "My Digital Closet+ Monthly",
     duration:            "P1M" as const,
     packageKey:          "$rc_monthly",
     packageDisplayName:  "Monthly",
@@ -72,8 +72,8 @@ const PRODUCTS = [
   {
     identifier:          "mdc_annual",
     playStoreIdentifier: "mdc_annual:annual",
-    displayName:         "My Digital Closet Annual",
-    title:               "My Digital Closet Annual",
+    displayName:         "My Digital Closet+ Annual",
+    title:               "My Digital Closet+ Annual",
     duration:            "P1Y" as const,
     packageKey:          "$rc_annual",
     packageDisplayName:  "Annual",

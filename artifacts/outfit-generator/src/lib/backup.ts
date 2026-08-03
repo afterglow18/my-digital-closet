@@ -57,7 +57,7 @@ export async function exportBackup(): Promise<void> {
     });
     const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
     await Share.share({
-      title: "My Digital Closet Backup",
+      title: "My Digital Closet+ Backup",
       url: uri,
       dialogTitle: "Save or share your wardrobe backup",
     });

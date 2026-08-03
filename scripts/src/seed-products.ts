@@ -1,8 +1,8 @@
 /**
  * Seed script — creates subscription products in Stripe.
  *
- *   • My Digital Closet Monthly — $1.99/month  (product_key: 'monthly')
- *   • My Digital Closet Annual  — $19.99/year  (product_key: 'annual')
+ *   • My Digital Closet+ Monthly — $1.99/month  (product_key: 'monthly')
+ *   • My Digital Closet+ Annual  — $19.99/year  (product_key: 'annual')
  *
  * Idempotent: checks for existing products before creating.
  *
@@ -22,14 +22,14 @@ interface ProductSpec {
 const PRODUCTS: ProductSpec[] = [
   {
     key:         'monthly',
-    name:        'My Digital Closet – Monthly',
+    name:        'My Digital Closet+ – Monthly',
     description: 'Unlimited wardrobe items and saved outfits. Cancel anytime.',
     amount:      199,
     interval:    'month',
   },
   {
     key:         'annual',
-    name:        'My Digital Closet – Annual',
+    name:        'My Digital Closet+ – Annual',
     description: 'Unlimited wardrobe items and saved outfits. Best value — 2 months free vs monthly.',
     amount:      1999,
     interval:    'year',

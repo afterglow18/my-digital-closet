@@ -21,10 +21,10 @@ import {
   type Product,
 } from "@replit/revenuecat-sdk";
 
-const PROJECT_NAME   = "My Digital Closet";
+const PROJECT_NAME   = "My Digital Closet+";
 const STORE_ID       = "mdc_lifetime";
-const DISPLAY_NAME   = "My Digital Closet Lifetime";
-const TITLE          = "My Digital Closet Lifetime";
+const DISPLAY_NAME   = "My Digital Closet+ Lifetime";
+const TITLE          = "My Digital Closet+ Lifetime";
 const PACKAGE_KEY    = "$rc_lifetime";
 const PACKAGE_LABEL  = "Lifetime";
 const PRICE_MICROS   = 9990000; // $9.99

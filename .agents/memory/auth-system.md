@@ -1,6 +1,6 @@
 ---
 name: Auth system
-description: Email/password JWT auth added to My Digital Closet — architecture decisions and security constraints.
+description: Email/password JWT auth added to My Digital Closet+ — architecture decisions and security constraints.
 ---
 
 ## Stack

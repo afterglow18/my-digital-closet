@@ -368,7 +368,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
 
       // Check if it's a hard permission denial
       if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("camera")) {
-        setErrorMsg("Camera access is off. Go to Settings → My Digital Closet → Camera and enable it, then try again.");
+        setErrorMsg("Camera access is off. Go to Settings → My Digital Closet+ → Camera and enable it, then try again.");
         return;
       }
 
@@ -381,7 +381,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
         const fbMsg = fbRaw.toLowerCase();
         console.error("[quickadd] Photo library fallback also failed:", fbRaw);
         if (fbMsg.includes("denied") || fbMsg.includes("permission") || await isPermissionDenied("photos")) {
-          setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
+          setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet+ → Photos and allow access, then try again.");
         } else {
           setErrorMsg("Could not open the camera or photo library. Please try again.");
         }
@@ -423,7 +423,7 @@ export function QuickAddSheet({ open, onOpenChange, category, existingCount, onC
       const msg = rawMsg.toLowerCase();
       console.error("[quickadd] Photo library open failed:", rawMsg);
       if (msg.includes("denied") || msg.includes("permission") || msg.includes("restricted") || await isPermissionDenied("photos")) {
-        setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet → Photos and allow access, then try again.");
+        setErrorMsg("Photo library access is off. Go to Settings → My Digital Closet+ → Photos and allow access, then try again.");
       } else {
         setErrorMsg("Could not open your photo library. Please try again.");
       }

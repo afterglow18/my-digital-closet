@@ -275,7 +275,7 @@ export default function WardrobePage() {
       {/* ── Background image — object-fit:contain, never cropped ── */}
       <img
         src="/closet-bg.png"
-        alt="My Digital Closet"
+        alt="My Digital Closet+"
         style={{
           position: "absolute",
           top:    ready ? ir.top    : 0,

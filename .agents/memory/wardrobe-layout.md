@@ -1,6 +1,6 @@
 ---
 name: Wardrobe layout strategy
-description: Background image sizing, landmark fractions, ClosetRow contract, hanger overlay, and save bar placement for the My Digital Closet app.
+description: Background image sizing, landmark fractions, ClosetRow contract, hanger overlay, and save bar placement for the My Digital Closet+ app.
 ---
 
 ## Background image
