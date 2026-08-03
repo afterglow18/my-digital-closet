@@ -172,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { SignInWithApple } = await import("@capacitor-community/apple-sign-in");
       const result = await SignInWithApple.authorize({
-        clientId: "com.mydigitalcloset.communitydev",
+        clientId: "com.mydigitalcloset.app",
         redirectURI: "mydigitalcloset://auth/callback",
         scopes: "email name",
         state: Math.random().toString(36).substring(2),
