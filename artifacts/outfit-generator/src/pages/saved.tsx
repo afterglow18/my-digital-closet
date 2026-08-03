@@ -801,7 +801,6 @@ export default function SavedPage() {
             key={`extras-${extrasPickerOutfitId}`}
             open
             onOpenChange={(open) => { if (!open) setExtrasPickerOutfitId(null); }}
-            categories={["dresses", "outerwear", "accessories"]}
             existingItemIds={
               outfits?.find((o) => o.id === extrasPickerOutfitId)?.items?.map((i) => i.id) ?? []
             }

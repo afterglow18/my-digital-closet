@@ -49,9 +49,10 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
   const deleteItem = useDeleteClothingItem();
 
   const isExtras = !!categories && categories.length > 0;
+  const showAll  = !category && !isExtras;
 
-  // Fetch all items (filtered by category if single, or all for multi-category extras)
-  const params = isExtras ? {} : { category: category as ListClothingCategory };
+  // Fetch all items (filtered by single category, or all for extras/no-filter modes)
+  const params = category && !isExtras ? { category: category as ListClothingCategory } : {};
   const { data: rawItems, isLoading } = useListClothing(
     params,
     { query: { queryKey: getListClothingQueryKey(params), enabled: open } }
@@ -60,7 +61,7 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
     ? (rawItems ?? []).filter(i => categories!.includes(i.category))
     : rawItems;
 
-  const label = isExtras ? "Extra" : (category ? CATEGORY_LABELS[category] : "Item");
+  const label = isExtras || showAll ? "Extra" : (category ? CATEGORY_LABELS[category] : "Item");
 
   const handleClose = () => onOpenChange(false);
 
