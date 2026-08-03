@@ -158,7 +158,10 @@ CREATE POLICY "Users can delete own profile"
 
 CREATE TABLE IF NOT EXISTS public_items (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- References profiles(id), not auth.users(id) directly, so PostgREST can
+  -- resolve the "*, profiles(...)" embedded join without crossing into the auth
+  -- schema (which is not visible to PostgREST).
+  user_id     uuid        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   local_id    integer     NOT NULL,          -- device-local item ID (links back to localStorage)
   name        text        NOT NULL,
   category    text        NOT NULL,
@@ -228,7 +231,8 @@ CREATE POLICY "Users can delete own items"
 
 CREATE TABLE IF NOT EXISTS public_outfits (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- References profiles(id) for the same PostgREST join reason as public_items.
+  user_id     uuid        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   local_id    integer     NOT NULL,          -- device-local outfit ID
   name        text,
   description text,

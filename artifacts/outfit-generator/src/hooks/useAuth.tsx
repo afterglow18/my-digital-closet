@@ -155,22 +155,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const identityToken = result.response.identityToken;
       if (!identityToken) return { error: "Apple Sign-In did not return an identity token" };
 
-      // Pass name as metadata so the on_auth_user_created trigger can build
-      // the profile row if this is a brand-new Apple user. For returning users
-      // the trigger's ON CONFLICT DO NOTHING makes this a no-op.
-      const givenName  = result.response.givenName;
-      const familyName = result.response.familyName;
-      const displayName = [givenName, familyName].filter(Boolean).join(" ") || null;
-
+      // signInWithIdToken does not accept a `data` option, so we cannot inject
+      // metadata here. For a brand-new Apple user the on_auth_user_created
+      // trigger reads whatever raw_user_meta_data Supabase populates from
+      // Apple's identity token (which includes the name on first sign-in) and
+      // derives the handle from the email prefix. For returning users the
+      // trigger's ON CONFLICT DO NOTHING makes it a no-op.
       const { error } = await getSupabase().auth.signInWithIdToken({
         provider: "apple",
         token: identityToken,
-        options: {
-          data: {
-            display_name: displayName,
-            // handle will be derived from email by the trigger
-          },
-        },
       });
       if (error) return { error: error.message };
 

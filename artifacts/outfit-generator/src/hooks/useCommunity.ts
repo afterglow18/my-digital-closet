@@ -14,6 +14,21 @@ import { getDiscoverFavorites, pruneStaleDiscoverFavorites } from "@/lib/discove
 import { getLocalFollows, pruneStaleFollows } from "@/lib/localFollows";
 import { getBlockedUsers } from "@/lib/blockedUsers";
 
+// ── Dev logging ───────────────────────────────────────────────────────────────
+
+/** Logs the full Supabase error in development so the cause is always visible. */
+function logSupabaseError(context: string, error: { code?: string; message: string; details?: string; hint?: string }) {
+  if (import.meta.env.DEV) {
+    console.error(
+      `[Supabase error] ${context}\n` +
+      `  code:    ${error.code ?? "(none)"}\n` +
+      `  message: ${error.message}\n` +
+      `  details: ${error.details ?? "(none)"}\n` +
+      `  hint:    ${error.hint ?? "(none)"}`,
+    );
+  }
+}
+
 // ── Feed filters ──────────────────────────────────────────────────────────────
 
 export interface FeedFilters {
@@ -38,7 +53,7 @@ export function useCommunityItems(filters: FeedFilters = {}) {
       if (filters.category) q = q.eq("category", filters.category);
       if (filters.search)   q = q.ilike("name", `%${filters.search}%`);
       const { data, error } = await q;
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("useCommunityItems", error); throw new Error(error.message); }
       return (data ?? []) as (PublicItem & { profiles: Profile })[];
     },
     staleTime: 1000 * 60 * 2,
@@ -61,7 +76,7 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
         .limit(60);
       if (filters.search) q = q.ilike("name", `%${filters.search}%`);
       const { data, error } = await q;
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("useCommunityOutfits", error); throw new Error(error.message); }
       return (data ?? []) as (PublicOutfit & { profiles: Profile })[];
     },
     staleTime: 1000 * 60 * 2,
@@ -80,7 +95,7 @@ export function usePublicProfile(handle: string | undefined) {
         .select("*")
         .eq("handle", handle.toLowerCase())
         .single();
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("usePublicProfile", error); throw new Error(error.message); }
       return data as Profile;
     },
     enabled: Boolean(handle),
@@ -98,7 +113,7 @@ export function usePublicProfileItems(userId: string | undefined) {
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("usePublicProfileItems", error); throw new Error(error.message); }
       return (data ?? []) as PublicItem[];
     },
     enabled: Boolean(userId),
@@ -232,7 +247,7 @@ export function usePublicProfileOutfits(userId: string | undefined) {
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("usePublicProfileOutfits", error); throw new Error(error.message); }
       return (data ?? []) as PublicOutfit[];
     },
     enabled: Boolean(userId),
@@ -252,7 +267,7 @@ export function useMyProfile(userId: string | undefined) {
         .select("*")
         .eq("id", userId)
         .single();
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("useMyProfile", error); throw new Error(error.message); }
       return data as Profile;
     },
     enabled: Boolean(userId),
@@ -270,7 +285,7 @@ export function useMyPublishedItems(userId: string | undefined) {
         .select("*")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false });
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("useMyPublishedItems", error); throw new Error(error.message); }
       return (data ?? []) as PublicItem[];
     },
     enabled: Boolean(userId),
@@ -288,7 +303,7 @@ export function useMyPublishedOutfits(userId: string | undefined) {
         .select("*")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false });
-      if (error) throw new Error(error.message);
+      if (error) { logSupabaseError("useMyPublishedOutfits", error); throw new Error(error.message); }
       return (data ?? []) as PublicOutfit[];
     },
     enabled: Boolean(userId),
