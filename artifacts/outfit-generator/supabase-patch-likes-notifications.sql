@@ -46,23 +46,28 @@ ALTER TABLE post_likes    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- post_likes
+DROP POLICY IF EXISTS "likes: insert own" ON post_likes;
 CREATE POLICY "likes: insert own"
   ON post_likes FOR INSERT TO authenticated
   WITH CHECK (liker_id = auth.uid());
 
+DROP POLICY IF EXISTS "likes: delete own" ON post_likes;
 CREATE POLICY "likes: delete own"
   ON post_likes FOR DELETE TO authenticated
   USING (liker_id = auth.uid());
 
+DROP POLICY IF EXISTS "likes: select own" ON post_likes;
 CREATE POLICY "likes: select own"
   ON post_likes FOR SELECT TO authenticated
   USING (liker_id = auth.uid());
 
 -- notifications
+DROP POLICY IF EXISTS "notifs: select own" ON notifications;
 CREATE POLICY "notifs: select own"
   ON notifications FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "notifs: mark read" ON notifications;
 CREATE POLICY "notifs: mark read"
   ON notifications FOR UPDATE TO authenticated
   USING (user_id = auth.uid())
