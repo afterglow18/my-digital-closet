@@ -11,7 +11,7 @@
 
 import React, { useState, useEffect, useContext } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Compass, Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users } from "lucide-react";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
@@ -135,7 +135,7 @@ export default function CommunityPage() {
         {/* ── Header ── */}
         <div className="px-4 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Compass className="w-6 h-6" />
+            <Globe className="w-6 h-6" />
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           <div className="flex items-center gap-2">
