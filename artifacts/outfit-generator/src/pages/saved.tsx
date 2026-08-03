@@ -11,7 +11,7 @@ import {
   getListClothingQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt, Search } from "lucide-react";
+import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt, Search, Globe, Lock, Loader2 } from "lucide-react";
 import { search as searchFn } from "@/lib/search";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/lib/utils";
@@ -21,6 +21,10 @@ import { UpgradeSheet } from "@/components/paywall/UpgradeSheet";
 import { FREE_OUTFIT_LIMIT } from "@/lib/entitlements";
 import { WardrobePickerSheet } from "@/components/clothing/WardrobePickerSheet";
 import { ItemDetailsSheet } from "@/components/clothing/ItemDetailsSheet";
+import { useAuth } from "@/hooks/useAuth";
+import { publishOutfit, unpublishOutfit } from "@/lib/sync";
+import { AuthSheet } from "@/components/auth/AuthSheet";
+import type { Outfit } from "@/lib/db";
 
 const SLOT_ORDER = ["tops", "bottoms", "shoes", "dresses", "outerwear", "accessories"] as const;
 type SlotKey = (typeof SLOT_ORDER)[number];
@@ -71,6 +75,9 @@ function ItemPhoto({
 
 export default function SavedPage() {
   const { data: outfits, isLoading } = useListOutfits();
+  const { user } = useAuth();
+  const [showAuthSheet, setShowAuthSheet] = useState(false);
+  const [publishingIds, setPublishingIds] = useState<Set<number>>(new Set());
   const deleteOutfit = useDeleteOutfit();
   const renameOutfit = useRenameOutfit();
   const removeItemFromOutfit = useRemoveItemFromOutfit();
@@ -159,6 +166,28 @@ export default function SavedPage() {
   const isFree = tier === "free";
   const outfitCount = outfits?.length ?? 0;
   const atLimit = isFree && outfitCount >= FREE_OUTFIT_LIMIT;
+
+  const handleToggleOutfitVisibility = async (outfit: Outfit) => {
+    const isPublic = outfit.visibility === "public";
+    if (!isPublic && !user) {
+      setShowAuthSheet(true);
+      return;
+    }
+    const newVisibility: "private" | "public" = isPublic ? "private" : "public";
+    setPublishingIds((s) => new Set([...s, outfit.id]));
+    renameOutfit.mutate(
+      { id: outfit.id, data: { visibility: newVisibility } },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+    );
+    if (user) {
+      if (newVisibility === "public") {
+        await publishOutfit({ ...outfit, visibility: "public" }, user.id);
+      } else {
+        await unpublishOutfit(outfit.id, user.id);
+      }
+    }
+    setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
+  };
 
   const handleDelete = (id: number) => {
     deleteOutfit.mutate(
@@ -478,6 +507,19 @@ export default function SavedPage() {
                       <Pencil className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
                     </button>
                   )}
+                  {/* Publish toggle */}
+                  <button
+                    onClick={() => handleToggleOutfitVisibility(outfit)}
+                    disabled={publishingIds.has(outfit.id)}
+                    title={outfit.visibility === "public" ? "Make private" : "Share to Discover"}
+                    className="w-8 h-8 flex items-center justify-center bg-primary border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-colors shrink-0 disabled:opacity-50"
+                  >
+                    {publishingIds.has(outfit.id)
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : outfit.visibility === "public"
+                        ? <Globe className="w-3.5 h-3.5 text-green-600" />
+                        : <Lock className="w-3.5 h-3.5 text-black/40" />}
+                  </button>
                   <button
                     onClick={() => handleDelete(outfit.id)}
                     className="w-8 h-8 flex items-center justify-center bg-primary border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-colors shrink-0"
@@ -790,6 +832,13 @@ export default function SavedPage() {
             onClose={() => { setDetailsItem(null); setDetailsFromSearch(false); }}
             showAddToLookbook={detailsFromSearch}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Auth sheet — shown when anonymous user tries to publish */}
+      <AnimatePresence>
+        {showAuthSheet && (
+          <AuthSheet onClose={() => setShowAuthSheet(false)} defaultTab="signup" />
         )}
       </AnimatePresence>
     </div>

@@ -167,7 +167,7 @@ export function useRenameOutfit() {
       data,
     }: {
       id: number;
-      data: { name?: string; notes?: string | null; lastWornDate?: string | null };
+      data: { name?: string; notes?: string | null; lastWornDate?: string | null; visibility?: "private" | "public" };
     }) => updateOutfit(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });

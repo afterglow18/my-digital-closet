@@ -29,9 +29,7 @@ import { getImageUrl } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { publishItem, unpublishItem, syncItemEdit } from "@/lib/sync";
 import { VisibilityPicker } from "@/components/clothing/VisibilityPicker";
-import { PriceField } from "@/components/community/PriceField";
 import { AuthSheet } from "@/components/auth/AuthSheet";
-import type { Currency } from "@/lib/supabase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -252,9 +250,7 @@ interface FormState {
   isFavorite: boolean;
   category: string;
   timesWorn: string;
-  visibility: "private" | "public" | "for_sale";
-  price: string;
-  currency: string;
+  visibility: "private" | "public";
 }
 
 function toForm(item: ClothingItem): FormState {
@@ -271,9 +267,7 @@ function toForm(item: ClothingItem): FormState {
     isFavorite:    item.isFavorite    ?? false,
     category:      item.category      ?? "",
     timesWorn:     String(item.timesWorn ?? 0),
-    visibility:    (item.visibility   ?? "private") as "private" | "public" | "for_sale",
-    price:         item.price != null  ? String(item.price) : "",
-    currency:      item.currency       ?? "",
+    visibility:    item.visibility === "public" ? "public" : "private",
   };
 }
 
@@ -291,9 +285,7 @@ function isDirty(form: FormState, item: ClothingItem): boolean {
     form.isFavorite    !== (item.isFavorite    ?? false) ||
     form.category      !== (item.category      ?? "")  ||
     form.timesWorn     !== String(item.timesWorn ?? 0) ||
-    form.visibility    !== (item.visibility    ?? "private") ||
-    form.price         !== (item.price != null  ? String(item.price) : "") ||
-    form.currency      !== (item.currency      ?? "")
+    form.visibility    !== (item.visibility === "public" ? "public" : "private")
   );
 }
 
@@ -385,10 +377,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
     setForm((prev) => prev ? { ...prev, [key]: value } : prev);
 
   const handleSave = () => {
-    const prevVisibility = item.visibility ?? "private";
+    const prevVisibility = item.visibility === "public" ? "public" : "private";
     const newVisibility  = form.visibility;
-    const parsedPrice    = form.price ? parseFloat(form.price) : null;
-    const chosenCurrency = (form.currency || null) as Currency | null;
 
     updateItem.mutate(
       {
@@ -409,8 +399,6 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
           category:      (form.category || item.category) as ClothingItemUpdateCategory,
           timesWorn:     Math.max(0, parseInt(form.timesWorn, 10) || 0),
           visibility:    newVisibility,
-          price:         newVisibility === "for_sale" ? parsedPrice : null,
-          currency:      newVisibility === "for_sale" ? chosenCurrency : null,
         },
       },
       {
@@ -692,15 +680,6 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
             onNeedSignIn={() => setShowAuthSheet(true)}
             isSignedIn={Boolean(user)}
           />
-          {/* Price field — only when For Sale */}
-          {form.visibility === "for_sale" && (
-            <PriceField
-              price={form.price}
-              currency={form.currency as Currency | ""}
-              onPriceChange={patch("price") as (v: string) => void}
-              onCurrencyChange={(v) => patch("currency")(v)}
-            />
-          )}
         </div>
 
         {/* Category + Times Worn */}

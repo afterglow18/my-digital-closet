@@ -1,9 +1,8 @@
 /**
- * PublicItemCard — card shown in the community feed.
+ * PublicItemCard — item card shown in the Discover feed.
  */
 
 import React from "react";
-import { Tag } from "lucide-react";
 import type { PublicItem, Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -13,14 +12,7 @@ interface PublicItemCardProps {
   className?: string;
 }
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$",
-};
-
 export function PublicItemCard({ item, onClick, className }: PublicItemCardProps) {
-  const currencySymbol = item.currency ? (CURRENCY_SYMBOLS[item.currency] ?? item.currency) : "";
-  const isForSale = item.visibility === "for_sale";
-
   return (
     <button
       onClick={onClick}
@@ -32,7 +24,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
       )}
     >
       {/* Image */}
-      <div className="aspect-square w-full bg-[#f9f4ee] relative overflow-hidden">
+      <div className="aspect-square w-full bg-[#f9f4ee] overflow-hidden">
         {item.image_url ? (
           <img
             src={item.image_url}
@@ -41,17 +33,8 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl text-black/10 font-bold uppercase">
+          <div className="w-full h-full flex items-center justify-center text-4xl text-black/10 font-black uppercase">
             {item.category[0]}
-          </div>
-        )}
-
-        {/* For Sale badge */}
-        {isForSale && (
-          <div className="absolute top-2 left-2 flex items-center gap-0.5 bg-amber-400 border border-black
-                          rounded-full px-2 py-0.5 text-[9px] font-bold uppercase shadow-sm">
-            <Tag className="w-2.5 h-2.5" />
-            {item.price != null ? `${currencySymbol}${Number(item.price).toFixed(2)}` : "For Sale"}
           </div>
         )}
       </div>
@@ -61,6 +44,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
         <p className="font-bold text-xs truncate">{item.name}</p>
         <p className="text-[10px] text-black/40 font-medium uppercase tracking-wide">
           {item.category}
+          {item.brand ? ` · ${item.brand}` : ""}
         </p>
         {item.profiles && (
           <p className="text-[10px] text-black/30 font-medium truncate mt-0.5">

@@ -1,13 +1,23 @@
 /**
- * supabase.ts — lazy Supabase client.
+ * supabase.ts — lazy Supabase client (V1: browse-and-share only).
  *
- * The client is created only when getSupabase() is first called.
- * If the user never signs in, this module is imported but getSupabase()
- * is never called, so zero network connections are made.
+ * PRIVACY GUARANTEE
+ * ─────────────────
+ * • Unauthenticated users: this module makes read-only SELECT queries to browse
+ *   the public Discover feed. No personal data is sent. Supabase RLS enforces
+ *   this at the database level — only rows explicitly marked 'public' are visible.
  *
- * VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are safe to ship in the
- * app bundle — Row Level Security is the enforcement layer.
- * NEVER use or reference the service_role key here.
+ * • Private closet data (localStorage + Capacitor Filesystem) NEVER touches
+ *   Supabase. Nothing is uploaded unless the user explicitly sets an item or
+ *   outfit to Public AND is signed in.
+ *
+ * • The client is created lazily: getSupabase() is called only when code that
+ *   needs Supabase runs. For non-community users the module is imported but the
+ *   client is never instantiated — zero network connections.
+ *
+ * VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are safe in the bundle.
+ * Row Level Security is the enforcement layer.
+ * NEVER reference the service_role key here.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -17,10 +27,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | und
 
 let _client: SupabaseClient | null = null;
 
-/**
- * Returns the shared Supabase client, creating it on first call.
- * Throws if the env vars are not configured.
- */
+/** Returns the shared client, creating it on first call. Throws if unconfigured. */
 export function getSupabase(): SupabaseClient {
   if (_client) return _client;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -30,10 +37,7 @@ export function getSupabase(): SupabaseClient {
   }
   _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
-      // Persist session in localStorage so it survives app restarts
       persistSession: true,
-      // Do not auto-refresh in the background on web; Capacitor app handles
-      // foreground resume separately
       autoRefreshToken: true,
       detectSessionInUrl: false,
     },
@@ -41,7 +45,7 @@ export function getSupabase(): SupabaseClient {
   return _client;
 }
 
-/** True if Supabase env vars are present (does NOT test connectivity). */
+/** True if env vars are present (does NOT test connectivity). */
 export function isSupabaseConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
@@ -57,6 +61,7 @@ export interface Profile {
   created_at: string;
 }
 
+/** A clothing item published to the community (V1: visibility is always 'public'). */
 export interface PublicItem {
   id: string;
   user_id: string;
@@ -70,13 +75,22 @@ export interface PublicItem {
   occasion: string | null;
   image_url: string | null;
   notes: string | null;
-  price: number | null;
-  currency: string | null;
-  visibility: "public" | "for_sale";
+  visibility: "public";    // V1 only
   created_at: string;
   updated_at: string;
   profiles?: Profile;
 }
 
-export const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD"] as const;
-export type Currency = (typeof CURRENCIES)[number];
+/** A saved outfit published to the community. */
+export interface PublicOutfit {
+  id: string;
+  user_id: string;
+  local_id: number;
+  name: string | null;
+  description: string | null;
+  image_url: string | null;
+  item_names: string[] | null; // denormalized item names for display
+  created_at: string;
+  updated_at: string;
+  profiles?: Profile;
+}

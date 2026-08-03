@@ -1,50 +1,65 @@
 /**
- * useCommunity — hooks for querying the community feed and public profiles.
+ * useCommunity — hooks for the Discover feed and public profiles.
  *
- * These read from Supabase public_items directly. RLS ensures only
- * public/for_sale items are visible to anonymous callers.
+ * All queries are guarded by isSupabaseConfigured() and return empty data
+ * gracefully when Supabase env vars are not yet set.
+ *
+ * Unauthenticated users can call these hooks freely — SELECT queries only,
+ * no private data sent. RLS enforces this at the DB level.
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { getSupabase, type PublicItem, type Profile } from "@/lib/supabase";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getSupabase, isSupabaseConfigured, type PublicItem, type PublicOutfit, type Profile } from "@/lib/supabase";
 
-// ── Community feed ────────────────────────────────────────────────────────────
+// ── Feed filters ──────────────────────────────────────────────────────────────
 
 export interface FeedFilters {
   category?: string;
-  forSaleOnly?: boolean;
   search?: string;
 }
 
-export function useCommunityFeed(filters: FeedFilters = {}) {
+// ── Items feed ────────────────────────────────────────────────────────────────
+
+export function useCommunityItems(filters: FeedFilters = {}) {
   return useQuery({
-    queryKey: ["community", "feed", filters],
+    queryKey: ["community", "items", filters],
     queryFn: async (): Promise<(PublicItem & { profiles: Profile })[]> => {
-      // Guard: if Supabase isn't configured yet, return empty rather than throw
-      const { isSupabaseConfigured } = await import("@/lib/supabase");
       if (!isSupabaseConfigured()) return [];
       const sb = getSupabase();
-      let query = sb
+      let q = sb
         .from("public_items")
         .select("*, profiles(id, handle, display_name, avatar_url)")
         .order("created_at", { ascending: false })
         .limit(60);
-
-      if (filters.forSaleOnly) {
-        query = query.eq("visibility", "for_sale");
-      }
-      if (filters.category) {
-        query = query.eq("category", filters.category);
-      }
-      if (filters.search) {
-        query = query.ilike("name", `%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
+      if (filters.category) q = q.eq("category", filters.category);
+      if (filters.search)   q = q.ilike("name", `%${filters.search}%`);
+      const { data, error } = await q;
       if (error) throw new Error(error.message);
       return (data ?? []) as (PublicItem & { profiles: Profile })[];
     },
-    staleTime: 1000 * 60 * 2, // 2 min
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ── Outfits feed ──────────────────────────────────────────────────────────────
+
+export function useCommunityOutfits(filters: FeedFilters = {}) {
+  return useQuery({
+    queryKey: ["community", "outfits", filters],
+    queryFn: async (): Promise<(PublicOutfit & { profiles: Profile })[]> => {
+      if (!isSupabaseConfigured()) return [];
+      const sb = getSupabase();
+      let q = sb
+        .from("public_outfits")
+        .select("*, profiles(id, handle, display_name, avatar_url)")
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (filters.search) q = q.ilike("name", `%${filters.search}%`);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []) as (PublicOutfit & { profiles: Profile })[];
+    },
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -54,9 +69,8 @@ export function usePublicProfile(handle: string | undefined) {
   return useQuery({
     queryKey: ["community", "profile", handle],
     queryFn: async () => {
-      if (!handle) return null;
-      const sb = getSupabase();
-      const { data, error } = await sb
+      if (!handle || !isSupabaseConfigured()) return null;
+      const { data, error } = await getSupabase()
         .from("profiles")
         .select("*")
         .eq("handle", handle.toLowerCase())
@@ -73,9 +87,8 @@ export function usePublicProfileItems(userId: string | undefined) {
   return useQuery({
     queryKey: ["community", "profile-items", userId],
     queryFn: async () => {
-      if (!userId) return [];
-      const sb = getSupabase();
-      const { data, error } = await sb
+      if (!userId || !isSupabaseConfigured()) return [];
+      const { data, error } = await getSupabase()
         .from("public_items")
         .select("*")
         .eq("user_id", userId)
@@ -88,15 +101,32 @@ export function usePublicProfileItems(userId: string | undefined) {
   });
 }
 
+export function usePublicProfileOutfits(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["community", "profile-outfits", userId],
+    queryFn: async () => {
+      if (!userId || !isSupabaseConfigured()) return [];
+      const { data, error } = await getSupabase()
+        .from("public_outfits")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as PublicOutfit[];
+    },
+    enabled: Boolean(userId),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 // ── Own profile ────────────────────────────────────────────────────────────────
 
 export function useMyProfile(userId: string | undefined) {
   return useQuery({
     queryKey: ["community", "my-profile", userId],
     queryFn: async () => {
-      if (!userId) return null;
-      const sb = getSupabase();
-      const { data, error } = await sb
+      if (!userId || !isSupabaseConfigured()) return null;
+      const { data, error } = await getSupabase()
         .from("profiles")
         .select("*")
         .eq("id", userId)
@@ -113,15 +143,32 @@ export function useMyPublishedItems(userId: string | undefined) {
   return useQuery({
     queryKey: ["community", "my-items", userId],
     queryFn: async () => {
-      if (!userId) return [];
-      const sb = getSupabase();
-      const { data, error } = await sb
+      if (!userId || !isSupabaseConfigured()) return [];
+      const { data, error } = await getSupabase()
         .from("public_items")
         .select("*")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false });
       if (error) throw new Error(error.message);
       return (data ?? []) as PublicItem[];
+    },
+    enabled: Boolean(userId),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useMyPublishedOutfits(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["community", "my-outfits", userId],
+    queryFn: async () => {
+      if (!userId || !isSupabaseConfigured()) return [];
+      const { data, error } = await getSupabase()
+        .from("public_outfits")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as PublicOutfit[];
     },
     enabled: Boolean(userId),
     staleTime: 1000 * 60 * 2,

@@ -36,9 +36,8 @@ export interface ClothingItem {
   createdAt?: string | null;
   // ── Community fields ──────────────────────────────────────────────────────
   // Absent/undefined is treated as 'private' everywhere — no migration needed.
-  visibility?: "private" | "public" | "for_sale";
-  price?: number | null;        // structured price for for_sale items
-  currency?: string | null;     // e.g. 'USD', 'EUR'
+  // Nothing is uploaded to Supabase unless the user explicitly sets this to 'public'.
+  visibility?: "private" | "public";
 }
 
 export interface Outfit {
@@ -48,6 +47,7 @@ export interface Outfit {
   items?: ClothingItem[];
   createdAt?: string | null;
   lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
+  visibility?: "private" | "public";
 }
 
 // Internal format for stored outfits (item IDs, not full objects)
@@ -58,6 +58,7 @@ export interface StoredOutfit {
   itemIds: number[];
   createdAt?: string | null;
   lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
+  visibility?: "private" | "public";
 }
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -155,12 +156,13 @@ function saveAllStoredOutfits(outfits: StoredOutfit[]): void {
 function hydrateOutfit(stored: StoredOutfit): Outfit {
   const itemMap = new Map(getAllClothingItems().map((i) => [i.id, i]));
   return {
-    id: stored.id,
-    name: stored.name,
-    notes: stored.notes,
-    createdAt: stored.createdAt,
+    id:           stored.id,
+    name:         stored.name,
+    notes:        stored.notes,
+    createdAt:    stored.createdAt,
     lastWornDate: stored.lastWornDate,
-    items: stored.itemIds.map((id) => itemMap.get(id)).filter(Boolean) as ClothingItem[],
+    visibility:   stored.visibility,
+    items:        stored.itemIds.map((id) => itemMap.get(id)).filter(Boolean) as ClothingItem[],
   };
 }
 
@@ -183,7 +185,7 @@ export function createOutfit(name: string, itemIds: number[]): Outfit {
 
 export function updateOutfit(
   id: number,
-  data: { name?: string; notes?: string | null; lastWornDate?: string | null },
+  data: { name?: string; notes?: string | null; lastWornDate?: string | null; visibility?: "private" | "public" },
 ): Outfit | null {
   const stored = getAllStoredOutfits();
   const idx = stored.findIndex((o) => o.id === id);

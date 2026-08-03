@@ -1,28 +1,28 @@
 /**
- * community.tsx — Discover tab.
+ * community.tsx — Discover tab (V1: browse-and-share only, no marketplace).
  *
- * Unauthenticated users can browse the full public feed.
- * Sign-up is only prompted when they try to publish an item
- * (handled in ItemDetailsSheet → VisibilityPicker).
- *
- * A soft "Join" banner appears at the bottom for unauthenticated users
- * so they know publishing is available without interrupting browsing.
+ * PRIVACY NOTE
+ * ────────────
+ * Unauthenticated users see only public content via read-only queries.
+ * No private closet data is sent. Sign-up is only required to publish.
  */
 
 import React, { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Compass, Tag, Search, UserCircle, Loader2, RefreshCw, Globe } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { Compass, Search, UserCircle, Loader2, RefreshCw, Shirt, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityFeed } from "@/hooks/useCommunity";
+import { useCommunityItems, useCommunityOutfits } from "@/hooks/useCommunity";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
+import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 
-const FEED_FILTERS = [
+type FeedTab = "items" | "outfits";
+
+const CATEGORY_FILTERS = [
   { label: "All", value: "" },
-  { label: "For Sale", value: "for_sale" },
   ...CLOTHING_CATEGORIES.map((c) => ({
     label: c.charAt(0).toUpperCase() + c.slice(1),
     value: c,
@@ -31,17 +31,22 @@ const FEED_FILTERS = [
 
 export default function CommunityPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [, navigate] = useLocation();
-  const [showAuth, setShowAuth]         = useState(false);
-  const [forSaleOnly, setForSaleOnly]   = useState(false);
-  const [category, setCategory]         = useState("");
-  const [search, setSearch]             = useState("");
+  const [, navigate]   = useLocation();
+  const [showAuth, setShowAuth] = useState(false);
+  const [feedTab, setFeedTab]   = useState<FeedTab>("items");
+  const [category, setCategory] = useState("");
+  const [search, setSearch]     = useState("");
 
-  const { data: items, isLoading: feedLoading, error, refetch } = useCommunityFeed({
-    forSaleOnly,
-    category: category || undefined,
-    search: search || undefined,
-  });
+  const itemsQuery   = useCommunityItems({ category: category || undefined, search: search || undefined });
+  const outfitsQuery = useCommunityOutfits({ search: search || undefined });
+
+  const { data: items,   isLoading: itemsLoading,   error: itemsError,   refetch: refetchItems }   = itemsQuery;
+  const { data: outfits, isLoading: outfitsLoading, error: outfitsError, refetch: refetchOutfits } = outfitsQuery;
+
+  const isLoading = feedTab === "items" ? itemsLoading   : outfitsLoading;
+  const error     = feedTab === "items" ? itemsError     : outfitsError;
+  const refetch   = feedTab === "items" ? refetchItems   : refetchOutfits;
+  const isEmpty   = feedTab === "items" ? !items?.length : !outfits?.length;
 
   if (authLoading) {
     return (
@@ -64,7 +69,6 @@ export default function CommunityPage() {
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           {user ? (
-            /* Signed-in: profile button */
             <button
               onClick={() => navigate("/profile/me")}
               className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
@@ -74,7 +78,6 @@ export default function CommunityPage() {
               <UserCircle className="w-5 h-5" />
             </button>
           ) : (
-            /* Unauthenticated: low-key Sign In link */
             <button
               onClick={() => setShowAuth(true)}
               className="px-3 py-1.5 border-2 border-black rounded-full text-xs font-bold uppercase
@@ -101,41 +104,56 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        {/* ── Filter chips ── */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-          {FEED_FILTERS.map((f) => {
-            const isForSaleFilter = f.value === "for_sale";
-            const isActive = isForSaleFilter
-              ? forSaleOnly
-              : f.value === category && !forSaleOnly;
-            return (
+        {/* ── Items / Outfits toggle ── */}
+        <div className="px-4 pb-2">
+          <div className="grid grid-cols-2 gap-1 bg-black/5 rounded-xl p-1">
+            {([
+              { tab: "items",   label: "Items",   icon: Shirt },
+              { tab: "outfits", label: "Outfits", icon: Globe },
+            ] as const).map(({ tab, label, icon: Icon }) => (
               <button
-                key={f.value}
-                onClick={() => {
-                  if (isForSaleFilter) {
-                    setForSaleOnly((v) => !v);
-                    setCategory("");
-                  } else {
-                    setForSaleOnly(false);
-                    setCategory((c) => (c === f.value ? "" : f.value));
-                  }
-                }}
+                key={tab}
+                onClick={() => setFeedTab(tab)}
                 className={cn(
-                  "flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border-2 text-[11px] font-bold uppercase tracking-wide transition-all",
-                  isActive
-                    ? "bg-black text-white border-black"
-                    : "bg-white border-black/20 text-black/50 hover:border-black/40",
+                  "py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all",
+                  "flex items-center justify-center gap-1.5",
+                  feedTab === tab
+                    ? "bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    : "text-black/40 hover:text-black",
                 )}
               >
-                {isForSaleFilter && <Tag className="w-3 h-3" />}
-                {f.label}
+                <Icon className="w-4 h-4" />
+                {label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
+        {/* ── Category filter chips (items tab only) ── */}
+        {feedTab === "items" && (
+          <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
+            {CATEGORY_FILTERS.map((f) => {
+              const isActive = f.value === category;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setCategory((c) => (c === f.value ? "" : f.value))}
+                  className={cn(
+                    "flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-[11px] font-bold uppercase tracking-wide transition-all",
+                    isActive
+                      ? "bg-black text-white border-black"
+                      : "bg-white border-black/20 text-black/50 hover:border-black/40",
+                  )}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── Feed ── */}
-        {feedLoading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-black/30" />
           </div>
@@ -149,37 +167,36 @@ export default function CommunityPage() {
               <RefreshCw className="w-3.5 h-3.5" /> Retry
             </button>
           </div>
-        ) : !items?.length ? (
-          <div className="flex flex-col items-center gap-3 py-16 px-6 text-center">
+        ) : isEmpty ? (
+          <div className="flex flex-col items-center gap-2 py-16 px-6 text-center">
             <Globe className="w-10 h-10 text-black/15" />
             <p className="text-sm font-bold text-black/40 uppercase">Nothing here yet</p>
-            {!user && (
-              <p className="text-xs text-black/30 max-w-xs">
-                Be the first to share your style. Open any item in your closet and set it to Public.
-              </p>
-            )}
+            <p className="text-xs text-black/30 max-w-xs">
+              Be the first to share your style. Open{" "}
+              {feedTab === "items" ? "any item" : "any saved look"} and set it to Public.
+            </p>
           </div>
         ) : (
           <div className="px-4 pb-4">
             <div className="grid grid-cols-2 gap-3">
-              {items.map((item) => (
-                <PublicItemCard key={item.id} item={item} />
-              ))}
+              {feedTab === "items"
+                ? items!.map((item) => <PublicItemCard key={item.id} item={item} />)
+                : outfits!.map((outfit) => <PublicOutfitCard key={outfit.id} outfit={outfit} />)}
             </div>
           </div>
         )}
 
-        {/* ── Soft join banner for unauthenticated users ── */}
+        {/* ── Soft join banner for signed-out users ── */}
         {!user && (
           <div className="mx-4 mb-6 mt-2">
             <div className="border-2 border-black rounded-2xl bg-primary p-4 flex flex-col gap-2
                             shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <p className="font-display font-bold text-base uppercase tracking-tight">
-                Share your own style
+                Share Your Style
               </p>
               <p className="text-sm text-black/70 leading-snug">
-                Only the items you choose to share become public.
-                Everything else stays private on your device.
+                Create a free account when you're ready to publish your own items or outfits.
+                Browsing is always free — no account needed.
               </p>
               <button
                 onClick={() => setShowAuth(true)}
@@ -188,14 +205,13 @@ export default function CommunityPage() {
                            shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
                            active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
               >
-                Create a Free Account
+                Join Community
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Auth sheet ── */}
       <AnimatePresence>
         {showAuth && (
           <AuthSheet onClose={() => setShowAuth(false)} defaultTab="signup" />

@@ -1,41 +1,36 @@
 /**
- * sync.ts — Supabase community sync helpers.
+ * sync.ts — Supabase community sync helpers (V1: browse-and-share only).
  *
- * These functions are called only when the user is signed in and has
- * explicitly changed an item's visibility. Private items are NEVER touched.
+ * PRIVACY RULES
+ * ─────────────
+ * • These functions are called ONLY when the user is signed in AND has
+ *   explicitly changed an item or outfit visibility to 'public'.
+ * • Private items and outfits are NEVER touched by any function here.
+ * • All functions are fire-and-forget safe: failures are caught and logged,
+ *   they never throw to the caller. Local data is always the source of truth.
  *
- * All functions are fire-and-forget safe: failures are caught and logged,
- * they never throw to the caller. The local item is always the source of
- * truth; Supabase is the sync target.
+ * V1 SCOPE: clothing items + saved outfits. No prices, no marketplace.
  */
 
 import { getSupabase } from "./supabase";
-import type { ClothingItem } from "./db";
+import type { ClothingItem, Outfit } from "./db";
 import { Capacitor } from "@capacitor/core";
 
-const BUCKET = "public-items";
+const ITEMS_BUCKET = "public-items";
 
 // ── Image upload ──────────────────────────────────────────────────────────────
 
-/**
- * Read a local Capacitor image as a Blob.
- * Returns null on web (dev mode — no Capacitor filesystem).
- */
 async function readLocalImageBlob(filename: string): Promise<Blob | null> {
-  if (!Capacitor.isNativePlatform()) {
-    // On web dev, images are object URLs in memory — we can't re-read them
-    return null;
-  }
+  if (!Capacitor.isNativePlatform()) return null;
   try {
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
     const { data } = await Filesystem.readFile({
       path: `wardrobe-images/${filename}`,
       directory: Directory.Documents,
     });
-    // data is a base64 string on native
-    const base64 = data as string;
+    const base64   = data as string;
     const byteChars = atob(base64);
-    const bytes = new Uint8Array(byteChars.length);
+    const bytes    = new Uint8Array(byteChars.length);
     for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
     return new Blob([bytes], { type: "image/jpeg" });
   } catch {
@@ -43,163 +38,182 @@ async function readLocalImageBlob(filename: string): Promise<Blob | null> {
   }
 }
 
-/**
- * Upload a local image to Supabase Storage.
- * Path: {uid}/{localId}.jpg
- * Returns the public URL, or null on failure.
- */
-async function uploadImageToStorage(
-  uid: string,
-  localId: number,
-  filename: string,
-): Promise<string | null> {
+async function uploadItemImage(uid: string, localId: number, filename: string): Promise<string | null> {
   const blob = await readLocalImageBlob(filename);
   if (!blob) return null;
-
-  const sb = getSupabase();
+  const sb   = getSupabase();
   const path = `${uid}/${localId}.jpg`;
-
-  const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+  const { error } = await sb.storage.from(ITEMS_BUCKET).upload(path, blob, {
     contentType: "image/jpeg",
     upsert: true,
   });
-  if (error) {
-    console.error("[sync] image upload failed:", error.message);
-    return null;
-  }
-
-  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  if (error) { console.error("[sync] image upload failed:", error.message); return null; }
+  const { data } = sb.storage.from(ITEMS_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 
-/**
- * Delete an image from Supabase Storage.
- */
-async function deleteImageFromStorage(uid: string, localId: number): Promise<void> {
+async function deleteItemImage(uid: string, localId: number): Promise<void> {
   try {
-    const path = `${uid}/${localId}.jpg`;
-    await getSupabase().storage.from(BUCKET).remove([path]);
-  } catch {
-    // Non-critical — orphaned storage objects are acceptable
-  }
+    await getSupabase().storage.from(ITEMS_BUCKET).remove([`${uid}/${localId}.jpg`]);
+  } catch { /* non-critical */ }
 }
 
-// ── Public items sync ─────────────────────────────────────────────────────────
+// ── Clothing item sync ────────────────────────────────────────────────────────
 
 /**
- * Publish or update an item in public_items.
- * Uploads the image to Supabase Storage if one exists locally.
- * Safe to call multiple times — uses upsert on (user_id, local_id).
+ * Publish (or re-publish) an item. Uploads image best-effort.
+ * Safe to call multiple times — upserts on (user_id, local_id).
  */
 export async function publishItem(item: ClothingItem, uid: string): Promise<void> {
   if (!item.visibility || item.visibility === "private") return;
-
   try {
     const sb = getSupabase();
-
-    // Upload image first (best-effort)
     let imageUrl: string | null = null;
     if (item.imageObjectPath) {
-      imageUrl = await uploadImageToStorage(uid, item.id, item.imageObjectPath);
+      imageUrl = await uploadItemImage(uid, item.id, item.imageObjectPath);
     }
-
-    const payload = {
-      user_id:   uid,
-      local_id:  item.id,
-      name:      item.name,
-      category:  item.category,
-      color:     item.color    ?? null,
-      brand:     item.brand    ?? null,
-      size:      item.size     ?? null,
-      season:    item.season   ?? null,
-      occasion:  item.occasion ?? null,
-      notes:     item.notes    ?? null,
-      image_url: imageUrl,
-      price:     item.price    ?? null,
-      currency:  item.currency ?? null,
-      visibility: item.visibility,
-    };
-
-    const { error } = await sb
-      .from("public_items")
-      .upsert(payload, { onConflict: "user_id,local_id" });
-
-    if (error) {
-      console.error("[sync] publishItem failed:", error.message);
-    }
+    const { error } = await sb.from("public_items").upsert(
+      {
+        user_id:    uid,
+        local_id:   item.id,
+        name:       item.name,
+        category:   item.category,
+        color:      item.color    ?? null,
+        brand:      item.brand    ?? null,
+        size:       item.size     ?? null,
+        season:     item.season   ?? null,
+        occasion:   item.occasion ?? null,
+        notes:      item.notes    ?? null,
+        image_url:  imageUrl,
+        visibility: "public",
+      },
+      { onConflict: "user_id,local_id" },
+    );
+    if (error) console.error("[sync] publishItem failed:", error.message);
   } catch (e) {
     console.error("[sync] publishItem error:", e);
   }
 }
 
 /**
- * Remove an item from public_items and delete its Storage image.
- * Called when visibility changes back to 'private' or item is deleted.
+ * Remove an item from public_items and delete its storage image.
+ * Called when visibility is changed back to 'private' or item is deleted.
  */
 export async function unpublishItem(localId: number, uid: string): Promise<void> {
   try {
     const sb = getSupabase();
-
-    await sb
-      .from("public_items")
-      .delete()
-      .eq("user_id", uid)
-      .eq("local_id", localId);
-
-    await deleteImageFromStorage(uid, localId);
+    await sb.from("public_items").delete().eq("user_id", uid).eq("local_id", localId);
+    await deleteItemImage(uid, localId);
   } catch (e) {
     console.error("[sync] unpublishItem error:", e);
   }
 }
 
 /**
- * Update metadata for a currently-public item (e.g. name, notes changed).
- * Does NOT re-upload the image (image_url stays the same).
+ * Update metadata for an already-public item (name, notes, etc. changed).
+ * Does NOT re-upload the image.
  */
 export async function syncItemEdit(item: ClothingItem, uid: string): Promise<void> {
   if (!item.visibility || item.visibility === "private") return;
-
   try {
-    const sb = getSupabase();
-
-    const { error } = await sb
+    const { error } = await getSupabase()
       .from("public_items")
       .update({
-        name:      item.name,
-        category:  item.category,
-        color:     item.color    ?? null,
-        brand:     item.brand    ?? null,
-        size:      item.size     ?? null,
-        season:    item.season   ?? null,
-        occasion:  item.occasion ?? null,
-        notes:     item.notes    ?? null,
-        price:     item.price    ?? null,
-        currency:  item.currency ?? null,
-        visibility: item.visibility,
+        name:     item.name,
+        category: item.category,
+        color:    item.color    ?? null,
+        brand:    item.brand    ?? null,
+        size:     item.size     ?? null,
+        season:   item.season   ?? null,
+        occasion: item.occasion ?? null,
+        notes:    item.notes    ?? null,
       })
       .eq("user_id", uid)
       .eq("local_id", item.id);
-
-    if (error) {
-      console.error("[sync] syncItemEdit failed:", error.message);
-    }
+    if (error) console.error("[sync] syncItemEdit failed:", error.message);
   } catch (e) {
     console.error("[sync] syncItemEdit error:", e);
   }
 }
 
+// ── Outfit sync ───────────────────────────────────────────────────────────────
+
+/**
+ * Publish (or re-publish) a saved outfit. V1: no outfit image.
+ * Item names are denormalized into item_names[] for display.
+ */
+export async function publishOutfit(outfit: Outfit, uid: string): Promise<void> {
+  if (!outfit.visibility || outfit.visibility === "private") return;
+  try {
+    const itemNames = (outfit.items ?? []).map((i) => i.name).filter(Boolean);
+    const { error } = await getSupabase().from("public_outfits").upsert(
+      {
+        user_id:     uid,
+        local_id:    outfit.id,
+        name:        outfit.name ?? null,
+        description: outfit.notes ?? null,
+        item_names:  itemNames,
+        image_url:   null, // V1: no outfit cover image
+      },
+      { onConflict: "user_id,local_id" },
+    );
+    if (error) console.error("[sync] publishOutfit failed:", error.message);
+  } catch (e) {
+    console.error("[sync] publishOutfit error:", e);
+  }
+}
+
+/**
+ * Remove an outfit from public_outfits.
+ */
+export async function unpublishOutfit(localId: number, uid: string): Promise<void> {
+  try {
+    const { error } = await getSupabase()
+      .from("public_outfits")
+      .delete()
+      .eq("user_id", uid)
+      .eq("local_id", localId);
+    if (error) console.error("[sync] unpublishOutfit failed:", error.message);
+  } catch (e) {
+    console.error("[sync] unpublishOutfit error:", e);
+  }
+}
+
+/**
+ * Update metadata for an already-public outfit (name, notes changed).
+ */
+export async function syncOutfitEdit(outfit: Outfit, uid: string): Promise<void> {
+  if (!outfit.visibility || outfit.visibility === "private") return;
+  try {
+    const itemNames = (outfit.items ?? []).map((i) => i.name).filter(Boolean);
+    const { error } = await getSupabase()
+      .from("public_outfits")
+      .update({
+        name:        outfit.name ?? null,
+        description: outfit.notes ?? null,
+        item_names:  itemNames,
+      })
+      .eq("user_id", uid)
+      .eq("local_id", outfit.id);
+    if (error) console.error("[sync] syncOutfitEdit failed:", error.message);
+  } catch (e) {
+    console.error("[sync] syncOutfitEdit error:", e);
+  }
+}
+
+// ── Account cleanup ───────────────────────────────────────────────────────────
+
 /**
  * Delete all Storage objects in the user's folder.
- * Called as step 1 of account deletion (before deleting auth user).
+ * Step 1 of account deletion (before deleting auth user via Edge Function).
  */
 export async function deleteAccountStorage(uid: string): Promise<void> {
   try {
     const sb = getSupabase();
-    const { data: files, error } = await sb.storage.from(BUCKET).list(uid);
+    const { data: files, error } = await sb.storage.from(ITEMS_BUCKET).list(uid);
     if (error || !files?.length) return;
-
     const paths = files.map((f) => `${uid}/${f.name}`);
-    await sb.storage.from(BUCKET).remove(paths);
+    await sb.storage.from(ITEMS_BUCKET).remove(paths);
   } catch (e) {
     console.error("[sync] deleteAccountStorage error:", e);
   }
