@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Edit2, Check, X, Shirt, Globe, Loader2,
   Download, Upload, RefreshCw, CheckCircle2, AlertCircle,
-  LogOut, Trash2, Lock, Eye,
+  LogOut, Trash2, Lock, Eye, Share2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hooks/useCommunity";
@@ -301,17 +301,35 @@ export default function ProfileMePage() {
                 <span>{pubOutfits?.length ?? 0} outfits</span>
               </div>
 
-              {/* Preview public profile */}
+              {/* Preview + Share public profile */}
               {profile?.handle && (
-                <button
-                  onClick={() => navigate(`/profile/${profile.handle}`)}
-                  className="self-start flex items-center gap-1.5 text-xs font-bold text-black/40
-                             hover:text-black transition-colors border border-black/15 rounded-full
-                             px-3 py-1.5 hover:border-black/40"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  My Public Closet
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/profile/${profile.handle}`)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-black/40
+                               hover:text-black transition-colors border border-black/15 rounded-full
+                               px-3 py-1.5 hover:border-black/40"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    My Public Closet
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const { shareContent, profileShareUrl } = await import("@/lib/share");
+                      shareContent(
+                        profileShareUrl(profile.handle),
+                        `Check out @${profile.handle}'s public closet on My Digital Closet.`,
+                        "My Digital Closet",
+                      );
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold text-black/40
+                               hover:text-black transition-colors border border-black/15 rounded-full
+                               px-3 py-1.5 hover:border-black/40"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Share
+                  </button>
+                </div>
               )}
             </div>
           </div>

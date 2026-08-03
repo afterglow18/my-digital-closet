@@ -8,8 +8,11 @@
  * no private data sent. RLS enforces this at the DB level.
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getSupabase, isSupabaseConfigured, type PublicItem, type PublicOutfit, type Profile } from "@/lib/supabase";
+import { getDiscoverFavorites, pruneStaleDiscoverFavorites } from "@/lib/discoverFavorites";
+import { getLocalFollows, pruneStaleFollows } from "@/lib/localFollows";
+import { getBlockedUsers } from "@/lib/blockedUsers";
 
 // ── Feed filters ──────────────────────────────────────────────────────────────
 
@@ -29,6 +32,7 @@ export function useCommunityItems(filters: FeedFilters = {}) {
       let q = sb
         .from("public_items")
         .select("*, profiles(id, handle, display_name, avatar_url)")
+        .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(60);
       if (filters.category) q = q.eq("category", filters.category);
@@ -52,6 +56,7 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
       let q = sb
         .from("public_outfits")
         .select("*, profiles(id, handle, display_name, avatar_url)")
+        .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(60);
       if (filters.search) q = q.ilike("name", `%${filters.search}%`);
@@ -97,6 +102,122 @@ export function usePublicProfileItems(userId: string | undefined) {
       return (data ?? []) as PublicItem[];
     },
     enabled: Boolean(userId),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ── Following feed ────────────────────────────────────────────────────────────
+
+type FollowFeedEntry =
+  | { type: "item";   data: PublicItem   & { profiles?: Profile } }
+  | { type: "outfit"; data: PublicOutfit & { profiles?: Profile } };
+
+/**
+ * Fetches public items + outfits from locally-followed profiles, merged and
+ * sorted newest-first. Prunes stale follows (deleted / gone profiles).
+ * No account required.
+ */
+export function useFollowingFeed() {
+  const follows   = getLocalFollows();
+  const followIds = follows.map((f) => f.profileId);
+
+  return useQuery({
+    queryKey: ["following-feed", ...followIds],
+    queryFn: async (): Promise<FollowFeedEntry[]> => {
+      if (!followIds.length || !isSupabaseConfigured()) return [];
+      const sb      = getSupabase();
+      const blocked = new Set(getBlockedUsers());
+
+      const [profilesRes, itemsRes, outfitsRes] = await Promise.all([
+        // Check which profiles still exist so we can prune stale follows
+        sb.from("profiles").select("id").in("id", followIds),
+        sb
+          .from("public_items")
+          .select("*, profiles(id, handle, display_name, avatar_url)")
+          .in("user_id", followIds)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(60),
+        sb
+          .from("public_outfits")
+          .select("*, profiles(id, handle, display_name, avatar_url)")
+          .in("user_id", followIds)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(60),
+      ]);
+
+      // Prune follows whose profiles no longer exist
+      pruneStaleFollows((profilesRes.data ?? []).map((p) => p.id as string));
+
+      const items   = ((itemsRes.data   ?? []) as (PublicItem   & { profiles?: Profile })[])
+        .filter((i) => !blocked.has(i.user_id));
+      const outfits = ((outfitsRes.data ?? []) as (PublicOutfit & { profiles?: Profile })[])
+        .filter((o) => !blocked.has(o.user_id));
+
+      // Merge and sort by created_at descending
+      const feed: FollowFeedEntry[] = [
+        ...items.map((d): FollowFeedEntry   => ({ type: "item",   data: d })),
+        ...outfits.map((d): FollowFeedEntry => ({ type: "outfit", data: d })),
+      ].sort((a, b) =>
+        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime(),
+      );
+
+      return feed;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ── Discover Favorites ────────────────────────────────────────────────────────
+
+/**
+ * Fetches the actual Supabase records for locally-hearted posts.
+ * Prunes stale favorites (deleted / hidden) after each successful fetch.
+ * No account required.
+ */
+export function useDiscoverFavoriteItems() {
+  return useQuery({
+    queryKey: ["discover-favorites"],
+    queryFn: async (): Promise<{
+      items: (PublicItem & { profiles?: Profile })[];
+      outfits: (PublicOutfit & { profiles?: Profile })[];
+    }> => {
+      const favs = getDiscoverFavorites();
+      if (!favs.length || !isSupabaseConfigured()) return { items: [], outfits: [] };
+
+      const itemIds   = favs.filter((f) => f.postType === "item").map((f) => f.postId);
+      const outfitIds = favs.filter((f) => f.postType === "outfit").map((f) => f.postId);
+      const sb        = getSupabase();
+
+      const [itemsRes, outfitsRes] = await Promise.all([
+        itemIds.length
+          ? sb
+              .from("public_items")
+              .select("*, profiles(id, handle, display_name, avatar_url)")
+              .in("id", itemIds)
+              .eq("status", "active")
+          : Promise.resolve({ data: [], error: null }),
+        outfitIds.length
+          ? sb
+              .from("public_outfits")
+              .select("*, profiles(id, handle, display_name, avatar_url)")
+              .in("id", outfitIds)
+              .eq("status", "active")
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      const items   = (itemsRes.data   ?? []) as (PublicItem   & { profiles?: Profile })[];
+      const outfits = (outfitsRes.data ?? []) as (PublicOutfit & { profiles?: Profile })[];
+
+      // Remove stale local references automatically
+      pruneStaleDiscoverFavorites(
+        items.map((i) => i.id),
+        outfits.map((o) => o.id),
+      );
+
+      return { items, outfits };
+    },
     staleTime: 1000 * 60 * 2,
   });
 }

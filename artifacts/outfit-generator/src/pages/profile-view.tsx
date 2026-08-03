@@ -7,6 +7,10 @@ import React, { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Shirt, Globe, Loader2 } from "lucide-react";
+import { FollowButton } from "@/components/community/FollowButton";
+import { ShareButton } from "@/components/community/ShareButton";
+import { profileShareUrl } from "@/lib/share";
+import { useAuth } from "@/hooks/useAuth";
 import { usePublicProfile, usePublicProfileItems, usePublicProfileOutfits } from "@/hooks/useCommunity";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
@@ -19,6 +23,7 @@ export default function ProfileViewPage() {
   const [, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>("items");
 
+  const { user } = useAuth();
   const { data: profile, isLoading: profileLoading, error: profileError } = usePublicProfile(handle);
   const { data: items,   isLoading: itemsLoading }  = usePublicProfileItems(profile?.id);
   const { data: outfits, isLoading: outfitsLoading } = usePublicProfileOutfits(profile?.id);
@@ -82,10 +87,23 @@ export default function ProfileViewPage() {
         {profile.bio && (
           <p className="text-sm text-black/70 leading-relaxed">{profile.bio}</p>
         )}
-        {/* Stats */}
-        <div className="flex gap-4 text-sm font-bold">
-          <span>{items?.length ?? 0} items</span>
-          <span>{outfits?.length ?? 0} outfits</span>
+        {/* Stats + Follow */}
+        <div className="flex items-center gap-4">
+          <div className="flex gap-4 text-sm font-bold flex-1">
+            <span>{items?.length ?? 0} items</span>
+            <span>{outfits?.length ?? 0} outfits</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {profile.id !== user?.id && (
+              <FollowButton profileId={profile.id} handle={profile.handle} />
+            )}
+            <ShareButton
+              url={profileShareUrl(profile.handle)}
+              text={`Check out @${profile.handle}'s public closet on My Digital Closet.`}
+              title="My Digital Closet"
+              variant="icon"
+            />
+          </div>
         </div>
       </div>
 

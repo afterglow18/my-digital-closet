@@ -11,12 +11,39 @@ import FavoritesPage from './pages/favorites';
 import CommunityPage from './pages/community';
 import ProfileMePage from './pages/profile-me';
 import ProfileViewPage from './pages/profile-view';
+import AdminPage from './pages/admin';
+import PublicItemPage from './pages/public-item';
+import PublicOutfitPage from './pages/public-outfit';
 import SplashScreen from './components/SplashScreen';
+import { App as CapApp } from '@capacitor/app';
 import { queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/hooks/useAuth';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+/**
+ * Listens for Universal Link / deep-link opens and routes them inside the app.
+ * Handles: /profile/:handle  /item/:id  /outfit/:id
+ */
+function DeepLinkHandler() {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    CapApp.addListener('appUrlOpen', ({ url }) => {
+      try {
+        const path = new URL(url).pathname;
+        const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+        const route = base ? path.replace(new RegExp(`^${base}`), '') : path;
+        if (/^\/(profile|item|outfit)\//.test(route)) navigate(route);
+      } catch {}
+    }).then((handle) => {
+      cleanup = () => handle.remove();
+    }).catch(() => {});
+    return () => cleanup?.();
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
 
 /** Handles the deep-link callback for email confirmation and password reset */
 function AuthCallback() {
@@ -60,6 +87,10 @@ export default function App() {
               <Route path="/profile/me" component={ProfileMePage} />
               <Route path="/profile/:handle" component={ProfileViewPage} />
               <Route path="/auth/callback" component={AuthCallback} />
+              <Route path="/admin"           component={AdminPage} />
+              <Route path="/item/:id"        component={PublicItemPage} />
+              <Route path="/outfit/:id"      component={PublicOutfitPage} />
+              <DeepLinkHandler />
             </Switch>
           </AppLayout>
         </WouterRouter>

@@ -6,7 +6,7 @@
  */
 import React, { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Heart } from "lucide-react";
+import { Heart, Globe, Loader2 } from "lucide-react";
 import {
   useListClothing,
   useUpdateClothingItem,
@@ -14,8 +14,13 @@ import {
   ClothingItem,
 } from "@/lib/local-api";
 import { useQueryClient } from "@tanstack/react-query";
-import { getImageUrl } from "@/lib/utils";
+import { getImageUrl, cn } from "@/lib/utils";
 import { ItemDetailsSheet } from "@/components/clothing/ItemDetailsSheet";
+import { useDiscoverFavoriteItems } from "@/hooks/useCommunity";
+import { PublicItemCard } from "@/components/community/PublicItemCard";
+import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
+
+type FavTab = "my-items" | "discover";
 
 import {
   DndContext,
@@ -128,6 +133,9 @@ function SortableTile({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FavoritesPage() {
+  const [tab, setTab] = useState<FavTab>("my-items");
+  const discoverFavs  = useDiscoverFavoriteItems();
+
   // Fetch all items in one query (no category filter) so nothing is missed
   const { data: allItems = [], isLoading } = useListClothing({});
 
@@ -168,19 +176,96 @@ export default function FavoritesPage() {
     setDetailsItem(null);
   };
 
+  const discoverItems   = discoverFavs.data?.items   ?? [];
+  const discoverOutfits = discoverFavs.data?.outfits ?? [];
+  const discoverTotal   = discoverItems.length + discoverOutfits.length;
+
   return (
     <div className="min-h-full flex flex-col pt-8 px-4 pb-8 bg-secondary/10">
 
-      <header className="mb-5">
+      <header className="mb-4">
         <h1 className="text-4xl font-display font-bold uppercase tracking-tighter mb-1">
           Totally 💛
         </h1>
-        <p className="font-medium text-muted-foreground text-sm">
-          Hearted pieces. Hold &amp; drag to reorder.
-        </p>
       </header>
 
-      {isLoading ? (
+      {/* ── Tab selector ── */}
+      <div className="flex border-2 border-black rounded-xl overflow-hidden mb-5 bg-white">
+        <button
+          onClick={() => setTab("my-items")}
+          className={cn(
+            "flex-1 py-2.5 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5",
+            tab === "my-items" ? "bg-primary" : "bg-white",
+          )}
+        >
+          <Heart className="w-3.5 h-3.5" /> My Items
+        </button>
+        <button
+          onClick={() => setTab("discover")}
+          className={cn(
+            "flex-1 py-2.5 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5",
+            tab === "discover" ? "bg-primary" : "bg-white",
+          )}
+        >
+          <Globe className="w-3.5 h-3.5" /> Discover
+          {discoverTotal > 0 && (
+            <span className="bg-black text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              {discoverTotal}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Discover tab ── */}
+      {tab === "discover" && (
+        discoverFavs.isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-black/30" />
+          </div>
+        ) : discoverTotal === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8
+                          bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+                          rounded-xl mt-2">
+            <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center border-2 border-black mb-4">
+              <Globe className="w-7 h-7" />
+            </div>
+            <h3 className="font-display font-bold text-xl mb-2">No hearts yet.</h3>
+            <p className="text-sm font-medium text-muted-foreground">
+              Tap the ❤️ on any item or outfit in Discover to save it here.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            {discoverItems.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2">
+                  Items · {discoverItems.length}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {discoverItems.map((item) => (
+                    <PublicItemCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {discoverOutfits.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2">
+                  Outfits · {discoverOutfits.length}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {discoverOutfits.map((outfit) => (
+                    <PublicOutfitCard key={outfit.id} outfit={outfit} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {/* ── My Items tab ── */}
+      {tab === "my-items" && (isLoading ? (
         <div className="grid grid-cols-4 gap-3">
           {[1,2,3,4,5,6,7,8].map((i) => (
             <div key={i} className="aspect-square bg-muted animate-pulse border-2 border-black rounded-xl" />
@@ -212,7 +297,7 @@ export default function FavoritesPage() {
             Tap any item in your wardrobe, then tap the ❤️ to save it here.
           </p>
         </div>
-      )}
+      ))}
 
       {/* Item details sheet — opened from favorites, so show Add to Lookbook */}
       <AnimatePresence>

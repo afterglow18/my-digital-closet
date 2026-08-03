@@ -76,6 +76,7 @@ export interface PublicItem {
   image_url: string | null;
   notes: string | null;
   visibility: "public";    // V1 only
+  status: "active" | "pending_review" | "removed";
   created_at: string;
   updated_at: string;
   profiles?: Profile;
@@ -90,7 +91,36 @@ export interface PublicOutfit {
   description: string | null;
   image_url: string | null;
   item_names: string[] | null; // denormalized item names for display
+  status: "active" | "pending_review" | "removed";
   created_at: string;
   updated_at: string;
   profiles?: Profile;
+}
+
+// ── Reporting ─────────────────────────────────────────────────────────────────
+
+export type ReportReason = "nudity" | "harassment" | "spam" | "copyright" | "other";
+
+export interface SubmitReportParams {
+  postId: string;
+  postType: "item" | "outfit";
+  reason: ReportReason;
+  reporterId: string;
+}
+
+/**
+ * Insert a report row.
+ * The DB trigger auto-hides the post when it reaches 3 distinct reporters.
+ * Throws on error (including duplicate from same reporter).
+ */
+export async function submitReport({
+  postId,
+  postType,
+  reason,
+  reporterId,
+}: SubmitReportParams): Promise<void> {
+  const { error } = await getSupabase()
+    .from("reports")
+    .insert({ post_id: postId, post_type: postType, reason, reporter_id: reporterId });
+  if (error) throw new Error(error.message);
 }

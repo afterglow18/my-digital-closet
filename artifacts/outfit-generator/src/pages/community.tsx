@@ -11,10 +11,11 @@
 
 import React, { useState, useEffect, useContext } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Compass, Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2 } from "lucide-react";
+import { Compass, Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityItems, useCommunityOutfits } from "@/hooks/useCommunity";
+import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
+import { getFollowCount } from "@/lib/localFollows";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
@@ -23,7 +24,7 @@ import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 
-type FeedTab = "items" | "outfits";
+type FeedTab = "items" | "outfits" | "following";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: "" },
@@ -42,16 +43,20 @@ export default function CommunityPage() {
   const [category, setCategory] = useState("");
   const [search, setSearch]     = useState("");
 
-  const itemsQuery   = useCommunityItems({ category: category || undefined, search: search || undefined });
-  const outfitsQuery = useCommunityOutfits({ search: search || undefined });
+  const itemsQuery     = useCommunityItems({ category: category || undefined, search: search || undefined });
+  const outfitsQuery   = useCommunityOutfits({ search: search || undefined });
+  const followingQuery = useFollowingFeed();
 
-  const { data: items,   isLoading: itemsLoading,   error: itemsError,   refetch: refetchItems }   = itemsQuery;
-  const { data: outfits, isLoading: outfitsLoading, error: outfitsError, refetch: refetchOutfits } = outfitsQuery;
+  const { data: items,      isLoading: itemsLoading,   error: itemsError,   refetch: refetchItems }   = itemsQuery;
+  const { data: outfits,    isLoading: outfitsLoading, error: outfitsError, refetch: refetchOutfits } = outfitsQuery;
+  const { data: followFeed = [], isLoading: followLoading, refetch: refetchFollowing } = followingQuery;
 
-  const isLoading = feedTab === "items" ? itemsLoading   : outfitsLoading;
-  const error     = feedTab === "items" ? itemsError     : outfitsError;
-  const refetch   = feedTab === "items" ? refetchItems   : refetchOutfits;
-  const isEmpty   = feedTab === "items" ? !items?.length : !outfits?.length;
+  const isLoading = feedTab === "items" ? itemsLoading : feedTab === "outfits" ? outfitsLoading : followLoading;
+  const error     = feedTab === "items" ? itemsError   : feedTab === "outfits" ? outfitsError   : null;
+  const refetch   = feedTab === "items" ? refetchItems : feedTab === "outfits" ? refetchOutfits : refetchFollowing;
+  const isEmpty   = feedTab === "items" ? !items?.length : feedTab === "outfits" ? !outfits?.length : !followFeed.length;
+
+  const followCount = getFollowCount();
 
   /** After sign-in, navigate to the wardrobe so the user can choose what to publish. */
   const handleShareSignInSuccess = () => navigate("/");
@@ -159,45 +164,55 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        {/* ── Search ── */}
+        {/* ── Items / Outfits / Following toggle ── */}
         <div className="px-4 pb-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search styles…"
-              className="w-full pl-9 pr-4 py-2.5 border-2 border-black rounded-xl text-sm font-medium
-                         bg-white focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25"
-            />
-          </div>
-        </div>
-
-        {/* ── Items / Outfits toggle ── */}
-        <div className="px-4 pb-2">
-          <div className="grid grid-cols-2 gap-1 bg-black/5 rounded-xl p-1">
-            {([
-              { tab: "items",   label: "Items",   icon: Shirt },
-              { tab: "outfits", label: "Outfits", icon: Globe },
-            ] as const).map(({ tab, label, icon: Icon }) => (
+          <div className="grid grid-cols-3 gap-1 bg-black/5 rounded-xl p-1">
+            {(
+              [
+                { tab: "items"     as FeedTab, label: "Items",     icon: Shirt, badge: undefined      },
+                { tab: "outfits"   as FeedTab, label: "Outfits",   icon: Globe, badge: undefined      },
+                { tab: "following" as FeedTab, label: "Following", icon: Users, badge: followCount    },
+              ]
+            ).map(({ tab, label, icon: Icon, badge }) => (
               <button
                 key={tab}
                 onClick={() => setFeedTab(tab)}
                 className={cn(
-                  "py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all",
-                  "flex items-center justify-center gap-1.5",
+                  "py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all",
+                  "flex items-center justify-center gap-1",
                   feedTab === tab
                     ? "bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                     : "text-black/40 hover:text-black",
                 )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 {label}
+                {badge != null && badge > 0 && (
+                  <span className="bg-black text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </div>
+
+        {/* ── Search (hidden on Following tab — feed is already curated) ── */}
+        {feedTab !== "following" && (
+          <div className="px-4 pb-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search styles…"
+                className="w-full pl-9 pr-4 py-2.5 border-2 border-black rounded-xl text-sm font-medium
+                           bg-white focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25"
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Category filter chips (items tab only) ── */}
         {feedTab === "items" && (
@@ -239,19 +254,37 @@ export default function CommunityPage() {
           </div>
         ) : isEmpty ? (
           <div className="flex flex-col items-center gap-2 py-16 px-6 text-center">
-            <Globe className="w-10 h-10 text-black/15" />
-            <p className="text-sm font-bold text-black/40 uppercase">Nothing here yet</p>
-            <p className="text-xs text-black/30 max-w-xs">
-              Be the first to share your style. Open{" "}
-              {feedTab === "items" ? "any item" : "any saved look"} and set it to Public.
-            </p>
+            {feedTab === "following" ? (
+              <>
+                <Users className="w-10 h-10 text-black/15" />
+                <p className="text-sm font-bold text-black/40 uppercase">No one followed yet</p>
+                <p className="text-xs text-black/30 max-w-xs">
+                  Visit a public profile and tap Follow to see their posts here.
+                </p>
+              </>
+            ) : (
+              <>
+                <Globe className="w-10 h-10 text-black/15" />
+                <p className="text-sm font-bold text-black/40 uppercase">Nothing here yet</p>
+                <p className="text-xs text-black/30 max-w-xs">
+                  Be the first to share your style. Open{" "}
+                  {feedTab === "items" ? "any item" : "any saved look"} and set it to Public.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="px-4 pb-4">
             <div className="grid grid-cols-2 gap-3">
-              {feedTab === "items"
-                ? items!.map((item) => <PublicItemCard key={item.id} item={item} />)
-                : outfits!.map((outfit) => <PublicOutfitCard key={outfit.id} outfit={outfit} />)}
+              {feedTab === "following"
+                ? followFeed.map((entry) =>
+                    entry.type === "item"
+                      ? <PublicItemCard   key={entry.data.id} item={entry.data}     />
+                      : <PublicOutfitCard key={entry.data.id} outfit={entry.data}   />
+                  )
+                : feedTab === "items"
+                  ? items!.map((item)     => <PublicItemCard   key={item.id}   item={item}     />)
+                  : outfits!.map((outfit) => <PublicOutfitCard key={outfit.id} outfit={outfit} />)}
             </div>
           </div>
         )}
