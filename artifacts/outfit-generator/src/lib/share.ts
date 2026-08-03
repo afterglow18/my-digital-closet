@@ -28,7 +28,7 @@ export const APP_STORE_URL: string =
   (import.meta.env.VITE_APP_STORE_URL as string | undefined)?.trim() ||
   (import.meta.env.VITE_APP_STORE_ID
     ? `https://apps.apple.com/app/my-digital-closet/id${import.meta.env.VITE_APP_STORE_ID as string}`
-    : "");
+    : "https://apps.apple.com/us/app/my-digital-closet/id6789233372");
 
 /**
  * Value for the `content` attribute of the iOS Smart App Banner meta tag.
