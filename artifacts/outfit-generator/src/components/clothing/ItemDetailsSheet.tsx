@@ -27,10 +27,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { getImageUrl } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { publishItem, unpublishItem, syncItemEdit } from "@/lib/sync";
+import { useMyProfile } from "@/hooks/useCommunity";
+import { publishItem, unpublishItem, syncItemEdit, changePrivacyMode } from "@/lib/sync";
 import { VisibilityPicker } from "@/components/clothing/VisibilityPicker";
 import { AuthSheet } from "@/components/auth/AuthSheet";
-import { ShareConfirmSheet } from "@/components/community/ShareConfirmSheet";
+import { SharingModeSheet } from "@/components/community/SharingModeSheet";
+import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
+import { hasSavedPref, getSharingPref, setSharingPref } from "@/lib/sharingPreference";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -356,10 +359,13 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
   const updateItem  = useUpdateClothingItem();
   const deleteItem  = useDeleteClothingItem();
   const queryClient = useQueryClient();
-  const { user }    = useAuth();
-  const [showAuthSheet,    setShowAuthSheet]    = useState(false);
-  const [showShareConfirm, setShowShareConfirm] = useState(false);
-  const [publishError,     setPublishError]     = useState<string | null>(null);
+  const { user }            = useAuth();
+  const { data: myProfile } = useMyProfile(user?.id);
+  const [showAuthSheet,   setShowAuthSheet]   = useState(false);
+  const [showSharingMode,  setShowSharingMode]  = useState(false);
+  const [showPrivateGate,  setShowPrivateGate]  = useState(false);
+  const [publishError,    setPublishError]    = useState<string | null>(null);
+  const postAuthSharingRef = useRef(false);
 
   // Reset form whenever item changes
   useEffect(() => {
@@ -708,12 +714,27 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
         <div className="border-2 border-black/10 rounded-xl p-3 bg-white flex flex-col gap-3">
           <VisibilityPicker
             value={form.visibility}
-            onChange={(v) => patch("visibility")(v)}
+            onChange={(v) => {
+              patch("visibility")(v);
+              if (v === "public" && user && isSupabaseConfigured()) {
+                if (myProfile?.privacy_mode === "private") {
+                  // Private-mode user — ask them to switch participation first
+                  setShowPrivateGate(true);
+                } else if (hasSavedPref()) {
+                  // Has a remembered preference — apply it silently.
+                  // User still taps Save to complete the publish.
+                  getSupabase().auth.getSession().then(async ({ data: { session } }) => {
+                    if (session?.user?.id) await changePrivacyMode(session.user.id, getSharingPref());
+                  });
+                } else {
+                  setShowSharingMode(true);
+                }
+              }
+            }}
             onNeedSignIn={() => {
-              // Optimistically pre-select Public so the form is ready after sign-in,
-              // then walk through: ShareConfirmSheet → AuthSheet → auto-save.
+              // Not logged in — pre-select Public then open AuthSheet directly.
               patch("visibility")("public");
-              setShowShareConfirm(true);
+              setShowAuthSheet(true);
             }}
             isSignedIn={Boolean(user)}
           />
@@ -829,25 +850,76 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
       )}
     </AnimatePresence>
 
-    {/* ── Share confirm sheet → then Auth sheet ── */}
+    {/* ── Sharing mode picker ── */}
     <AnimatePresence>
-      {showShareConfirm && item && (
-        <ShareConfirmSheet
-          kind="item"
-          name={item.name}
-          onContinue={() => { setShowShareConfirm(false); setShowAuthSheet(true); }}
+      {showSharingMode && (
+        <SharingModeSheet
           onCancel={() => {
-            setShowShareConfirm(false);
-            patch("visibility")("private"); // revert if user bails
+            setShowSharingMode(false);
+            if (postAuthSharingRef.current) {
+              postAuthSharingRef.current = false;
+              patch("visibility")("private"); // revert if cancelled after auth
+            }
+          }}
+          onConfirm={async (mode) => {
+            setShowSharingMode(false);
+            const { data: { session } } = await getSupabase().auth.getSession();
+            const uid = session?.user?.id;
+            if (uid) await changePrivacyMode(uid, mode);
+            if (postAuthSharingRef.current) {
+              postAuthSharingRef.current = false;
+              handleSaveRef.current(); // auto-save for the post-auth flow
+            }
+            // For already-logged-in flow: user taps Save manually
           }}
         />
       )}
     </AnimatePresence>
+    {/* ── Private gate (globe tapped while in Private mode) ── */}
+    <AnimatePresence>
+      {showPrivateGate && (
+        <PrivateGateSheet
+          action="share"
+          onClose={() => {
+            setShowPrivateGate(false);
+            patch("visibility")("private"); // revert the picker
+          }}
+          onConfirm={async (mode) => {
+            setShowPrivateGate(false);
+            const { data: { session } } = await getSupabase().auth.getSession();
+            const uid = session?.user?.id;
+            if (uid) {
+              await changePrivacyMode(uid, mode);
+              setSharingPref(mode);
+              handleSaveRef.current(); // auto-save with new mode
+            }
+          }}
+        />
+      )}
+    </AnimatePresence>
+    {/* ── Auth sheet ── */}
     <AnimatePresence>
       {showAuthSheet && (
         <AuthSheet
-          onClose={() => setShowAuthSheet(false)}
-          onSuccess={() => handleSaveRef.current()}
+          onClose={() => {
+            setShowAuthSheet(false);
+            patch("visibility")("private"); // revert if user closes without signing in
+          }}
+          onSuccess={() => {
+            setShowAuthSheet(false);
+            if (hasSavedPref()) {
+              // Returning user with a saved preference — skip the picker
+              const mode = getSharingPref();
+              getSupabase().auth.getSession().then(async ({ data: { session } }) => {
+                const uid = session?.user?.id;
+                if (uid) await changePrivacyMode(uid, mode);
+                handleSaveRef.current();
+              });
+            } else {
+              postAuthSharingRef.current = true;
+              setShowSharingMode(true);
+            }
+          }}
         />
       )}
     </AnimatePresence>

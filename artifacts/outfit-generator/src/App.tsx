@@ -11,6 +11,7 @@ import FavoritesPage from './pages/favorites';
 import CommunityPage from './pages/community';
 import ProfileMePage from './pages/profile-me';
 import ProfileViewPage from './pages/profile-view';
+import SettingsPage from './pages/settings';
 import AdminPage from './pages/admin';
 import PublicItemPage from './pages/public-item';
 import PublicOutfitPage from './pages/public-outfit';
@@ -86,6 +87,7 @@ export default function App() {
               <Route path="/community" component={CommunityPage} />
               <Route path="/profile/me" component={ProfileMePage} />
               <Route path="/profile/:handle" component={ProfileViewPage} />
+              <Route path="/settings"       component={SettingsPage} />
               <Route path="/auth/callback" component={AuthCallback} />
               <Route path="/admin"           component={AdminPage} />
               <Route path="/item/:id"        component={PublicItemPage} />

@@ -60,6 +60,8 @@ export interface Profile {
   bio: string | null;
   privacy_mode: "private" | "anonymous" | "public";
   created_at: string;
+  /** ISO timestamp of the last handle change. NULL = never changed. */
+  handle_changed_at: string | null;
 }
 
 /** A clothing item published to the community (V1: visibility is always 'public'). */

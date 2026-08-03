@@ -199,6 +199,20 @@ export function deleteOutfit(id: number): void {
   saveAllStoredOutfits(getAllStoredOutfits().filter((o) => o.id !== id));
 }
 
+/**
+ * Bulk-reset all clothing items and outfits to private (local only).
+ * Called when the user switches their community mode to Private so the
+ * visibility badge in item/outfit detail views reflects the new state.
+ */
+export function resetAllVisibilityToPrivate(): void {
+  saveAllClothingItems(
+    getAllClothingItems().map((i) => ({ ...i, visibility: "private" as const })),
+  );
+  saveAllStoredOutfits(
+    getAllStoredOutfits().map((o) => ({ ...o, visibility: "private" as const })),
+  );
+}
+
 export function addItemToOutfit(outfitId: number, itemId: number): Outfit | null {
   const stored = getAllStoredOutfits();
   const idx = stored.findIndex((o) => o.id === outfitId);

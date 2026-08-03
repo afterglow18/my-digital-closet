@@ -48,7 +48,10 @@ export function useCommunityItems(filters: FeedFilters = {}) {
       const sb = getSupabase();
       let q = sb
         .from("public_items")
-        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
+        // profiles(*) avoids a 400 error if privacy_mode column doesn't exist yet.
+        // Run supabase-patch-privacy-mode.sql to add the column; this query will
+        // automatically return it once the patch is applied.
+        .select("*, profiles(*)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -76,7 +79,7 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
       const sb = getSupabase();
       let q = sb
         .from("public_outfits")
-        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
+        .select("*, profiles(*)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -158,14 +161,14 @@ export function useFollowingFeed() {
         sb.from("profiles").select("id").in("id", followIds),
         sb
           .from("public_items")
-          .select("*, profiles(id, handle, display_name, avatar_url)")
+          .select("*, profiles(*)")
           .in("user_id", followIds)
           .eq("status", "active")
           .order("created_at", { ascending: false })
           .limit(60),
         sb
           .from("public_outfits")
-          .select("*, profiles(id, handle, display_name, avatar_url)")
+          .select("*, profiles(*)")
           .in("user_id", followIds)
           .eq("status", "active")
           .order("created_at", { ascending: false })
@@ -219,14 +222,14 @@ export function useDiscoverFavoriteItems() {
         itemIds.length
           ? sb
               .from("public_items")
-              .select("*, profiles(id, handle, display_name, avatar_url)")
+              .select("*, profiles(*)")
               .in("id", itemIds)
               .eq("status", "active")
           : Promise.resolve({ data: [], error: null }),
         outfitIds.length
           ? sb
               .from("public_outfits")
-              .select("*, profiles(id, handle, display_name, avatar_url)")
+              .select("*, profiles(*)")
               .in("id", outfitIds)
               .eq("status", "active")
           : Promise.resolve({ data: [], error: null }),

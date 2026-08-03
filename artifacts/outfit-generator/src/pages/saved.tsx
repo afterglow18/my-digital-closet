@@ -22,9 +22,12 @@ import { FREE_OUTFIT_LIMIT } from "@/lib/entitlements";
 import { WardrobePickerSheet } from "@/components/clothing/WardrobePickerSheet";
 import { ItemDetailsSheet } from "@/components/clothing/ItemDetailsSheet";
 import { useAuth } from "@/hooks/useAuth";
-import { publishOutfit, unpublishOutfit } from "@/lib/sync";
+import { publishOutfit, unpublishOutfit, changePrivacyMode } from "@/lib/sync";
 import { AuthSheet } from "@/components/auth/AuthSheet";
-import { ShareConfirmSheet } from "@/components/community/ShareConfirmSheet";
+import { SharingModeSheet } from "@/components/community/SharingModeSheet";
+import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
+import { hasSavedPref, getSharingPref, setSharingPref } from "@/lib/sharingPreference";
+import { useMyProfile } from "@/hooks/useCommunity";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Outfit } from "@/lib/db";
 
@@ -77,10 +80,13 @@ function ItemPhoto({
 
 export default function SavedPage() {
   const { data: outfits, isLoading } = useListOutfits();
-  const { user } = useAuth();
-  const [showAuthSheet,    setShowAuthSheet]    = useState(false);
-  const [showShareConfirm, setShowShareConfirm] = useState(false);
+  const { user }            = useAuth();
+  const { data: myProfile } = useMyProfile(user?.id);
+  const [showAuthSheet,   setShowAuthSheet]   = useState(false);
+  const [showSharingMode,  setShowSharingMode]  = useState(false);
+  const [showPrivateGate,  setShowPrivateGate]  = useState(false);
   const pendingShareOutfitRef = useRef<Outfit | null>(null);
+  const postAuthSharingRef = useRef(false);
   const [publishingIds, setPublishingIds] = useState<Set<number>>(new Set());
   const deleteOutfit = useDeleteOutfit();
   const renameOutfit = useRenameOutfit();
@@ -173,26 +179,43 @@ export default function SavedPage() {
 
   const handleToggleOutfitVisibility = async (outfit: Outfit) => {
     const isPublic = outfit.visibility === "public";
-    if (!isPublic && !user) {
-      // Walk through share-confirm → auth → auto-publish
-      pendingShareOutfitRef.current = outfit;
-      setShowShareConfirm(true);
+
+    if (isPublic) {
+      // Unpublish immediately — no sharing picker needed
+      setPublishingIds((s) => new Set([...s, outfit.id]));
+      renameOutfit.mutate(
+        { id: outfit.id, data: { visibility: "private" } },
+        { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+      );
+      if (user) await unpublishOutfit(outfit.id, user.id);
+      setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
       return;
     }
-    const newVisibility: "private" | "public" = isPublic ? "private" : "public";
-    setPublishingIds((s) => new Set([...s, outfit.id]));
-    renameOutfit.mutate(
-      { id: outfit.id, data: { visibility: newVisibility } },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
-    );
-    if (user) {
-      if (newVisibility === "public") {
-        await publishOutfit({ ...outfit, visibility: "public" }, user.id);
-      } else {
-        await unpublishOutfit(outfit.id, user.id);
-      }
+
+    // Publishing: skip the picker when the user has a saved preference
+    pendingShareOutfitRef.current = outfit;
+    if (!user) {
+      postAuthSharingRef.current = true;
+      setShowAuthSheet(true);
+    } else if (myProfile?.privacy_mode === "private") {
+      setShowPrivateGate(true);
+    } else if (hasSavedPref()) {
+      // One-tap publish with remembered mode
+      const mode = getSharingPref();
+      const uid  = user.id;
+      pendingShareOutfitRef.current = null;
+      setPublishingIds((s) => new Set([...s, outfit.id]));
+      await changePrivacyMode(uid, mode);
+      renameOutfit.mutate(
+        { id: outfit.id, data: { visibility: "public" } },
+        { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+      );
+      await publishOutfit({ ...outfit, visibility: "public" }, uid);
+      setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
+    } else {
+      postAuthSharingRef.current = false;
+      setShowSharingMode(true);
     }
-    setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
   };
 
   const handleDelete = (id: number) => {
@@ -841,37 +864,104 @@ export default function SavedPage() {
         )}
       </AnimatePresence>
 
-      {/* Share confirm sheet → Auth sheet */}
+      {/* Sharing mode picker */}
       <AnimatePresence>
-        {showShareConfirm && pendingShareOutfitRef.current && (
-          <ShareConfirmSheet
-            kind="outfit"
-            name={pendingShareOutfitRef.current.name ?? ""}
-            onContinue={() => { setShowShareConfirm(false); setShowAuthSheet(true); }}
+        {showSharingMode && (
+          <SharingModeSheet
             onCancel={() => {
-              setShowShareConfirm(false);
+              setShowSharingMode(false);
               pendingShareOutfitRef.current = null;
+              postAuthSharingRef.current = false;
+            }}
+            onConfirm={async (mode) => {
+              setShowSharingMode(false);
+              const outfit = pendingShareOutfitRef.current;
+              if (!outfit) return;
+              pendingShareOutfitRef.current = null;
+
+              // Use fresh session when post-auth, otherwise fall back to context user
+              let uid: string | undefined = user?.id;
+              if (postAuthSharingRef.current || !uid) {
+                const { data: { session } } = await getSupabase().auth.getSession();
+                uid = session?.user?.id;
+              }
+              postAuthSharingRef.current = false;
+              if (!uid) return;
+
+              await changePrivacyMode(uid, mode);
+
+              setPublishingIds((s) => new Set([...s, outfit.id]));
+              renameOutfit.mutate(
+                { id: outfit.id, data: { visibility: "public" } },
+                { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+              );
+              await publishOutfit({ ...outfit, visibility: "public" }, uid);
+              setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
             }}
           />
         )}
       </AnimatePresence>
+      {/* Private gate (globe tapped while in Private mode) */}
+      <AnimatePresence>
+        {showPrivateGate && (
+          <PrivateGateSheet
+            action="share"
+            onClose={() => {
+              setShowPrivateGate(false);
+              pendingShareOutfitRef.current = null;
+            }}
+            onConfirm={async (mode) => {
+              setShowPrivateGate(false);
+              const outfit = pendingShareOutfitRef.current;
+              if (!outfit || !user) return;
+              pendingShareOutfitRef.current = null;
+              await changePrivacyMode(user.id, mode);
+              setSharingPref(mode);
+              setPublishingIds((s) => new Set([...s, outfit.id]));
+              renameOutfit.mutate(
+                { id: outfit.id, data: { visibility: "public" } },
+                { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+              );
+              await publishOutfit({ ...outfit, visibility: "public" }, user.id);
+              setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
+            }}
+          />
+        )}
+      </AnimatePresence>
+      {/* Auth sheet (for unauthenticated share attempts) */}
       <AnimatePresence>
         {showAuthSheet && (
           <AuthSheet
-            onClose={() => setShowAuthSheet(false)}
+            onClose={() => {
+              setShowAuthSheet(false);
+              pendingShareOutfitRef.current = null;
+              postAuthSharingRef.current = false;
+            }}
             defaultTab="signup"
             onSuccess={() => {
-              const pendingOutfit = pendingShareOutfitRef.current;
-              if (!pendingOutfit || !isSupabaseConfigured()) return;
-              pendingShareOutfitRef.current = null;
-              getSupabase().auth.getSession().then(({ data: { session } }) => {
-                if (!session?.user) return;
-                renameOutfit.mutate(
-                  { id: pendingOutfit.id, data: { visibility: "public" } },
-                  { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
-                );
-                publishOutfit({ ...pendingOutfit, visibility: "public" }, session.user.id);
-              });
+              setShowAuthSheet(false);
+              const outfit = pendingShareOutfitRef.current;
+              if (!outfit) return;
+              if (hasSavedPref()) {
+                // Returning user — skip the picker, publish immediately
+                const mode = getSharingPref();
+                pendingShareOutfitRef.current = null;
+                postAuthSharingRef.current = false;
+                getSupabase().auth.getSession().then(async ({ data: { session } }) => {
+                  const uid = session?.user?.id;
+                  if (!uid) return;
+                  await changePrivacyMode(uid, mode);
+                  setPublishingIds((s) => new Set([...s, outfit.id]));
+                  renameOutfit.mutate(
+                    { id: outfit.id, data: { visibility: "public" } },
+                    { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+                  );
+                  await publishOutfit({ ...outfit, visibility: "public" }, uid);
+                  setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
+                });
+              } else {
+                setShowSharingMode(true);
+              }
             }}
           />
         )}

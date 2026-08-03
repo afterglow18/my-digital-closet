@@ -21,11 +21,16 @@ import { useLocation } from "wouter";
 import type { PublicOutfit, Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyProfile } from "@/hooks/useCommunity";
 import { isDiscoverFavorite, toggleDiscoverFavorite } from "@/lib/discoverFavorites";
 import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
-import { shareContent, outfitShareUrl } from "@/lib/share";
+import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
+import { shareContent, outfitShareUrl, buildOutfitShareText } from "@/lib/share";
+import { changePrivacyMode } from "@/lib/sync";
+import { setSharingPref } from "@/lib/sharingPreference";
+import { syncLike } from "@/lib/likes";
 
 interface PublicOutfitCardProps {
   outfit: PublicOutfit & { profiles?: Profile };
@@ -34,14 +39,16 @@ interface PublicOutfitCardProps {
 }
 
 export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCardProps) {
-  const { user }                     = useAuth();
-  const [, navigate]                 = useLocation();
-  const [hearted,    setHearted]     = useState(() => isDiscoverFavorite(outfit.id));
-  const [heartAnim,  setHeartAnim]   = useState(false);
-  const [blocked,    setBlocked]     = useState(() => isBlocked(outfit.user_id));
-  const [showMenu,   setShowMenu]    = useState(false);
-  const [showReport, setShowReport]  = useState(false);
-  const [showAuth,   setShowAuth]    = useState(false);
+  const { user }                      = useAuth();
+  const { data: myProfile }           = useMyProfile(user?.id);
+  const [, navigate]                  = useLocation();
+  const [hearted,      setHearted]    = useState(() => isDiscoverFavorite(outfit.id));
+  const [heartAnim,    setHeartAnim]  = useState(false);
+  const [blocked,      setBlocked]    = useState(() => isBlocked(outfit.user_id));
+  const [showMenu,     setShowMenu]   = useState(false);
+  const [showReport,   setShowReport] = useState(false);
+  const [showAuth,     setShowAuth]   = useState(false);
+  const [showPrivGate, setShowPrivGate] = useState(false);
 
   if (blocked) return null;
 
@@ -53,13 +60,15 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
 
   const handleHeart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user) { setShowAuth(true); return; }
+    if (!user)                                 { setShowAuth(true);     return; }
+    if (myProfile?.privacy_mode === "private") { setShowPrivGate(true); return; }
     const next = toggleDiscoverFavorite(outfit.id, "outfit");
     setHearted(next);
     if (next) {
       setHeartAnim(true);
       setTimeout(() => setHeartAnim(false), 500);
     }
+    syncLike(outfit.id, "outfit", next, user.id); // fire-and-forget; triggers notification
   };
 
   const handleProfileTap = (e: React.MouseEvent) => {
@@ -170,7 +179,11 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMenu(false);
-                  shareContent(outfitShareUrl(outfit.id), `Check out this look on My Digital Closet.`, "My Digital Closet");
+                  shareContent(
+                    outfitShareUrl(outfit.id),
+                    buildOutfitShareText(outfit.name, privacyMode, profile?.handle, outfitShareUrl(outfit.id)),
+                    "My Digital Closet",
+                  );
                 }}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
                            border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
@@ -218,6 +231,26 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             onClose={() => setShowAuth(false)}
             onSuccess={() => setShowAuth(false)}
             defaultTab="signup"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Private gate (heart tapped while in Private mode) ── */}
+      <AnimatePresence>
+        {showPrivGate && (
+          <PrivateGateSheet
+            action="heart"
+            onClose={() => setShowPrivGate(false)}
+            onConfirm={async (mode) => {
+              setShowPrivGate(false);
+              if (!user) return;
+              await changePrivacyMode(user.id, mode);
+              setSharingPref(mode);
+              const next = toggleDiscoverFavorite(outfit.id, "outfit");
+              setHearted(next);
+              if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); }
+              syncLike(outfit.id, "outfit", next, user.id);
+            }}
           />
         )}
       </AnimatePresence>

@@ -15,6 +15,27 @@ const BASE_URL =
   (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined)?.replace(/\/$/, "") ??
   "https://mydigitalcloset.app";
 
+/**
+ * App Store URL for the "Get the App" CTA on web landing pages.
+ * Set VITE_APP_STORE_ID in Replit Secrets once the app is published.
+ * e.g. VITE_APP_STORE_ID=123456789
+ */
+export const APP_STORE_URL: string =
+  import.meta.env.VITE_APP_STORE_ID
+    ? `https://apps.apple.com/app/my-digital-closet/id${import.meta.env.VITE_APP_STORE_ID as string}`
+    : "https://apps.apple.com/app/my-digital-closet"; // generic search URL as fallback
+
+/**
+ * Value for the `content` attribute of the iOS Smart App Banner meta tag.
+ * Browsers that support it (Safari on iOS) show a banner:
+ *   "My Digital Closet  [Open]" — opens the post directly if the app is installed,
+ *   or takes the user to the App Store if not.
+ */
+export function smartBannerContent(postUrl: string): string {
+  const appId = (import.meta.env.VITE_APP_STORE_ID as string | undefined) ?? "0";
+  return `app-id=${appId}, app-argument=${postUrl}`;
+}
+
 // ── URL builders ──────────────────────────────────────────────────────────────
 
 export function profileShareUrl(handle: string): string {
@@ -27,6 +48,40 @@ export function itemShareUrl(id: string): string {
 
 export function outfitShareUrl(id: string): string {
   return `${BASE_URL}/outfit/${id}`;
+}
+
+// ── Share text builders ───────────────────────────────────────────────────────
+
+type PrivacyMode = "private" | "anonymous" | "public";
+
+/**
+ * Pre-filled share sheet message for an item post.
+ * Public profiles include the @handle; anonymous profiles don't.
+ * The URL is embedded in the text so it works across all share destinations.
+ */
+export function buildItemShareText(
+  itemName: string,
+  privacyMode: PrivacyMode,
+  handle: string | undefined,
+  url: string,
+): string {
+  const credit = privacyMode === "public" && handle ? ` by @${handle}` : "";
+  return `✨ Check out "${itemName}"${credit} on My Digital Closet!\n\n${url}`;
+}
+
+/**
+ * Pre-filled share sheet message for an outfit post.
+ * Public profiles include the @handle; anonymous profiles don't.
+ */
+export function buildOutfitShareText(
+  outfitName: string | null | undefined,
+  privacyMode: PrivacyMode,
+  handle: string | undefined,
+  url: string,
+): string {
+  const name   = outfitName?.trim() || "this outfit";
+  const credit = privacyMode === "public" && handle ? ` by @${handle}` : "";
+  return `✨ Check out "${name}"${credit} on My Digital Closet!\n\n${url}`;
 }
 
 // ── Share action ──────────────────────────────────────────────────────────────

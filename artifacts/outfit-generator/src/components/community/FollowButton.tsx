@@ -12,7 +12,11 @@ import { UserPlus, UserCheck } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { isFollowing, toggleFollow } from "@/lib/localFollows";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyProfile } from "@/hooks/useCommunity";
 import { AuthSheet } from "@/components/auth/AuthSheet";
+import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
+import { changePrivacyMode } from "@/lib/sync";
+import { setSharingPref } from "@/lib/sharingPreference";
 import { cn } from "@/lib/utils";
 
 interface FollowButtonProps {
@@ -29,16 +33,16 @@ export function FollowButton({
   size = "default",
   className,
 }: FollowButtonProps) {
-  const { user }               = useAuth();
-  const [following, setFollowing] = useState(() => isFollowing(profileId));
-  const [showAuth,  setShowAuth]  = useState(false);
+  const { user }                    = useAuth();
+  const { data: myProfile }         = useMyProfile(user?.id);
+  const [following,    setFollowing]    = useState(() => isFollowing(profileId));
+  const [showAuth,     setShowAuth]     = useState(false);
+  const [showPrivGate, setShowPrivGate] = useState(false);
 
   const handleTap = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user) {
-      setShowAuth(true);
-      return;
-    }
+    if (!user)                                 { setShowAuth(true);     return; }
+    if (myProfile?.privacy_mode === "private") { setShowPrivGate(true); return; }
     setFollowing(toggleFollow(profileId, handle));
   };
 
@@ -82,6 +86,22 @@ export function FollowButton({
             onClose={() => setShowAuth(false)}
             onSuccess={handleAuthSuccess}
             defaultTab="signup"
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPrivGate && (
+          <PrivateGateSheet
+            action="follow"
+            onClose={() => setShowPrivGate(false)}
+            onConfirm={async (mode) => {
+              setShowPrivGate(false);
+              if (!user) return;
+              await changePrivacyMode(user.id, mode);
+              setSharingPref(mode);
+              setFollowing(toggleFollow(profileId, handle));
+            }}
           />
         )}
       </AnimatePresence>

@@ -53,19 +53,19 @@ const PRIVACY_OPTIONS: { mode: PrivacyMode; icon: string; label: string; desc: s
     mode: "private",
     icon: "🔒",
     label: "Private",
-    desc: "Keep everything private. Nothing appears in Discover.",
+    desc: "Browse Discover without sharing. Community features are disabled — you can change this anytime.",
   },
   {
     mode: "anonymous",
     icon: "🕶️",
     label: "Anonymous Sharing",
-    desc: "Share publicly without showing your @handle or identity.",
+    desc: "Publish to Discover, heart posts, and follow users. Your @handle stays hidden.",
   },
   {
     mode: "public",
     icon: "🌟",
     label: "Public Profile",
-    desc: "Your @handle appears on posts. Others can follow you.",
+    desc: "Your @handle appears on posts. Others can visit your profile and follow you.",
   },
 ];
 
@@ -73,7 +73,7 @@ const PRIVACY_OPTIONS: { mode: PrivacyMode; icon: string; label: string; desc: s
 const TITLES: Record<ViewState, string> = {
   "entry":        "Create Account",
   "email-signup": "Create Account",
-  "privacy-pick": "One Last Step",
+  "privacy-pick": "How to Participate",
   "email-signin": "Welcome Back",
   "check-email":  "Check Your Inbox",
 };
@@ -97,7 +97,7 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
   const [signedUpEmail, setSignedUpEmail] = useState("");
 
   // Privacy picker
-  const [selectedMode, setSelectedMode]   = useState<PrivacyMode>("public");
+  const [selectedMode, setSelectedMode]   = useState<PrivacyMode>("anonymous");
   // True when picker is shown for a newly-authenticated Apple user
   const [appleUserId,  setAppleUserId]    = useState<string | null>(null);
 
@@ -143,7 +143,7 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
     if (err) { setError(err); return; }
     if (isNewUser && userId) {
       setAppleUserId(userId);
-      setSelectedMode("public");
+      setSelectedMode("anonymous");
       setView("privacy-pick");
     } else {
       onSuccess?.();
@@ -335,7 +335,7 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
           {view === "privacy-pick" && (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-black/60 leading-snug">
-                How would you like to participate in the community?
+                Choose how you want to participate in Discover.
               </p>
 
               {PRIVACY_OPTIONS.map(({ mode, icon, label, desc }) => {

@@ -226,11 +226,11 @@ export default function WardrobePage() {
     if (canSaveOutfit(outfits.length)) setIsSaveOpen(true); else setUpgradeReason("outfits");
   }, [canSaveOutfit, outfits.length]);
 
-  const handleMannequinClick = useCallback(() => {
-    setUpgradeReason("mannequin");
-  }, []);
-
   const [, navigate] = useLocation();
+
+  const handleMannequinClick = useCallback(() => {
+    navigate("/settings");
+  }, [navigate]);
 
   const handleSave = () => {
     if (!saveName.trim()) return;

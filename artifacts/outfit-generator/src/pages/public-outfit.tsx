@@ -9,17 +9,23 @@
  * purchase details, local IDs, or any other private metadata.
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Shirt, Share2 } from "lucide-react";
+import { ArrowLeft, Loader2, Shirt } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { getSupabase, isSupabaseConfigured, type PublicOutfit, type Profile } from "@/lib/supabase";
 import { ShareButton } from "@/components/community/ShareButton";
-import { outfitShareUrl } from "@/lib/share";
+import {
+  outfitShareUrl,
+  buildOutfitShareText,
+  APP_STORE_URL,
+  smartBannerContent,
+} from "@/lib/share";
 import { FollowButton } from "@/components/community/FollowButton";
 import { cn } from "@/lib/utils";
 
-const APP_STORE_URL = "https://apps.apple.com/app/my-digital-closet/idYOUR_APP_ID"; // TODO: replace
+const isNative = Capacitor.isNativePlatform();
 
 export default function PublicOutfitPage() {
   const { id }       = useParams<{ id: string }>();
@@ -31,7 +37,7 @@ export default function PublicOutfitPage() {
       if (!id || !isSupabaseConfigured()) return null;
       const { data } = await getSupabase()
         .from("public_outfits")
-        .select("*, profiles(id, handle, display_name, avatar_url)")
+        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
         .eq("id", id)
         .eq("status", "active")
         .single();
@@ -63,9 +69,25 @@ export default function PublicOutfitPage() {
     );
   }
 
-  const items     = outfit.item_names ?? [];
-  const shareUrl  = outfitShareUrl(outfit.id);
-  const shareText = `Check out this look on My Digital Closet. ${shareUrl}`;
+  const profile  = outfit.profiles;
+  const privMode = profile?.privacy_mode ?? "anonymous";
+  const isPublic = privMode === "public";
+  const items    = outfit.item_names ?? [];
+  const shareUrl = outfitShareUrl(outfit.id);
+  const shareText = buildOutfitShareText(outfit.name, privMode, profile?.handle, shareUrl);
+
+  // ── iOS Smart App Banner — shows "Open in My Digital Closet" in Safari ──
+  useEffect(() => {
+    if (isNative) return;
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="apple-itunes-app"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "apple-itunes-app";
+      document.head.appendChild(meta);
+    }
+    meta.content = smartBannerContent(shareUrl);
+    return () => { meta?.remove(); };
+  }, [shareUrl]);
 
   return (
     <div
@@ -127,20 +149,24 @@ export default function PublicOutfitPage() {
           </div>
         )}
 
-        {/* Creator */}
-        {outfit.profiles && (
+        {/* Creator — handle only shown for public profiles */}
+        {profile && (
           <div className="flex items-center justify-between border-t-2 border-black/10 pt-4">
             <div>
-              <p className="font-bold text-sm">
-                {outfit.profiles.display_name ?? `@${outfit.profiles.handle}`}
-              </p>
-              <p className="text-xs text-black/40">@{outfit.profiles.handle}</p>
+              {isPublic ? (
+                <>
+                  <p className="font-bold text-sm">
+                    {profile.display_name ?? `@${profile.handle}`}
+                  </p>
+                  <p className="text-xs text-black/40">@{profile.handle}</p>
+                </>
+              ) : (
+                <p className="font-bold text-sm text-black/40">Anonymous</p>
+              )}
             </div>
-            <FollowButton
-              profileId={outfit.profiles.id}
-              handle={outfit.profiles.handle}
-              size="sm"
-            />
+            {isPublic && (
+              <FollowButton profileId={profile.id} handle={profile.handle} size="sm" />
+            )}
           </div>
         )}
 
@@ -149,20 +175,21 @@ export default function PublicOutfitPage() {
           Published {new Date(outfit.created_at).toLocaleDateString()}
         </p>
 
-        {/* App Store CTA */}
-        <a
-          href={APP_STORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "flex items-center justify-center gap-2 w-full py-3.5 mt-2",
-            "border-2 border-black rounded-2xl bg-primary font-bold text-sm uppercase tracking-wide",
-            "shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
-          )}
-        >
-          <Share2 className="w-4 h-4" />
-          Get My Digital Closet
-        </a>
+        {/* App Store CTA — only shown in web browser, not inside the native app */}
+        {!isNative && (
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center justify-center gap-2 w-full py-3.5 mt-2",
+              "border-2 border-black rounded-2xl bg-primary font-bold text-sm uppercase tracking-wide",
+              "shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
+            )}
+          >
+            📱 Get My Digital Closet — Free
+          </a>
+        )}
       </div>
     </div>
   );

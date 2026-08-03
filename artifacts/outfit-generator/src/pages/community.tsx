@@ -17,17 +17,19 @@
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users } from "lucide-react";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users, Bell } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
 import { getFollowCount } from "@/lib/localFollows";
 import { AuthSheet } from "@/components/auth/AuthSheet";
+import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import { useUnreadNotifCount } from "@/hooks/useNotifications";
 
 type FeedTab = "items" | "outfits" | "following";
 
@@ -49,8 +51,10 @@ function getScrollContainer(): HTMLElement | null {
 
 export default function CommunityPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [, navigate]   = useLocation();
-  const [showAuth, setShowAuth] = useState(false);
+  const [, navigate]        = useLocation();
+  const [showAuth,    setShowAuth]    = useState(false);
+  const [showNotifs,  setShowNotifs]  = useState(false);
+  const unreadCount = useUnreadNotifCount();
   const setAboveNav = useContext(AboveNavSlotContext);
   const [feedTab, setFeedTab]   = useState<FeedTab>("items");
   const [category, setCategory] = useState("");
@@ -205,6 +209,25 @@ export default function CommunityPage() {
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* Notification bell — only for signed-in users */}
+            {user && (
+              <button
+                onClick={() => setShowNotifs(true)}
+                className="relative w-9 h-9 flex items-center justify-center border-2 border-black
+                           rounded-full bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+                aria-label="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-0.5
+                                   bg-red-500 text-white text-[9px] font-black rounded-full border-2 border-white
+                                   flex items-center justify-center leading-none">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={() => { if (user) navigate("/"); else setShowAuth(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
@@ -215,16 +238,6 @@ export default function CommunityPage() {
               <Share2 className="w-3.5 h-3.5" />
               Share
             </button>
-            {user && (
-              <button
-                onClick={() => navigate("/profile/me")}
-                className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
-                           bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                           active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
-              >
-                <UserCircle className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -369,6 +382,12 @@ export default function CommunityPage() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {showNotifs && (
+          <NotificationsSheet onClose={() => setShowNotifs(false)} />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showAuth && (

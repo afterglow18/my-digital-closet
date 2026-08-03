@@ -1,113 +1,46 @@
 /**
- * ProfileMePage — signed-in user's own profile.
+ * ProfileMePage — signed-in user's community profile.
  *
  * Sections:
- *  1. Profile header: avatar, handle (read-only), display name + bio (editable)
+ *  1. Profile header: avatar, handle (changeable), display name + bio (editable)
  *  2. Published content tabs: Items | Outfits  (each card has an Unpublish action)
- *  3. Settings: subscription, backup/restore, account
+ *
+ * Settings (privacy, plan, export/import, sign-out) live at /settings.
  */
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Edit2, Check, X, Shirt, Globe, Loader2,
-  Download, Upload, RefreshCw, CheckCircle2, AlertCircle,
-  LogOut, Trash2, Lock, Eye, Share2,
+  Lock, Eye, Share2,
 } from "lucide-react";
-import { changePrivacyMode } from "@/lib/sync";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hooks/useCommunity";
 import { getSupabase } from "@/lib/supabase";
-import { deleteAccountStorage, unpublishItem, unpublishOutfit } from "@/lib/sync";
+import { unpublishItem, unpublishOutfit } from "@/lib/sync";
 import { updateClothingItem, updateOutfit } from "@/lib/db";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
-import { UpgradeSheet } from "@/components/paywall/UpgradeSheet";
-import { useEntitlements, syncTierFromRC, getCurrentTier } from "@/hooks/useEntitlements";
-import { restorePurchases } from "@/lib/revenuecat";
-import { exportBackup, importBackup, type ImportResult } from "@/lib/backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListClothingQueryKey, getListOutfitsQueryKey } from "@/lib/local-api";
 import type { PublicItem, PublicOutfit } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type ContentTab = "items" | "outfits";
-type PrivacyMode = "private" | "anonymous" | "public";
 
-const PRIVACY_OPTIONS: { mode: PrivacyMode; icon: string; label: string; desc: string }[] = [
-  {
-    mode: "private",
-    icon: "🔒",
-    label: "Private",
-    desc: "Your closet is completely private. Nothing appears in Discover.",
-  },
-  {
-    mode: "anonymous",
-    icon: "🕶️",
-    label: "Anonymous Sharing",
-    desc: "Share to Discover without revealing your @handle or identity.",
-  },
-  {
-    mode: "public",
-    icon: "🌟",
-    label: "Public Profile",
-    desc: "Your @handle appears on posts. Others can open your profile and follow you.",
-  },
-];
-
-type Status =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "ok"; msg: string }
-  | { kind: "err"; msg: string };
-
-function StatusMessage({ status }: { status: Status }) {
-  if (status.kind === "idle" || status.kind === "loading") return null;
-  return (
-    <div className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 border ${
-      status.kind === "ok"
-        ? "bg-green-50 border-green-200 text-green-800"
-        : "bg-red-50 border-red-200 text-red-800"
-    }`}>
-      {status.kind === "ok"
-        ? <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-        : <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
-      {status.msg}
-    </div>
-  );
-}
+const COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export default function ProfileMePage() {
-  const { user, signOut } = useAuth();
-  const [, navigate]      = useLocation();
-  const queryClient       = useQueryClient();
-  const importRef         = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const queryClient  = useQueryClient();
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile(user?.id);
   const { data: pubItems,   isLoading: itemsLoading,   refetch: refetchItems }   = useMyPublishedItems(user?.id);
   const { data: pubOutfits, isLoading: outfitsLoading, refetch: refetchOutfits } = useMyPublishedOutfits(user?.id);
 
-  // Privacy mode
-  const [changingMode, setChangingMode] = useState<PrivacyMode | null>(null);
-  const [privacyErr,   setPrivacyErr]   = useState<string | null>(null);
-
-  const handleChangeMode = async (newMode: PrivacyMode) => {
-    if (!user) return;
-    const current = (profile?.privacy_mode ?? "public") as PrivacyMode;
-    if (current === newMode) return;
-    setChangingMode(newMode);
-    setPrivacyErr(null);
-    const result = await changePrivacyMode(user.id, newMode);
-    if (result.ok) {
-      await refetchProfile();
-    } else {
-      setPrivacyErr(result.error);
-    }
-    setChangingMode(null);
-  };
-
-  // Profile edit
+  // ── Display name + bio edit ───────────────────────────────────────────────
   const [editMode,      setEditMode]      = useState(false);
   const [displayName,   setDisplayName]   = useState("");
   const [bio,           setBio]           = useState("");
@@ -136,10 +69,74 @@ export default function ProfileMePage() {
     }
   };
 
-  // Published content tab
-  const [contentTab, setContentTab] = useState<ContentTab>("items");
+  // ── Handle change ─────────────────────────────────────────────────────────
+  const [handleEditMode, setHandleEditMode] = useState(false);
+  const [newHandle,      setNewHandle]      = useState("");
+  const [savingHandle,   setSavingHandle]   = useState(false);
+  const [handleErr,      setHandleErr]      = useState<string | null>(null);
+  const [handleSuccess,  setHandleSuccess]  = useState(false);
 
-  // Unpublish
+  const canChangeHandle = (): boolean => {
+    if (!profile?.handle_changed_at) return true;
+    return Date.now() - new Date(profile.handle_changed_at).getTime() >= COOLDOWN_MS;
+  };
+
+  const nextHandleChangeDate = (): string => {
+    if (!profile?.handle_changed_at) return "";
+    const next = new Date(new Date(profile.handle_changed_at).getTime() + COOLDOWN_MS);
+    return next.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const openHandleEdit = () => {
+    setNewHandle(profile?.handle ?? "");
+    setHandleErr(null);
+    setHandleSuccess(false);
+    setHandleEditMode(true);
+  };
+
+  const handleSaveHandle = async () => {
+    if (!user) return;
+    const trimmed = newHandle.trim().toLowerCase();
+
+    // Same handle — close silently
+    if (trimmed === (profile?.handle ?? "")) { setHandleEditMode(false); return; }
+
+    // Client-side validation
+    if (!trimmed)                           { setHandleErr("Handle can't be empty"); return; }
+    if (trimmed.length > 12)               { setHandleErr("Max 12 characters"); return; }
+    if (!/^[a-z0-9_-]+$/.test(trimmed))   { setHandleErr("Letters, numbers, _ and - only"); return; }
+    if (!canChangeHandle())                { setHandleErr(`Can change again on ${nextHandleChangeDate()}`); return; }
+
+    setSavingHandle(true); setHandleErr(null);
+    try {
+      // Uniqueness check
+      const { data: existing } = await getSupabase()
+        .from("profiles")
+        .select("id")
+        .eq("handle", trimmed)
+        .neq("id", user.id)
+        .maybeSingle();
+      if (existing) { setHandleErr(`@${trimmed} is already taken`); return; }
+
+      const { error } = await getSupabase()
+        .from("profiles")
+        .update({ handle: trimmed, handle_changed_at: new Date().toISOString() })
+        .eq("id", user.id);
+      if (error) throw error;
+
+      await refetchProfile();
+      setHandleEditMode(false);
+      setHandleSuccess(true);
+      setTimeout(() => setHandleSuccess(false), 4000);
+    } catch (e) {
+      setHandleErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingHandle(false);
+    }
+  };
+
+  // ── Published content ─────────────────────────────────────────────────────
+  const [contentTab, setContentTab] = useState<ContentTab>("items");
   const [unpublishingIds, setUnpublishingIds] = useState<Set<number>>(new Set());
 
   const handleUnpublishItem = async (localId: number) => {
@@ -168,78 +165,7 @@ export default function ProfileMePage() {
     }
   };
 
-  // Settings
-  const { tier }                          = useEntitlements();
-  const [exportStatus,  setExportStatus]  = useState<Status>({ kind: "idle" });
-  const [importStatus,  setImportStatus]  = useState<Status>({ kind: "idle" });
-  const [restoreStatus, setRestoreStatus] = useState<Status>({ kind: "idle" });
-  const [showUpgrade,   setShowUpgrade]   = useState(false);
-
-  const handleExport = async () => {
-    setExportStatus({ kind: "loading" });
-    try {
-      await exportBackup();
-      setExportStatus({ kind: "ok", msg: "Backup ready!" });
-    } catch (err) {
-      setExportStatus({ kind: "err", msg: err instanceof Error ? err.message : "Export failed." });
-    }
-  };
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setImportStatus({ kind: "loading" });
-    try {
-      const result: ImportResult = await importBackup(file);
-      queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
-      setImportStatus({ kind: "ok", msg: `Restored ${result.itemCount} items and ${result.outfitCount} outfits.` });
-    } catch (err) {
-      setImportStatus({ kind: "err", msg: err instanceof Error ? err.message : "Import failed." });
-    }
-  };
-
-  const handleRestore = async () => {
-    setRestoreStatus({ kind: "loading" });
-    try {
-      await restorePurchases();
-      await syncTierFromRC();
-      const t = getCurrentTier();
-      setRestoreStatus({ kind: "ok", msg: t !== "free" ? "Subscription restored! ✨" : "No active subscription found." });
-    } catch {
-      setRestoreStatus({ kind: "err", msg: "Restore failed. Please try again." });
-    }
-  };
-
-  // Sign out
-  const [signingOut, setSigningOut] = useState(false);
-  const handleSignOut = async () => {
-    setSigningOut(true);
-    await signOut();
-    navigate("/community");
-  };
-
-  // Delete account
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteStatus,      setDeleteStatus]      = useState<Status>({ kind: "idle" });
-
-  const handleDeleteAccount = async () => {
-    if (!user) return;
-    setDeleteStatus({ kind: "loading" });
-    try {
-      await deleteAccountStorage(user.id);
-      const { error } = await getSupabase().from("profiles").delete().eq("id", user.id);
-      if (error) throw error;
-      await signOut();
-      navigate("/community");
-    } catch (e) {
-      setDeleteStatus({ kind: "err", msg: e instanceof Error ? e.message : "Delete failed." });
-    }
-  };
-
-  if (!user) { navigate("/community"); return null; }
+  if (!user) { navigate("/settings"); return null; }
 
   return (
     <>
@@ -251,9 +177,9 @@ export default function ProfileMePage() {
       >
         {/* Back */}
         <div className="px-4 pb-2">
-          <button onClick={() => navigate("/community")}
+          <button onClick={() => navigate("/settings")}
             className="flex items-center gap-1.5 text-sm font-bold text-black/50 hover:text-black transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Discover
+            <ArrowLeft className="w-4 h-4" /> Settings
           </button>
         </div>
 
@@ -265,6 +191,8 @@ export default function ProfileMePage() {
         ) : (
           <div className="px-4 pb-4">
             <div className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
+
+              {/* ── Header row: avatar + handle + edit pencil ── */}
               <div className="flex items-center gap-4">
                 {/* Avatar */}
                 <div className="w-16 h-16 rounded-full border-4 border-black bg-primary flex items-center justify-center
@@ -277,19 +205,125 @@ export default function ProfileMePage() {
                     </span>
                   )}
                 </div>
+
+                {/* Handle + change button */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-xs text-black/40 uppercase tracking-wider">Handle</p>
-                  <p className="font-display font-bold text-xl truncate">@{profile?.handle ?? "…"}</p>
+                  <p className="font-bold text-xs text-black/40 uppercase tracking-wider mb-0.5">Handle</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-display font-bold text-xl leading-none">
+                      @{profile?.handle ?? "…"}
+                    </p>
+                    {handleSuccess && (
+                      <span className="text-[10px] font-bold text-green-600 uppercase tracking-wide">✓ Updated</span>
+                    )}
+                    {!handleEditMode && profile && (
+                      canChangeHandle() ? (
+                        <button
+                          onClick={openHandleEdit}
+                          className="text-[10px] font-bold uppercase tracking-wide text-black/35
+                                     hover:text-black border border-black/15 rounded-full px-2 py-0.5
+                                     hover:border-black/50 transition-all flex-shrink-0"
+                        >
+                          Change
+                        </button>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-black/25 flex-shrink-0">
+                          · available {nextHandleChangeDate()}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
+
+                {/* Display name / bio edit button */}
                 <button onClick={() => setEditMode((v) => !v)}
                   className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
                              bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                             active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all">
+                             active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
+                             flex-shrink-0">
                   <Edit2 className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Edit form */}
+              {/* ── Handle edit panel ── */}
+              <AnimatePresence>
+                {handleEditMode && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex flex-col gap-2 border-t-2 border-black/10 pt-3">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">
+                        New Handle
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold
+                                           text-black/30 pointer-events-none select-none">@</span>
+                          <input
+                            type="text"
+                            value={newHandle}
+                            onChange={(e) => {
+                              // strip invalid chars live; enforce max 12
+                              const v = e.target.value
+                                .toLowerCase()
+                                .replace(/[^a-z0-9_-]/g, "")
+                                .slice(0, 12);
+                              setNewHandle(v);
+                              setHandleErr(null);
+                            }}
+                            maxLength={12}
+                            placeholder="new_handle"
+                            autoFocus
+                            className="w-full border-2 border-black rounded-lg pl-7 pr-3 py-2 text-sm
+                                       font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <span className={cn(
+                          "text-[11px] font-bold flex-shrink-0 tabular-nums w-9 text-right",
+                          newHandle.length >= 12 ? "text-red-500" : "text-black/30",
+                        )}>
+                          {newHandle.length}/12
+                        </span>
+                      </div>
+
+                      {handleErr && (
+                        <p className="text-xs text-red-600 font-medium">{handleErr}</p>
+                      )}
+
+                      <p className="text-[10px] text-black/30 leading-snug">
+                        Letters, numbers, _ and - · Once every 30 days
+                      </p>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveHandle}
+                          disabled={savingHandle || !newHandle || newHandle === (profile?.handle ?? "")}
+                          className="flex-1 btn-brutalist py-2.5 rounded-xl text-sm
+                                     flex items-center justify-center gap-1.5 disabled:opacity-40"
+                        >
+                          {savingHandle
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Check className="w-4 h-4" />}
+                          Save Handle
+                        </button>
+                        <button
+                          onClick={() => { setHandleEditMode(false); setHandleErr(null); }}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-black/20 text-sm font-bold
+                                     uppercase text-black/40 hover:border-black hover:text-black transition-all
+                                     flex items-center justify-center gap-1.5"
+                        >
+                          <X className="w-4 h-4" /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* ── Display name / bio edit form ── */}
               <AnimatePresence>
                 {editMode && (
                   <motion.div
@@ -298,38 +332,40 @@ export default function ProfileMePage() {
                     exit={{ opacity: 0, height: 0 }}
                     className="flex flex-col gap-3 overflow-hidden"
                   >
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-1">Display Name</label>
-                      <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-                        maxLength={50} placeholder="Your name"
-                        className="w-full border-2 border-black rounded-lg px-3 py-2 text-sm font-medium
-                                   focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-1">Bio</label>
-                      <textarea value={bio} onChange={(e) => setBio(e.target.value)}
-                        maxLength={200} rows={3} placeholder="A little about your style…"
-                        className="w-full border-2 border-black rounded-lg px-3 py-2 text-sm font-medium
-                                   focus:outline-none focus:ring-2 focus:ring-primary resize-none placeholder:text-black/25" />
-                    </div>
-                    {profileErr && <p className="text-xs text-red-600">{profileErr}</p>}
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveProfile} disabled={savingProfile}
-                        className="flex-1 btn-brutalist py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-50">
-                        {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        Save
-                      </button>
-                      <button onClick={() => { setEditMode(false); setProfileErr(null); }}
-                        className="flex-1 py-2.5 rounded-xl border-2 border-black/20 text-sm font-bold uppercase
-                                   text-black/40 hover:border-black hover:text-black transition-all flex items-center justify-center gap-1.5">
-                        <X className="w-4 h-4" /> Cancel
-                      </button>
+                    <div className="border-t-2 border-black/10 pt-3 flex flex-col gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-1">Display Name</label>
+                        <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                          maxLength={50} placeholder="Your name"
+                          className="w-full border-2 border-black rounded-lg px-3 py-2 text-sm font-medium
+                                     focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-1">Bio</label>
+                        <textarea value={bio} onChange={(e) => setBio(e.target.value)}
+                          maxLength={200} rows={3} placeholder="A little about your style…"
+                          className="w-full border-2 border-black rounded-lg px-3 py-2 text-sm font-medium
+                                     focus:outline-none focus:ring-2 focus:ring-primary resize-none placeholder:text-black/25" />
+                      </div>
+                      {profileErr && <p className="text-xs text-red-600">{profileErr}</p>}
+                      <div className="flex gap-2">
+                        <button onClick={handleSaveProfile} disabled={savingProfile}
+                          className="flex-1 btn-brutalist py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-50">
+                          {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          Save
+                        </button>
+                        <button onClick={() => { setEditMode(false); setProfileErr(null); }}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-black/20 text-sm font-bold uppercase
+                                     text-black/40 hover:border-black hover:text-black transition-all flex items-center justify-center gap-1.5">
+                          <X className="w-4 h-4" /> Cancel
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Display */}
+              {/* ── Read-only display ── */}
               {!editMode && (
                 <>
                   {profile?.display_name && <p className="font-bold text-base">{profile.display_name}</p>}
@@ -414,7 +450,6 @@ export default function ProfileMePage() {
                 {pubItems.map((item: PublicItem) => (
                   <div key={item.id} className="relative">
                     <PublicItemCard item={item} />
-                    {/* Unpublish button */}
                     <button
                       onClick={() => handleUnpublishItem(item.local_id)}
                       disabled={unpublishingIds.has(item.local_id)}
@@ -470,178 +505,8 @@ export default function ProfileMePage() {
           </div>
         )}
 
-        {/* ── Settings ── */}
-        <div className="px-4 flex flex-col gap-4">
-          <h2 className="font-display font-bold text-lg uppercase tracking-tight">Settings</h2>
-
-          {/* Privacy Mode */}
-          <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🔐</span>
-              <h3 className="font-display font-bold text-base uppercase tracking-tight">Privacy</h3>
-            </div>
-            <p className="text-xs text-black/50 leading-snug">
-              Choose how you appear on Discover. You can switch at any time.
-            </p>
-
-            {PRIVACY_OPTIONS.map(({ mode, icon, label, desc }) => {
-              const currentMode = (profile?.privacy_mode ?? "public") as PrivacyMode;
-              const isActive    = currentMode === mode;
-              const isChanging  = changingMode === mode;
-              return (
-                <button
-                  key={mode}
-                  onClick={() => handleChangeMode(mode)}
-                  disabled={isActive || changingMode !== null}
-                  className={cn(
-                    "flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all",
-                    isActive
-                      ? "border-black bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                      : "border-black/20 hover:border-black/40 bg-white active:bg-black/5",
-                    !isActive && changingMode !== null ? "opacity-40" : "",
-                  )}
-                >
-                  <span className="text-xl leading-none mt-0.5 flex-shrink-0">{icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm">{label}</p>
-                      {isChanging && <Loader2 className="w-3 h-3 animate-spin text-black/40" />}
-                    </div>
-                    <p className="text-[11px] text-black/50 mt-0.5 leading-snug">{desc}</p>
-                  </div>
-                  {isActive && <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-black/60" />}
-                </button>
-              );
-            })}
-
-            {privacyErr && <p className="text-xs text-red-600">{privacyErr}</p>}
-
-            {/* Contextual tip for public mode */}
-            {(profile?.privacy_mode ?? "public") === "public" && (
-              <p className="text-[10px] text-black/35 leading-snug">
-                💡 Your public posts and profile are visible to everyone on Discover.
-              </p>
-            )}
-            {(profile?.privacy_mode ?? "public") === "anonymous" && (
-              <p className="text-[10px] text-black/35 leading-snug">
-                💡 Your posts appear in Discover but your @handle and profile are hidden.
-              </p>
-            )}
-            {(profile?.privacy_mode ?? "public") === "private" && (
-              <p className="text-[10px] text-black/35 leading-snug">
-                💡 Your posts are hidden from Discover. Switch to Anonymous or Public to share again.
-              </p>
-            )}
-          </section>
-
-          {/* Subscription */}
-          <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">👑</span>
-              <h3 className="font-display font-bold text-base uppercase tracking-tight">My Plan</h3>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-sm text-black/70">Current plan</span>
-              {tier === "free"
-                ? <span className="px-3 py-1 border-2 border-black rounded-full text-sm font-bold bg-[#f9f4ee]">Free</span>
-                : <span className="px-3 py-1 border-2 border-black rounded-full text-sm font-bold bg-primary">Unlocked ✨</span>}
-            </div>
-            {tier === "free" && (
-              <button onClick={() => setShowUpgrade(true)}
-                className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                           bg-primary font-bold text-sm uppercase tracking-tight
-                           shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
-                Lifetime Unlock – $9.99
-              </button>
-            )}
-            <StatusMessage status={restoreStatus} />
-            <button onClick={handleRestore} disabled={restoreStatus.kind === "loading"}
-              className="flex items-center justify-center gap-1.5 text-xs font-semibold
-                         text-black/40 hover:text-black/70 transition-colors disabled:opacity-50">
-              {restoreStatus.kind === "loading" ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-              Restore Purchases
-            </button>
-          </section>
-
-          {/* Backup */}
-          <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">💾</span>
-              <h3 className="font-display font-bold text-base uppercase tracking-tight">Backup & Restore</h3>
-            </div>
-            <p className="text-sm text-black/60 leading-snug">Export your wardrobe to a ZIP file. Save it to iCloud or Files.</p>
-            <button onClick={handleExport} disabled={exportStatus.kind === "loading"}
-              className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                         bg-primary font-bold text-sm uppercase tracking-tight
-                         shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                         active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                         disabled:opacity-50 transition-all">
-              {exportStatus.kind === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Export Backup
-            </button>
-            <StatusMessage status={exportStatus} />
-            <button onClick={() => importRef.current?.click()} disabled={importStatus.kind === "loading"}
-              className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                         bg-primary font-bold text-sm uppercase tracking-tight
-                         shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                         active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                         disabled:opacity-50 transition-all">
-              {importStatus.kind === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              Import Backup
-            </button>
-            <input ref={importRef} type="file" accept=".zip" className="hidden" onChange={handleImportFile} />
-            <StatusMessage status={importStatus} />
-          </section>
-
-          {/* Account */}
-          <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">👤</span>
-              <h3 className="font-display font-bold text-base uppercase tracking-tight">Account</h3>
-            </div>
-            <p className="text-xs text-black/40 truncate">{user.email}</p>
-            <button onClick={handleSignOut} disabled={signingOut}
-              className="flex items-center justify-center gap-2 py-3 border-2 border-black rounded-xl
-                         bg-white font-bold text-sm uppercase tracking-tight
-                         shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                         active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
-                         disabled:opacity-50 transition-all">
-              {signingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-              Sign Out
-            </button>
-            <StatusMessage status={deleteStatus} />
-            {!showDeleteConfirm ? (
-              <button onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-black/30
-                           hover:text-red-600 transition-colors uppercase tracking-wide">
-                <Trash2 className="w-3.5 h-3.5" /> Delete Community Account
-              </button>
-            ) : (
-              <div className="flex flex-col gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-sm font-bold text-red-800">
-                  This deletes your profile and all published items. Your local closet stays on your device.
-                </p>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 py-2 border-2 border-black rounded-lg text-xs font-bold uppercase bg-white">
-                    Cancel
-                  </button>
-                  <button onClick={handleDeleteAccount} disabled={deleteStatus.kind === "loading"}
-                    className="flex-1 py-2 border-2 border-red-600 rounded-lg text-xs font-bold uppercase
-                               bg-red-500 text-white disabled:opacity-50">
-                    {deleteStatus.kind === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : "Delete"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
+        <div className="h-4" />
       </motion.div>
-
-      <AnimatePresence>
-        {showUpgrade && <UpgradeSheet reason="items" onClose={() => setShowUpgrade(false)} />}
-      </AnimatePresence>
     </>
   );
 }

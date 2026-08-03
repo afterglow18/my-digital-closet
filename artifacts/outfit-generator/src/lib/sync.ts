@@ -205,6 +205,24 @@ export async function unpublishOutfit(localId: number, uid: string): Promise<voi
 }
 
 /**
+ * Remove ALL of a user's published items and outfits from Supabase and delete
+ * their storage folder. Called when the user switches to Private mode.
+ */
+export async function unpublishAllUserPosts(uid: string): Promise<void> {
+  try {
+    const sb = getSupabase();
+    await sb.from("public_items").delete().eq("user_id", uid);
+    await sb.from("public_outfits").delete().eq("user_id", uid);
+    const { data: files } = await sb.storage.from(ITEMS_BUCKET).list(uid);
+    if (files?.length) {
+      await sb.storage.from(ITEMS_BUCKET).remove(files.map((f) => `${uid}/${f.name}`));
+    }
+  } catch (e) {
+    console.error("[sync] unpublishAllUserPosts error:", e);
+  }
+}
+
+/**
  * Update metadata for an already-public outfit (name, notes changed).
  */
 export async function syncOutfitEdit(outfit: Outfit, uid: string): Promise<void> {
