@@ -372,6 +372,11 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
     setLocalImageUrl(null);
   }, [item?.imageObjectPath]);
 
+  // Declared before the early return so the hook call count is stable across
+  // all renders. The ref is kept current via assignment after the guard below.
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const handleSaveRef = useRef<() => void>(() => {});
+
   if (!item || !form) return null;
 
   const dirty = isDirty(form, item);
@@ -424,9 +429,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
       }
     );
   };
-  // Always keep this ref pointing at the latest handleSave so AuthSheet's
-  // onSuccess callback (captured at render time) still calls the fresh version.
-  const handleSaveRef = useRef(handleSave);
+  // Keep the ref pointing at the latest handleSave so AuthSheet's onSuccess
+  // callback (captured at render time) always calls the current version.
   handleSaveRef.current = handleSave;
 
   // ── Step 1: run bg removal, then show compare overlay ────────────────────
