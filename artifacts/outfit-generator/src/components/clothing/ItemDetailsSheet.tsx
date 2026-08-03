@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Heart, Trash2, Save, ChevronDown, Sparkles, Loader2, CheckCircle2,
-  Shirt, Check, BookmarkPlus,
+  Shirt, Check, BookmarkPlus, Globe, Lock,
 } from "lucide-react";
 import { AddToLookbookSheet } from './AddToLookbookSheet';
 import {
@@ -457,6 +457,45 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
   // callback (captured at render time) always calls the current version.
   handleSaveRef.current = handleSave;
 
+  /** Instantly toggles private ↔ public and syncs to Supabase, no Save tap needed. */
+  const handleVisibilityToggle = () => {
+    const next: "private" | "public" = form.visibility === "public" ? "private" : "public";
+
+    if (next === "public") {
+      patch("visibility")("public");
+      if (!user) { setShowAuthSheet(true); return; }
+      if (myProfile?.privacy_mode === "private") { setShowPrivateGate(true); return; }
+      if (!hasSavedPref()) { setShowSharingMode(true); return; }
+      // Has a saved mode — apply silently then fall through to mutate
+      getSupabase().auth.getSession().then(async ({ data: { session } }) => {
+        if (session?.user?.id) await changePrivacyMode(session.user.id, getSharingPref());
+      });
+    } else {
+      patch("visibility")("private");
+    }
+
+    updateItem.mutate(
+      { id: item.id, data: { visibility: next } },
+      {
+        onSuccess: (savedItem) => {
+          queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
+          if (savedItem && isSupabaseConfigured()) {
+            getSupabase().auth.getSession().then(async ({ data: { session } }) => {
+              const uid = session?.user?.id;
+              if (!uid) return;
+              if (next === "public") {
+                await publishItem(savedItem, uid);
+              } else if (item.visibility === "public") {
+                await unpublishItem(item.id, uid);
+              }
+              queryClient.invalidateQueries({ queryKey: ["community"] });
+            });
+          }
+        },
+      }
+    );
+  };
+
   // ── Step 1: run bg removal, then show compare overlay ────────────────────
   const handleCleanUpPhoto = async () => {
     if (!item.imageObjectPath) return;
@@ -559,6 +598,18 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
           Item Details
         </h2>
         <div className="flex items-center gap-2">
+          {/* Visibility toggle — saves instantly */}
+          <button
+            onClick={handleVisibilityToggle}
+            className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
+                       bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                       active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+            title={form.visibility === "public" ? "Public — tap to make private" : "Private — tap to publish"}
+          >
+            {form.visibility === "public"
+              ? <Globe className="w-4 h-4 text-green-600" />
+              : <Lock  className="w-4 h-4 text-black/40" />}
+          </button>
           {/* Favourite toggle — saves instantly */}
           <button
             onClick={() => {
