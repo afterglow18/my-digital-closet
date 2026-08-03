@@ -31,7 +31,7 @@ import { shareContent, APP_STORE_URL } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
-import { useUnreadNotifCount } from "@/hooks/useNotifications";
+import { useUnreadNotifCount, useHeartNotifsEnabled } from "@/hooks/useNotifications";
 
 type FeedTab = "items" | "outfits" | "following";
 
@@ -57,6 +57,7 @@ export default function CommunityPage() {
   const [showAuth,    setShowAuth]    = useState(false);
   const [showNotifs,  setShowNotifs]  = useState(false);
   const unreadCount = useUnreadNotifCount();
+  const [heartNotifsEnabled] = useHeartNotifsEnabled();
   const setAboveNav = useContext(AboveNavSlotContext);
   const [feedTab, setFeedTab]   = useState<FeedTab>("items");
   const [category, setCategory] = useState("");
@@ -218,8 +219,8 @@ export default function CommunityPage() {
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Notification bell — only for signed-in users */}
-            {user && (
+            {/* Notification bell — only for signed-in users with notifications on */}
+            {user && heartNotifsEnabled && (
               <button
                 onClick={() => setShowNotifs(true)}
                 className="relative w-9 h-9 flex items-center justify-center border-2 border-black

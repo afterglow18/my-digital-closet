@@ -5,9 +5,37 @@
  * We never expose WHO liked — notifications are intentionally anonymous.
  */
 
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+
+// ── Heart notification preference ─────────────────────────────────────────────
+
+const HEART_NOTIFS_KEY = "heart_notifs_enabled";
+
+export function getHeartNotifsEnabled(): boolean {
+  try { return localStorage.getItem(HEART_NOTIFS_KEY) !== "false"; }
+  catch { return true; }
+}
+
+export function setHeartNotifsEnabled(enabled: boolean): void {
+  try { localStorage.setItem(HEART_NOTIFS_KEY, enabled ? "true" : "false"); }
+  catch { /* ignore */ }
+}
+
+/** Reactive hook — returns [enabled, toggle] */
+export function useHeartNotifsEnabled(): [boolean, () => void] {
+  const [enabled, setEnabled] = useState(getHeartNotifsEnabled);
+  const toggle = useCallback(() => {
+    setEnabled((prev) => {
+      const next = !prev;
+      setHeartNotifsEnabled(next);
+      return next;
+    });
+  }, []);
+  return [enabled, toggle];
+}
 
 export interface AppNotification {
   id: string;
@@ -44,9 +72,10 @@ export function useNotifications() {
   });
 }
 
-/** Returns the count of unread notifications for the badge. */
+/** Returns the count of unread notifications for the badge (0 when disabled). */
 export function useUnreadNotifCount(): number {
   const { data } = useNotifications();
+  if (!getHeartNotifsEnabled()) return 0;
   return (data ?? []).filter((n) => !n.read).length;
 }
 

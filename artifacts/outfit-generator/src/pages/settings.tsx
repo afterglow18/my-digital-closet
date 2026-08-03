@@ -26,6 +26,7 @@ import { useEntitlements, syncTierFromRC, getCurrentTier } from "@/hooks/useEnti
 import { restorePurchases } from "@/lib/revenuecat";
 import { exportBackup, importBackup, type ImportResult } from "@/lib/backup";
 import { useQueryClient } from "@tanstack/react-query";
+import { useHeartNotifsEnabled } from "@/hooks/useNotifications";
 import { getListClothingQueryKey, getListOutfitsQueryKey } from "@/lib/local-api";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +141,7 @@ export default function SettingsPage() {
 
   const { data: profile, refetch: refetchProfile } = useMyProfile(user?.id);
   const { tier } = useEntitlements();
+  const [heartNotifsEnabled, toggleHeartNotifs] = useHeartNotifsEnabled();
 
   // Auth sheet
   const [showAuth,    setShowAuth]    = useState(false);
@@ -418,9 +420,12 @@ export default function SettingsPage() {
               <Row
                 emoji="❤️"
                 label="Heart Notifications"
-                value={<span className="text-[11px] font-semibold text-green-600">Active</span>}
-                onClick={() => navigate("/community")}
-                chevron
+                value={
+                  <span className={cn("text-[11px] font-semibold", heartNotifsEnabled ? "text-green-600" : "text-black/30")}>
+                    {heartNotifsEnabled ? "Active" : "Off"}
+                  </span>
+                }
+                onClick={toggleHeartNotifs}
               />
             </SettingsCard>
           </div>
