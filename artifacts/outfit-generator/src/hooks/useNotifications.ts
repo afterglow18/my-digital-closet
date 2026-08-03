@@ -60,8 +60,11 @@ export function useNotifications() {
   // notification row arrives, so the badge updates without any polling delay.
   useEffect(() => {
     if (!user || !isSupabaseConfigured()) return;
+    // Use a unique channel name each mount so Supabase never reuses a
+    // previously-subscribed channel (which would throw "cannot add callbacks
+    // after subscribe()").
     const channel = getSupabase()
-      .channel(`notifications:${user.id}`)
+      .channel(`notifications:${user.id}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
