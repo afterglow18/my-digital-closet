@@ -137,8 +137,8 @@ workflows:
         script: |
           cd artifacts/outfit-generator/ios/App
           # Floor at 125 — builds up to 124 already uploaded to App Store Connect
-          BUILD_NUM=$(( BUILD_NUMBER > 124 ? BUILD_NUMBER : 125 ))
-          agvtool new-marketing-version 1.0.5
+          BUILD_NUM=$(( BUILD_NUMBER > 180 ? BUILD_NUMBER : 181 ))
+          agvtool new-marketing-version 1.0.6
           agvtool new-version -all $BUILD_NUM
 
       - name: Apply provisioning profiles
