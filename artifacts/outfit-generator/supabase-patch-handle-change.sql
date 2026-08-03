@@ -6,9 +6,9 @@
 -- What this does:
 --   1. Adds handle_changed_at timestamptz to profiles.
 --      NULL = never changed (no cooldown restriction).
---   2. Adds a CHECK constraint so handles are max 12 characters going forward.
---      Existing longer handles are grandfathered — the constraint only fires
---      on INSERT/UPDATE, not retroactively on existing rows.
+--   2. Adds a CHECK constraint so handles are max 30 characters going forward.
+--      Uses NOT VALID so existing rows are not checked retroactively;
+--      only new INSERTs and UPDATEs are validated.
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- Step 1: add the cooldown timestamp column
@@ -26,6 +26,6 @@ BEGIN
   ) THEN
     ALTER TABLE public.profiles
       ADD CONSTRAINT profiles_handle_length_check
-      CHECK (char_length(handle) <= 12);
+      CHECK (char_length(handle) <= 30) NOT VALID;
   END IF;
 END$$;
