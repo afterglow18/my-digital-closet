@@ -274,7 +274,7 @@ export default function ProfileMePage() {
                               setNewHandle(v);
                               setHandleErr(null);
                             }}
-                            maxLength={12}
+                            maxLength={15}
                             placeholder="new_handle"
                             autoFocus
                             className="w-full border-2 border-black rounded-lg pl-7 pr-3 py-2 text-sm

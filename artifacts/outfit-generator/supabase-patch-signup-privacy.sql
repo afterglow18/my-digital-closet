@@ -42,12 +42,12 @@ BEGIN
     clean_handle := 'user' || substr(NEW.id::text, 1, 8);
   END IF;
 
-  -- Truncate to 30 chars
-  clean_handle := substr(clean_handle, 1, 30);
+  -- Truncate to 15 chars
+  clean_handle := substr(clean_handle, 1, 15);
 
-  -- Uniqueness collision: append first 4 chars of UUID
+  -- Uniqueness collision: append first 4 chars of UUID (total stays ≤ 15)
   IF EXISTS (SELECT 1 FROM public.profiles WHERE handle = clean_handle) THEN
-    clean_handle := substr(clean_handle, 1, 25) || substr(NEW.id::text, 1, 4);
+    clean_handle := substr(clean_handle, 1, 11) || substr(NEW.id::text, 1, 4);
   END IF;
 
   INSERT INTO public.profiles (id, handle, display_name, privacy_mode)

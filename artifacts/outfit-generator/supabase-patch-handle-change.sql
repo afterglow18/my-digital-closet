@@ -6,7 +6,7 @@
 -- What this does:
 --   1. Adds handle_changed_at timestamptz to profiles.
 --      NULL = never changed (no cooldown restriction).
---   2. Adds a CHECK constraint so handles are max 30 characters going forward.
+--   2. Adds a CHECK constraint so handles are max 15 characters going forward.
 --      Uses NOT VALID so existing rows are not checked retroactively;
 --      only new INSERTs and UPDATEs are validated.
 -- ═══════════════════════════════════════════════════════════════════════
@@ -26,6 +26,6 @@ BEGIN
   ) THEN
     ALTER TABLE public.profiles
       ADD CONSTRAINT profiles_handle_length_check
-      CHECK (char_length(handle) <= 30) NOT VALID;
+      CHECK (char_length(handle) <= 15) NOT VALID;
   END IF;
 END$$;
