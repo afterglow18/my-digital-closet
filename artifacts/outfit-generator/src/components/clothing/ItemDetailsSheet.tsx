@@ -30,6 +30,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { publishItem, unpublishItem, syncItemEdit } from "@/lib/sync";
 import { VisibilityPicker } from "@/components/clothing/VisibilityPicker";
 import { AuthSheet } from "@/components/auth/AuthSheet";
+import { ShareConfirmSheet } from "@/components/community/ShareConfirmSheet";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -355,7 +357,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
   const deleteItem  = useDeleteClothingItem();
   const queryClient = useQueryClient();
   const { user }    = useAuth();
-  const [showAuthSheet, setShowAuthSheet] = useState(false);
+  const [showAuthSheet,   setShowAuthSheet]   = useState(false);
+  const [showShareConfirm, setShowShareConfirm] = useState(false);
 
   // Reset form whenever item changes
   useEffect(() => {
@@ -405,19 +408,26 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
         onSuccess: (savedItem) => {
           queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
-          // Sync to Supabase community (fire-and-forget)
-          if (user && savedItem) {
-            if (newVisibility !== "private") {
-              publishItem(savedItem, user.id);
-            } else if (prevVisibility !== "private") {
-              unpublishItem(item.id, user.id);
-            }
+          // Sync to Supabase (fire-and-forget).
+          // Uses getSession() directly to avoid reading stale React user state —
+          // important for the auto-publish-after-sign-in flow.
+          if (savedItem && isSupabaseConfigured()) {
+            getSupabase().auth.getSession().then(({ data: { session } }) => {
+              const uid = session?.user?.id;
+              if (!uid) return;
+              if (newVisibility !== "private") publishItem(savedItem, uid);
+              else if (prevVisibility !== "private") unpublishItem(item.id, uid);
+            });
           }
           onClose();
         },
       }
     );
   };
+  // Always keep this ref pointing at the latest handleSave so AuthSheet's
+  // onSuccess callback (captured at render time) still calls the fresh version.
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
 
   // ── Step 1: run bg removal, then show compare overlay ────────────────────
   const handleCleanUpPhoto = async () => {
@@ -677,7 +687,12 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
           <VisibilityPicker
             value={form.visibility}
             onChange={(v) => patch("visibility")(v)}
-            onNeedSignIn={() => setShowAuthSheet(true)}
+            onNeedSignIn={() => {
+              // Optimistically pre-select Public so the form is ready after sign-in,
+              // then walk through: ShareConfirmSheet → AuthSheet → auto-save.
+              patch("visibility")("public");
+              setShowShareConfirm(true);
+            }}
             isSignedIn={Boolean(user)}
           />
         </div>
@@ -787,10 +802,26 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
       )}
     </AnimatePresence>
 
-    {/* ── Auth sheet (triggered when user tries to publish without signing in) ── */}
+    {/* ── Share confirm sheet → then Auth sheet ── */}
+    <AnimatePresence>
+      {showShareConfirm && item && (
+        <ShareConfirmSheet
+          kind="item"
+          name={item.name}
+          onContinue={() => { setShowShareConfirm(false); setShowAuthSheet(true); }}
+          onCancel={() => {
+            setShowShareConfirm(false);
+            patch("visibility")("private"); // revert if user bails
+          }}
+        />
+      )}
+    </AnimatePresence>
     <AnimatePresence>
       {showAuthSheet && (
-        <AuthSheet onClose={() => setShowAuthSheet(false)} />
+        <AuthSheet
+          onClose={() => setShowAuthSheet(false)}
+          onSuccess={() => handleSaveRef.current()}
+        />
       )}
     </AnimatePresence>
     </>

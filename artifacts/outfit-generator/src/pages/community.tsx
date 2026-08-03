@@ -1,21 +1,24 @@
 /**
- * community.tsx — Discover tab (V1: browse-and-share only, no marketplace).
+ * community.tsx — Discover tab (V1: browse-and-share, no marketplace).
  *
- * PRIVACY NOTE
- * ────────────
- * Unauthenticated users see only public content via read-only queries.
- * No private closet data is sent. Sign-up is only required to publish.
+ * UX PRINCIPLES
+ * ─────────────
+ * • Anyone can browse, search, filter, and view profiles — no account required.
+ * • The call-to-action is "Share" (what users want to do), not "Sign In".
+ * • Sign-up is triggered at the exact moment the user decides to share, not before.
+ * • After sign-in, the user is sent to their wardrobe to choose what to publish.
  */
 
 import React, { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Compass, Search, UserCircle, Loader2, RefreshCw, Shirt, Globe } from "lucide-react";
+import { Compass, Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits } from "@/hooks/useCommunity";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 
@@ -48,6 +51,21 @@ export default function CommunityPage() {
   const refetch   = feedTab === "items" ? refetchItems   : refetchOutfits;
   const isEmpty   = feedTab === "items" ? !items?.length : !outfits?.length;
 
+  /** After sign-in, navigate to the wardrobe so the user can choose what to publish. */
+  const handleShareSignInSuccess = () => {
+    navigate("/");
+  };
+
+  const handleSharePress = () => {
+    if (user) {
+      // Already signed in — go straight to wardrobe
+      navigate("/");
+    } else {
+      // Need an account first — sign up, then navigate to wardrobe
+      setShowAuth(true);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -68,25 +86,30 @@ export default function CommunityPage() {
             <Compass className="w-6 h-6" />
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
-          {user ? (
+          <div className="flex items-center gap-2">
+            {/* Share button — primary CTA regardless of auth state */}
             <button
-              onClick={() => navigate("/profile/me")}
-              className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
-                         bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+              onClick={handleSharePress}
+              className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
+                         text-xs font-bold uppercase tracking-wide bg-primary
+                         shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                          active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
             >
-              <UserCircle className="w-5 h-5" />
+              <Share2 className="w-3.5 h-3.5" />
+              Share
             </button>
-          ) : (
-            <button
-              onClick={() => setShowAuth(true)}
-              className="px-3 py-1.5 border-2 border-black rounded-full text-xs font-bold uppercase
-                         bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                         active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
-            >
-              Sign In
-            </button>
-          )}
+            {/* Profile icon — only when signed in */}
+            {user && (
+              <button
+                onClick={() => navigate("/profile/me")}
+                className="w-9 h-9 border-2 border-black rounded-full flex items-center justify-center
+                           bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+              >
+                <UserCircle className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Search ── */}
@@ -152,6 +175,63 @@ export default function CommunityPage() {
           </div>
         )}
 
+        {/* ── Share CTA banner ── */}
+        {!user ? (
+          /* Signed-out: invite to share */
+          <div className="mx-4 mb-3">
+            <div className="border-2 border-black rounded-2xl bg-primary p-4 flex items-center gap-4
+                            shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-bold text-base uppercase tracking-tight leading-tight">
+                  Share your style
+                </p>
+                <p className="text-xs text-black/60 mt-0.5 leading-snug">
+                  Publish items and outfits to inspire others.
+                </p>
+              </div>
+              <button
+                onClick={handleSharePress}
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 border-2 border-black rounded-xl
+                           bg-white font-bold text-sm uppercase tracking-wide
+                           shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                <Globe className="w-4 h-4" />
+                Add Items
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Signed-in: quick shortcuts to wardrobe / saved looks */
+          <div className="mx-4 mb-3">
+            <div className="border-2 border-black/15 rounded-2xl bg-white/70 p-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-black/50">Ready to share?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-xl
+                             bg-primary text-xs font-bold uppercase tracking-wide
+                             shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                >
+                  <Shirt className="w-3.5 h-3.5" />
+                  Items
+                </button>
+                <button
+                  onClick={() => navigate("/saved")}
+                  className="flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-xl
+                             bg-white text-xs font-bold uppercase tracking-wide
+                             shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                             active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  Outfits
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Feed ── */}
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -185,36 +265,15 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
-
-        {/* ── Soft join banner for signed-out users ── */}
-        {!user && (
-          <div className="mx-4 mb-6 mt-2">
-            <div className="border-2 border-black rounded-2xl bg-primary p-4 flex flex-col gap-2
-                            shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              <p className="font-display font-bold text-base uppercase tracking-tight">
-                Share Your Style
-              </p>
-              <p className="text-sm text-black/70 leading-snug">
-                Create a free account when you're ready to publish your own items or outfits.
-                Browsing is always free — no account needed.
-              </p>
-              <button
-                onClick={() => setShowAuth(true)}
-                className="mt-1 self-start px-4 py-2 border-2 border-black rounded-xl bg-white
-                           font-bold text-sm uppercase tracking-wide
-                           shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-              >
-                Join Community
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <AnimatePresence>
         {showAuth && (
-          <AuthSheet onClose={() => setShowAuth(false)} defaultTab="signup" />
+          <AuthSheet
+            onClose={() => setShowAuth(false)}
+            onSuccess={handleShareSignInSuccess}
+            defaultTab="signup"
+          />
         )}
       </AnimatePresence>
     </>

@@ -21,6 +21,12 @@ interface AuthSheetProps {
   onClose: () => void;
   /** Pre-select the sign-up tab (e.g. when user taps "Join" from the feed) */
   defaultTab?: "signin" | "signup";
+  /**
+   * Called immediately after a successful sign-in or Apple sign-in.
+   * NOT called after sign-up (user must verify email first).
+   * Use this to trigger auto-publish or navigation post-auth.
+   */
+  onSuccess?: () => void;
 }
 
 type Tab = "signin" | "signup";
@@ -35,7 +41,7 @@ function AppleLogo() {
   );
 }
 
-export function AuthSheet({ onClose, defaultTab = "signup" }: AuthSheetProps) {
+export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthSheetProps) {
   const { signIn, signUp, signInWithApple } = useAuth();
   const isNative = Capacitor.isNativePlatform();
 
@@ -63,6 +69,7 @@ export function AuthSheet({ onClose, defaultTab = "signup" }: AuthSheetProps) {
     const { error } = await signIn(siEmail.trim(), siPassword);
     setIsLoading(false);
     if (error) { setError(error); return; }
+    onSuccess?.();
     onClose();
   };
 
@@ -86,6 +93,7 @@ export function AuthSheet({ onClose, defaultTab = "signup" }: AuthSheetProps) {
     const { error } = await signInWithApple();
     setAppleLoading(false);
     if (error) { setError(error); return; }
+    onSuccess?.();
     onClose();
   };
 

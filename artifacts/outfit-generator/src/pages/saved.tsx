@@ -24,6 +24,8 @@ import { ItemDetailsSheet } from "@/components/clothing/ItemDetailsSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { publishOutfit, unpublishOutfit } from "@/lib/sync";
 import { AuthSheet } from "@/components/auth/AuthSheet";
+import { ShareConfirmSheet } from "@/components/community/ShareConfirmSheet";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Outfit } from "@/lib/db";
 
 const SLOT_ORDER = ["tops", "bottoms", "shoes", "dresses", "outerwear", "accessories"] as const;
@@ -76,7 +78,9 @@ function ItemPhoto({
 export default function SavedPage() {
   const { data: outfits, isLoading } = useListOutfits();
   const { user } = useAuth();
-  const [showAuthSheet, setShowAuthSheet] = useState(false);
+  const [showAuthSheet,    setShowAuthSheet]    = useState(false);
+  const [showShareConfirm, setShowShareConfirm] = useState(false);
+  const pendingShareOutfitRef = useRef<Outfit | null>(null);
   const [publishingIds, setPublishingIds] = useState<Set<number>>(new Set());
   const deleteOutfit = useDeleteOutfit();
   const renameOutfit = useRenameOutfit();
@@ -170,7 +174,9 @@ export default function SavedPage() {
   const handleToggleOutfitVisibility = async (outfit: Outfit) => {
     const isPublic = outfit.visibility === "public";
     if (!isPublic && !user) {
-      setShowAuthSheet(true);
+      // Walk through share-confirm → auth → auto-publish
+      pendingShareOutfitRef.current = outfit;
+      setShowShareConfirm(true);
       return;
     }
     const newVisibility: "private" | "public" = isPublic ? "private" : "public";
@@ -835,10 +841,39 @@ export default function SavedPage() {
         )}
       </AnimatePresence>
 
-      {/* Auth sheet — shown when anonymous user tries to publish */}
+      {/* Share confirm sheet → Auth sheet */}
+      <AnimatePresence>
+        {showShareConfirm && pendingShareOutfitRef.current && (
+          <ShareConfirmSheet
+            kind="outfit"
+            name={pendingShareOutfitRef.current.name ?? ""}
+            onContinue={() => { setShowShareConfirm(false); setShowAuthSheet(true); }}
+            onCancel={() => {
+              setShowShareConfirm(false);
+              pendingShareOutfitRef.current = null;
+            }}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {showAuthSheet && (
-          <AuthSheet onClose={() => setShowAuthSheet(false)} defaultTab="signup" />
+          <AuthSheet
+            onClose={() => setShowAuthSheet(false)}
+            defaultTab="signup"
+            onSuccess={() => {
+              const pendingOutfit = pendingShareOutfitRef.current;
+              if (!pendingOutfit || !isSupabaseConfigured()) return;
+              pendingShareOutfitRef.current = null;
+              getSupabase().auth.getSession().then(({ data: { session } }) => {
+                if (!session?.user) return;
+                renameOutfit.mutate(
+                  { id: pendingOutfit.id, data: { visibility: "public" } },
+                  { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
+                );
+                publishOutfit({ ...pendingOutfit, visibility: "public" }, session.user.id);
+              });
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
