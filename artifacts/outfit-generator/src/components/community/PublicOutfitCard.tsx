@@ -1,21 +1,12 @@
 /**
  * PublicOutfitCard — outfit card for the Discover feed and Discover Favorites.
  *
- * Privacy:
- *  • anonymous profile → handle and profile link are hidden
- *  • public profile    → @handle shown; tapping it navigates to their profile
- *
- * Auth gating:
- *  • Hearting requires a signed-in account — tapping the heart when logged out
- *    opens AuthSheet instead.
- *
- * Also includes:
- *  • Heart toggle with bounce animation
- *  • "⋯" menu → Report / Block creator
+ * Card overlay:  ❤️ Heart (bottom-right)  ↗️ Share (bottom-left)
+ * Three-dot menu: Follow · View Closet · Copy Link · Block · Report
  */
 
 import React, { useState } from "react";
-import { Shirt, Heart, MoreHorizontal, Flag, Ban, Share2 } from "lucide-react";
+import { Shirt, Heart, MoreHorizontal, Flag, Ban, Share2, Link, UserCheck, UserPlus, User } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import type { PublicOutfit, SafeProfile } from "@/lib/supabase";
@@ -31,6 +22,7 @@ import { shareContent, outfitShareUrl, buildOutfitShareText } from "@/lib/share"
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
+import { useFollowState } from "@/hooks/useFollows";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface PublicOutfitCardProps {
@@ -40,33 +32,44 @@ interface PublicOutfitCardProps {
 }
 
 export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCardProps) {
-  const { user }                      = useAuth();
-  const { data: myProfile }           = useMyProfile(user?.id);
-  const [, navigate]                  = useLocation();
-  const queryClient                    = useQueryClient();
-  const [hearted,      setHearted]    = useState(() => isDiscoverFavorite(outfit.id));
-  const [heartAnim,    setHeartAnim]  = useState(false);
+  const { user }                        = useAuth();
+  const { data: myProfile }             = useMyProfile(user?.id);
+  const [, navigate]                    = useLocation();
+  const queryClient                      = useQueryClient();
+  const [hearted,      setHearted]      = useState(() => isDiscoverFavorite(outfit.id));
+  const [heartAnim,    setHeartAnim]    = useState(false);
   const [heartSyncing, setHeartSyncing] = useState(false);
   const [heartError,   setHeartError]   = useState<string | null>(null);
-  const [blocked,      setBlocked]    = useState(() => isBlocked(outfit.user_id));
-  const [showMenu,     setShowMenu]   = useState(false);
-  const [showReport,   setShowReport] = useState(false);
-  const [showAuth,     setShowAuth]   = useState(false);
+  const [blocked,      setBlocked]      = useState(() => isBlocked(outfit.user_id));
+  const [showMenu,     setShowMenu]     = useState(false);
+  const [showReport,   setShowReport]   = useState(false);
+  const [showAuth,     setShowAuth]     = useState(false);
   const [showPrivGate, setShowPrivGate] = useState(false);
-
-  if (blocked) return null;
+  const [copied,       setCopied]       = useState(false);
 
   const profile     = outfit.profiles;
   const privacyMode = profile?.privacy_mode ?? "public";
   const isAnonymous = privacyMode === "anonymous";
   const isOwn       = user?.id === outfit.user_id;
+  const handle      = (!isAnonymous && profile?.handle) ? profile.handle : "";
   const items       = outfit.item_names ?? [];
+
+  // Follow state — always called (hooks can't be conditional)
+  const { following, toggle: toggleFollow, syncing: followSyncing } = useFollowState(
+    outfit.user_id,
+    handle,
+    user?.id,
+  );
+
+  if (blocked) return null;
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleHeart = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user)                                 { setShowAuth(true);     return; }
     if (myProfile?.privacy_mode === "private") { setShowPrivGate(true); return; }
-    if (heartSyncing) return; // prevent rapid duplicate requests
+    if (heartSyncing) return;
 
     const prev = hearted;
     const next = toggleDiscoverFavorite(outfit.id, "outfit");
@@ -88,9 +91,35 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
     }
   };
 
-  const handleProfileTap = (e: React.MouseEvent) => {
+  const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (profile && privacyMode === "public") navigate(`/profile/${profile.handle}`);
+    shareContent(
+      outfitShareUrl(outfit.id),
+      buildOutfitShareText(outfit.name, privacyMode, handle || undefined, outfitShareUrl(outfit.id)),
+      "My Digital Closet",
+    );
+  };
+
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(outfitShareUrl(outfit.id)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+    setShowMenu(false);
+  };
+
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) { setShowMenu(false); setShowAuth(true); return; }
+    setShowMenu(false);
+    await toggleFollow(user.id);
+  };
+
+  const handleViewCloset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    if (handle) navigate(`/profile/${handle}`);
   };
 
   const handleBlock = (e: React.MouseEvent) => {
@@ -100,6 +129,13 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
     setShowMenu(false);
   };
 
+  const handleProfileTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAnonymous && handle) navigate(`/profile/${handle}`);
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <div className={cn("relative", className)}>
       {/* Heart sync error toast */}
@@ -107,6 +143,14 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap
                         bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
           {heartError}
+        </div>
+      )}
+
+      {/* Copied toast */}
+      {copied && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap
+                        bg-black text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
+          Link copied!
         </div>
       )}
 
@@ -135,7 +179,18 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             </div>
           )}
 
-          {/* Heart button */}
+          {/* Share button — bottom-left */}
+          <button
+            onClick={handleShare}
+            aria-label="Share"
+            className="absolute bottom-2 left-2 w-8 h-8 rounded-full bg-white/90 border-2 border-black
+                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]
+                       active:scale-90 transition-transform"
+          >
+            <Share2 className="w-3.5 h-3.5 text-black/50" />
+          </button>
+
+          {/* Heart button — bottom-right */}
           <button
             onClick={handleHeart}
             aria-label={hearted ? "Unheart" : "Heart"}
@@ -154,7 +209,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             </motion.div>
           </button>
 
-          {/* More (⋯) button */}
+          {/* More (⋯) button — top-right */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(true); }}
             aria-label="More actions"
@@ -171,14 +226,13 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
           <p className="text-[10px] text-black/40 font-medium">
             {items.length} {items.length === 1 ? "piece" : "pieces"}
           </p>
-          {/* Handle — only for public profiles */}
-          {!isAnonymous && profile && (
+          {!isAnonymous && handle && (
             <button
               onClick={handleProfileTap}
               className="text-[10px] text-black/30 font-medium truncate mt-0.5 text-left
                          hover:text-black/60 transition-colors"
             >
-              @{profile.handle}
+              @{handle}
             </button>
           )}
         </div>
@@ -200,39 +254,64 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                  shareContent(
-                    outfitShareUrl(outfit.id),
-                    buildOutfitShareText(outfit.name, privacyMode, profile?.handle ?? undefined, outfitShareUrl(outfit.id)),
-                    "My Digital Closet",
-                  );
-                }}
-                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                           border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
-              >
-                <Share2 className="w-4 h-4 text-black/50" /> Share
-              </button>
-              {!isOwn && (
+              {/* Follow — hidden for own posts and anonymous profiles */}
+              {!isOwn && !isAnonymous && handle && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowReport(true); }}
+                  onClick={handleFollow}
+                  disabled={followSyncing}
+                  className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
+                             border-black/15 bg-white text-sm font-bold text-left active:bg-black/5
+                             disabled:opacity-50"
+                >
+                  {following
+                    ? <UserCheck className="w-4 h-4 text-green-600" />
+                    : <UserPlus  className="w-4 h-4 text-black/50" />}
+                  {following ? `Following @${handle}` : `Follow @${handle}`}
+                </button>
+              )}
+
+              {/* View Closet — hidden for anonymous profiles */}
+              {!isAnonymous && handle && (
+                <button
+                  onClick={handleViewCloset}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
                              border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
                 >
-                  <Flag className="w-4 h-4 text-black/50" /> Report
+                  <User className="w-4 h-4 text-black/50" /> View Closet
                 </button>
               )}
+
+              {/* Copy Link */}
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
+                           border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
+              >
+                <Link className="w-4 h-4 text-black/50" /> Copy Link
+              </button>
+
+              {/* Block */}
               {!isOwn && (
                 <button
                   onClick={handleBlock}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
                              border-black/15 bg-white text-sm font-bold text-left text-red-600 active:bg-red-50"
                 >
-                  <Ban className="w-4 h-4" /> Block creator
+                  <Ban className="w-4 h-4" /> Block User
                 </button>
               )}
+
+              {/* Report */}
+              {!isOwn && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowReport(true); }}
+                  className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
+                             border-black/15 bg-white text-sm font-bold text-left text-red-600 active:bg-red-50"
+                >
+                  <Flag className="w-4 h-4" /> Report Outfit
+                </button>
+              )}
+
               <button
                 onClick={() => setShowMenu(false)}
                 className="w-full py-3 rounded-xl border-2 border-black/10 text-sm font-bold text-black/40 active:bg-black/5"
@@ -249,7 +328,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         <ReportSheet postId={outfit.id} postType="outfit" onClose={() => setShowReport(false)} />
       )}
 
-      {/* ── Auth sheet (heart tapped while logged out) ── */}
+      {/* ── Auth sheet ── */}
       <AnimatePresence>
         {showAuth && (
           <AuthSheet
@@ -260,7 +339,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         )}
       </AnimatePresence>
 
-      {/* ── Private gate (heart tapped while in Private mode) ── */}
+      {/* ── Private gate ── */}
       <AnimatePresence>
         {showPrivGate && (
           <PrivateGateSheet
