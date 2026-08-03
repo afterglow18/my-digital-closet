@@ -29,8 +29,6 @@ import { cn } from "@/lib/utils";
 
 type ContentTab = "items" | "outfits";
 
-const COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
 export default function ProfileMePage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -76,17 +74,6 @@ export default function ProfileMePage() {
   const [handleErr,      setHandleErr]      = useState<string | null>(null);
   const [handleSuccess,  setHandleSuccess]  = useState(false);
 
-  const canChangeHandle = (): boolean => {
-    if (!profile?.handle_changed_at) return true;
-    return Date.now() - new Date(profile.handle_changed_at).getTime() >= COOLDOWN_MS;
-  };
-
-  const nextHandleChangeDate = (): string => {
-    if (!profile?.handle_changed_at) return "";
-    const next = new Date(new Date(profile.handle_changed_at).getTime() + COOLDOWN_MS);
-    return next.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
   const openHandleEdit = () => {
     setNewHandle(profile?.handle ?? "");
     setHandleErr(null);
@@ -103,9 +90,8 @@ export default function ProfileMePage() {
 
     // Client-side validation
     if (!trimmed)                           { setHandleErr("Handle can't be empty"); return; }
-    if (trimmed.length > 12)               { setHandleErr("Max 12 characters"); return; }
+    if (trimmed.length > 15)               { setHandleErr("Max 15 characters"); return; }
     if (!/^[a-z0-9_-]+$/.test(trimmed))   { setHandleErr("Letters, numbers, _ and - only"); return; }
-    if (!canChangeHandle())                { setHandleErr(`Can change again on ${nextHandleChangeDate()}`); return; }
 
     setSavingHandle(true); setHandleErr(null);
     try {
@@ -217,20 +203,14 @@ export default function ProfileMePage() {
                       <span className="text-[10px] font-bold text-green-600 uppercase tracking-wide">✓ Updated</span>
                     )}
                     {!handleEditMode && profile && (
-                      canChangeHandle() ? (
-                        <button
-                          onClick={openHandleEdit}
-                          className="text-[10px] font-bold uppercase tracking-wide text-black/35
-                                     hover:text-black border border-black/15 rounded-full px-2 py-0.5
-                                     hover:border-black/50 transition-all flex-shrink-0"
-                        >
-                          Change
-                        </button>
-                      ) : (
-                        <span className="text-[10px] font-semibold text-black/25 flex-shrink-0">
-                          · available {nextHandleChangeDate()}
-                        </span>
-                      )
+                      <button
+                        onClick={openHandleEdit}
+                        className="text-[10px] font-bold uppercase tracking-wide text-black/35
+                                   hover:text-black border border-black/15 rounded-full px-2 py-0.5
+                                   hover:border-black/50 transition-all flex-shrink-0"
+                      >
+                        Change
+                      </button>
                     )}
                   </div>
                 </div>
@@ -266,11 +246,11 @@ export default function ProfileMePage() {
                             type="text"
                             value={newHandle}
                             onChange={(e) => {
-                              // strip invalid chars live; enforce max 12
+                              // strip invalid chars live; enforce max 15
                               const v = e.target.value
                                 .toLowerCase()
                                 .replace(/[^a-z0-9_-]/g, "")
-                                .slice(0, 12);
+                                .slice(0, 15);
                               setNewHandle(v);
                               setHandleErr(null);
                             }}
@@ -283,9 +263,9 @@ export default function ProfileMePage() {
                         </div>
                         <span className={cn(
                           "text-[11px] font-bold flex-shrink-0 tabular-nums w-9 text-right",
-                          newHandle.length >= 12 ? "text-red-500" : "text-black/30",
+                          newHandle.length >= 15 ? "text-red-500" : "text-black/30",
                         )}>
-                          {newHandle.length}/12
+                          {newHandle.length}/15
                         </span>
                       </div>
 
@@ -294,7 +274,7 @@ export default function ProfileMePage() {
                       )}
 
                       <p className="text-[10px] text-black/30 leading-snug">
-                        Letters, numbers, _ and - · Once every 30 days
+                        Letters, numbers, _ and -
                       </p>
 
                       <div className="flex gap-2">
