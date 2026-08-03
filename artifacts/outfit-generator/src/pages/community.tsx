@@ -7,9 +7,15 @@
  * • The call-to-action is "Share" (what users want to do), not "Sign In".
  * • Sign-up is triggered at the exact moment the user decides to share, not before.
  * • After sign-in, the user is sent to their wardrobe to choose what to publish.
+ *
+ * FEATURES
+ * ────────
+ * • Sticky controls — tabs, search, and chips stay pinned while the feed scrolls.
+ * • Infinite scroll — next page loads automatically when the sentinel enters view.
+ * • Scroll restoration — returning to Discover after leaving resumes from the same spot.
  */
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
@@ -20,7 +26,6 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 
@@ -34,6 +39,14 @@ const CATEGORY_FILTERS = [
   })),
 ];
 
+/** Key used to persist the scroll position for the Discover feed. */
+const SCROLL_KEY = "discover-scroll-v1";
+
+/** Returns the `<main>` scroll container created by AppLayout. */
+function getScrollContainer(): HTMLElement | null {
+  return document.querySelector("main");
+}
+
 export default function CommunityPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate]   = useLocation();
@@ -43,35 +56,89 @@ export default function CommunityPage() {
   const [category, setCategory] = useState("");
   const [search, setSearch]     = useState("");
 
-  const itemsQuery     = useCommunityItems({ category: category || undefined, search: search || undefined });
-  const outfitsQuery   = useCommunityOutfits({ search: search || undefined });
+  // ── Infinite queries ───────────────────────────────────────────────────────
+  const itemsQuery   = useCommunityItems({ category: category || undefined, search: search || undefined });
+  const outfitsQuery = useCommunityOutfits({ search: search || undefined });
   const followingQuery = useFollowingFeed();
 
-  const { data: items,      isLoading: itemsLoading,   error: itemsError,   refetch: refetchItems }   = itemsQuery;
-  const { data: outfits,    isLoading: outfitsLoading, error: outfitsError, refetch: refetchOutfits } = outfitsQuery;
-  const { data: followFeed = [], isLoading: followLoading, refetch: refetchFollowing } = followingQuery;
+  // Flatten pages into a single array
+  const items      = itemsQuery.data?.pages.flat()   ?? [];
+  const outfits    = outfitsQuery.data?.pages.flat()  ?? [];
+  const followFeed = followingQuery.data              ?? [];
 
-  const isLoading = feedTab === "items" ? itemsLoading : feedTab === "outfits" ? outfitsLoading : followLoading;
-  const error     = feedTab === "items" ? itemsError   : feedTab === "outfits" ? outfitsError   : null;
-  const refetch   = feedTab === "items" ? refetchItems : feedTab === "outfits" ? refetchOutfits : refetchFollowing;
-  const isEmpty   = feedTab === "items" ? !items?.length : feedTab === "outfits" ? !outfits?.length : !followFeed.length;
+  const isLoading = feedTab === "items"     ? itemsQuery.isLoading
+                  : feedTab === "outfits"   ? outfitsQuery.isLoading
+                  : followingQuery.isLoading;
+
+  const error     = feedTab === "items"     ? itemsQuery.error
+                  : feedTab === "outfits"   ? outfitsQuery.error
+                  : null;
+
+  const refetch   = feedTab === "items"     ? itemsQuery.refetch
+                  : feedTab === "outfits"   ? outfitsQuery.refetch
+                  : followingQuery.refetch;
+
+  const isEmpty   = feedTab === "items"     ? items.length === 0
+                  : feedTab === "outfits"   ? outfits.length === 0
+                  : followFeed.length === 0;
+
+  // Infinite scroll state for the active tab
+  const fetchNextPage     = feedTab === "items"   ? itemsQuery.fetchNextPage
+                          : feedTab === "outfits" ? outfitsQuery.fetchNextPage
+                          : undefined;
+  const hasNextPage       = feedTab === "items"   ? itemsQuery.hasNextPage
+                          : feedTab === "outfits" ? outfitsQuery.hasNextPage
+                          : false;
+  const isFetchingNextPage = feedTab === "items"  ? itemsQuery.isFetchingNextPage
+                           : feedTab === "outfits" ? outfitsQuery.isFetchingNextPage
+                           : false;
 
   const followCount = getFollowCount();
 
-  /** After sign-in, navigate to the wardrobe so the user can choose what to publish. */
-  const handleShareSignInSuccess = () => navigate("/");
+  // ── Scroll restoration ────────────────────────────────────────────────────
+  useEffect(() => {
+    const main = getScrollContainer();
+    if (!main) return;
+    // Restore saved position after the feed has had a chance to render
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) {
+      requestAnimationFrame(() => { main.scrollTop = parseInt(saved, 10); });
+    }
+    // Save position when leaving the page
+    return () => {
+      sessionStorage.setItem(SCROLL_KEY, String(main.scrollTop));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSharePress = () => {
-    if (user) navigate("/");
-    else setShowAuth(true);
-  };
+  // ── Infinite scroll sentinel ───────────────────────────────────────────────
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Inject a thin fixed bar directly above the nav bar.
-  // Runs whenever auth state changes; cleans up when the tab is left.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !fetchNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  // Reset scroll when tab changes
+  const handleTabChange = useCallback((tab: FeedTab) => {
+    setFeedTab(tab);
+    requestAnimationFrame(() => { getScrollContainer()?.scrollTo({ top: 0 }); });
+  }, []);
+
+  // ── Above-nav bar ──────────────────────────────────────────────────────────
   useEffect(() => {
     setAboveNav(
       !user ? (
-        /* Signed-out: invite to share */
         <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
           <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
             Share your style
@@ -88,7 +155,6 @@ export default function CommunityPage() {
           </button>
         </div>
       ) : (
-        /* Signed-in: quick shortcuts */
         <div className="bg-white/95 border-t border-black/10 px-4 py-2 flex items-center gap-2">
           <p className="flex-1 text-[11px] font-bold text-black/40 uppercase tracking-wide">
             Ready to share?
@@ -132,16 +198,15 @@ export default function CommunityPage() {
         className="flex flex-col min-h-full"
         style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
       >
-        {/* ── Header ── */}
+        {/* ── Scrollable header — Discover title (scrolls away) ── */}
         <div className="px-4 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Globe className="w-6 h-6" />
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Share button — primary CTA regardless of auth state */}
             <button
-              onClick={handleSharePress}
+              onClick={() => { if (user) navigate("/"); else setShowAuth(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
@@ -150,7 +215,6 @@ export default function CommunityPage() {
               <Share2 className="w-3.5 h-3.5" />
               Share
             </button>
-            {/* Profile icon — only when signed in */}
             {user && (
               <button
                 onClick={() => navigate("/profile/me")}
@@ -164,78 +228,81 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        {/* ── Items / Outfits / Following toggle ── */}
-        <div className="px-4 pb-2">
-          <div className="grid grid-cols-3 gap-1 bg-black/5 rounded-xl p-1">
-            {(
-              [
-                { tab: "items"     as FeedTab, label: "Items",     icon: Shirt, badge: undefined      },
-                { tab: "outfits"   as FeedTab, label: "Outfits",   icon: Globe, badge: undefined      },
-                { tab: "following" as FeedTab, label: "Following", icon: Users, badge: followCount    },
-              ]
-            ).map(({ tab, label, icon: Icon, badge }) => (
-              <button
-                key={tab}
-                onClick={() => setFeedTab(tab)}
-                className={cn(
-                  "py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all",
-                  "flex items-center justify-center gap-1",
-                  feedTab === tab
-                    ? "bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                    : "text-black/40 hover:text-black",
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-                {badge != null && badge > 0 && (
-                  <span className="bg-black text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Search (hidden on Following tab — feed is already curated) ── */}
-        {feedTab !== "following" && (
-          <div className="px-4 pb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search styles…"
-                className="w-full pl-9 pr-4 py-2.5 border-2 border-black rounded-xl text-sm font-medium
-                           bg-white focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── Category filter chips (items tab only) ── */}
-        {feedTab === "items" && (
-          <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-            {CATEGORY_FILTERS.map((f) => {
-              const isActive = f.value === category;
-              return (
+        {/* ── Sticky controls — tabs + search + chips ── */}
+        <div className="sticky top-0 z-20 bg-[#f8f9fa] shadow-[0px_2px_8px_rgba(0,0,0,0.06)]">
+          {/* Tabs */}
+          <div className="px-4 pt-1 pb-2">
+            <div className="grid grid-cols-3 gap-1 bg-black/5 rounded-xl p-1">
+              {(
+                [
+                  { tab: "items"     as FeedTab, label: "Items",     icon: Shirt, badge: undefined   },
+                  { tab: "outfits"   as FeedTab, label: "Outfits",   icon: Globe, badge: undefined   },
+                  { tab: "following" as FeedTab, label: "Following", icon: Users, badge: followCount },
+                ]
+              ).map(({ tab, label, icon: Icon, badge }) => (
                 <button
-                  key={f.value}
-                  onClick={() => setCategory((c) => (c === f.value ? "" : f.value))}
+                  key={tab}
+                  onClick={() => handleTabChange(tab)}
                   className={cn(
-                    "flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-[11px] font-bold uppercase tracking-wide transition-all",
-                    isActive
-                      ? "bg-black text-white border-black"
-                      : "bg-white border-black/20 text-black/50 hover:border-black/40",
+                    "py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all",
+                    "flex items-center justify-center gap-1",
+                    feedTab === tab
+                      ? "bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                      : "text-black/40 hover:text-black",
                   )}
                 >
-                  {f.label}
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                  {badge != null && badge > 0 && (
+                    <span className="bg-black text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                      {badge}
+                    </span>
+                  )}
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* Search (hidden on Following tab) */}
+          {feedTab !== "following" && (
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search styles…"
+                  className="w-full pl-9 pr-4 py-2.5 border-2 border-black rounded-xl text-sm font-medium
+                             bg-white focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Category chips (items tab only) */}
+          {feedTab === "items" && (
+            <div className="flex gap-2 px-4 pb-2 overflow-x-auto no-scrollbar">
+              {CATEGORY_FILTERS.map((f) => {
+                const isActive = f.value === category;
+                return (
+                  <button
+                    key={f.value}
+                    onClick={() => setCategory((c) => (c === f.value ? "" : f.value))}
+                    className={cn(
+                      "flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-[11px] font-bold uppercase tracking-wide transition-all",
+                      isActive
+                        ? "bg-black text-white border-black"
+                        : "bg-white border-black/20 text-black/50 hover:border-black/40",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ── Feed ── */}
         {isLoading ? (
@@ -274,17 +341,30 @@ export default function CommunityPage() {
             )}
           </div>
         ) : (
-          <div className="px-4 pb-4">
+          <div className="px-4 pt-3 pb-4">
+            {/* Two-column equal-width grid */}
             <div className="grid grid-cols-2 gap-3">
               {feedTab === "following"
                 ? followFeed.map((entry) =>
                     entry.type === "item"
-                      ? <PublicItemCard   key={entry.data.id} item={entry.data}     />
-                      : <PublicOutfitCard key={entry.data.id} outfit={entry.data}   />
+                      ? <PublicItemCard   key={entry.data.id} item={entry.data}   />
+                      : <PublicOutfitCard key={entry.data.id} outfit={entry.data} />
                   )
                 : feedTab === "items"
-                  ? items!.map((item)     => <PublicItemCard   key={item.id}   item={item}     />)
-                  : outfits!.map((outfit) => <PublicOutfitCard key={outfit.id} outfit={outfit} />)}
+                  ? items.map((item)     => <PublicItemCard   key={item.id}   item={item}     />)
+                  : outfits.map((outfit) => <PublicOutfitCard key={outfit.id} outfit={outfit} />)}
+            </div>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="flex justify-center py-4 mt-2">
+              {isFetchingNextPage && (
+                <Loader2 className="w-5 h-5 animate-spin text-black/25" />
+              )}
+              {!hasNextPage && !isFetchingNextPage && items.length + outfits.length > 0 && feedTab !== "following" && (
+                <p className="text-[10px] font-bold text-black/20 uppercase tracking-widest">
+                  All caught up
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -294,7 +374,7 @@ export default function CommunityPage() {
         {showAuth && (
           <AuthSheet
             onClose={() => setShowAuth(false)}
-            onSuccess={handleShareSignInSuccess}
+            onSuccess={() => navigate("/")}
             defaultTab="signup"
           />
         )}

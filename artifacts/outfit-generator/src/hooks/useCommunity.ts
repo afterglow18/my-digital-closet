@@ -8,7 +8,7 @@
  * no private data sent. RLS enforces this at the DB level.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { getSupabase, isSupabaseConfigured, type PublicItem, type PublicOutfit, type Profile } from "@/lib/supabase";
 import { getDiscoverFavorites, pruneStaleDiscoverFavorites } from "@/lib/discoverFavorites";
 import { getLocalFollows, pruneStaleFollows } from "@/lib/localFollows";
@@ -36,12 +36,14 @@ export interface FeedFilters {
   search?: string;
 }
 
+const PAGE_SIZE = 20;
+
 // ── Items feed ────────────────────────────────────────────────────────────────
 
 export function useCommunityItems(filters: FeedFilters = {}) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["community", "items", filters],
-    queryFn: async (): Promise<(PublicItem & { profiles: Profile })[]> => {
+    queryFn: async ({ pageParam }): Promise<(PublicItem & { profiles: Profile })[]> => {
       if (!isSupabaseConfigured()) return [];
       const sb = getSupabase();
       let q = sb
@@ -49,13 +51,17 @@ export function useCommunityItems(filters: FeedFilters = {}) {
         .select("*, profiles(id, handle, display_name, avatar_url)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .limit(60);
+        .limit(PAGE_SIZE);
+      if (pageParam)        q = q.lt("created_at", pageParam as string);
       if (filters.category) q = q.eq("category", filters.category);
       if (filters.search)   q = q.ilike("name", `%${filters.search}%`);
       const { data, error } = await q;
       if (error) { logSupabaseError("useCommunityItems", error); throw new Error(error.message); }
       return (data ?? []) as (PublicItem & { profiles: Profile })[];
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.length < PAGE_SIZE ? undefined : lastPage[lastPage.length - 1].created_at,
     staleTime: 1000 * 60 * 2,
   });
 }
@@ -63,9 +69,9 @@ export function useCommunityItems(filters: FeedFilters = {}) {
 // ── Outfits feed ──────────────────────────────────────────────────────────────
 
 export function useCommunityOutfits(filters: FeedFilters = {}) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["community", "outfits", filters],
-    queryFn: async (): Promise<(PublicOutfit & { profiles: Profile })[]> => {
+    queryFn: async ({ pageParam }): Promise<(PublicOutfit & { profiles: Profile })[]> => {
       if (!isSupabaseConfigured()) return [];
       const sb = getSupabase();
       let q = sb
@@ -73,12 +79,16 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
         .select("*, profiles(id, handle, display_name, avatar_url)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .limit(60);
+        .limit(PAGE_SIZE);
+      if (pageParam)      q = q.lt("created_at", pageParam as string);
       if (filters.search) q = q.ilike("name", `%${filters.search}%`);
       const { data, error } = await q;
       if (error) { logSupabaseError("useCommunityOutfits", error); throw new Error(error.message); }
       return (data ?? []) as (PublicOutfit & { profiles: Profile })[];
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.length < PAGE_SIZE ? undefined : lastPage[lastPage.length - 1].created_at,
     staleTime: 1000 * 60 * 2,
   });
 }

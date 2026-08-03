@@ -2,7 +2,7 @@
  * PublicOutfitCard — outfit card for the Discover feed and Discover Favorites.
  *
  * Includes:
- *  • Heart toggle (local-only, no account required)
+ *  • Heart toggle with bounce animation (local-only, no account required)
  *  • "⋯" menu → Report (requires account) or Block creator (local-only)
  *  • Blocked creators' cards render null
  */
@@ -27,6 +27,7 @@ interface PublicOutfitCardProps {
 export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCardProps) {
   const { user }                     = useAuth();
   const [hearted,    setHearted]     = useState(() => isDiscoverFavorite(outfit.id));
+  const [heartAnim,  setHeartAnim]   = useState(false);
   const [blocked,    setBlocked]     = useState(() => isBlocked(outfit.user_id));
   const [showMenu,   setShowMenu]    = useState(false);
   const [showReport, setShowReport]  = useState(false);
@@ -38,7 +39,12 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
 
   const handleHeart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setHearted(toggleDiscoverFavorite(outfit.id, "outfit"));
+    const next = toggleDiscoverFavorite(outfit.id, "outfit");
+    setHearted(next);
+    if (next) {
+      setHeartAnim(true);
+      setTimeout(() => setHeartAnim(false), 500);
+    }
   };
 
   const handleBlock = (e: React.MouseEvent) => {
@@ -51,11 +57,12 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   return (
     <div className={cn("relative", className)}>
       {/* ── Card body ── */}
-      <div
+      <motion.div
         onClick={onClick}
+        whileTap={{ scale: 0.97, y: 2 }}
+        transition={{ type: "spring", stiffness: 450, damping: 28 }}
         className="group flex flex-col bg-white rounded-2xl border-2 border-black overflow-hidden
-                   shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:shadow-none
-                   active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                   shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
         {/* Preview area */}
         <div className="aspect-square w-full bg-primary/50 relative flex flex-col
@@ -79,14 +86,18 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             onClick={handleHeart}
             aria-label={hearted ? "Unheart" : "Heart"}
             className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]
-                       active:scale-90 transition-transform"
+                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
           >
-            <Heart
-              className={cn("w-3.5 h-3.5 transition-colors",
-                hearted ? "fill-red-500 text-red-500" : "text-black/40",
-              )}
-            />
+            <motion.div
+              animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
+              transition={{ duration: 0.45, ease: "easeInOut" }}
+            >
+              <Heart
+                className={cn("w-3.5 h-3.5 transition-colors",
+                  hearted ? "fill-red-500 text-red-500" : "text-black/40",
+                )}
+              />
+            </motion.div>
           </button>
 
           {/* More (⋯) button */}
@@ -112,7 +123,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             </p>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Actions sheet ── */}
       <AnimatePresence>

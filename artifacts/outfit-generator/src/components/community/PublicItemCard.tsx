@@ -2,9 +2,10 @@
  * PublicItemCard — item card shown in the Discover feed and Discover Favorites.
  *
  * Includes:
- *  • Heart toggle (local-only, no account required)
+ *  • Heart toggle with bounce animation (local-only, no account required)
  *  • "⋯" menu → Report (requires account) or Block creator (local-only)
  *  • Blocked creators' cards render null (hidden immediately)
+ *  • Shimmer placeholder while image loads
  */
 
 import React, { useState } from "react";
@@ -27,9 +28,11 @@ interface PublicItemCardProps {
 export function PublicItemCard({ item, onClick, className }: PublicItemCardProps) {
   const { user }                             = useAuth();
   const [hearted,     setHearted]            = useState(() => isDiscoverFavorite(item.id));
+  const [heartAnim,   setHeartAnim]          = useState(false);
   const [blocked,     setBlocked]            = useState(() => isBlocked(item.user_id));
   const [showMenu,    setShowMenu]           = useState(false);
   const [showReport,  setShowReport]         = useState(false);
+  const [imgLoaded,   setImgLoaded]          = useState(false);
 
   if (blocked) return null;
 
@@ -37,7 +40,12 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
 
   const handleHeart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setHearted(toggleDiscoverFavorite(item.id, "item"));
+    const next = toggleDiscoverFavorite(item.id, "item");
+    setHearted(next);
+    if (next) {
+      setHeartAnim(true);
+      setTimeout(() => setHeartAnim(false), 500);
+    }
   };
 
   const handleBlock = (e: React.MouseEvent) => {
@@ -50,21 +58,32 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
   return (
     <div className={cn("relative", className)}>
       {/* ── Card body (main tap area) ── */}
-      <div
+      <motion.div
         onClick={onClick}
+        whileTap={{ scale: 0.97, y: 2 }}
+        transition={{ type: "spring", stiffness: 450, damping: 28 }}
         className="group flex flex-col bg-white rounded-2xl border-2 border-black overflow-hidden
-                   shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:shadow-none
-                   active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                   shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
         {/* Image */}
         <div className="aspect-square w-full bg-[#f9f4ee] overflow-hidden relative">
           {item.image_url ? (
-            <img
-              src={item.image_url}
-              alt={item.name}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
+            <>
+              {/* Shimmer placeholder */}
+              {!imgLoaded && (
+                <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[#ede8e1] via-[#f5f0ea] to-[#ede8e1]" />
+              )}
+              <img
+                src={item.image_url}
+                alt={item.name}
+                className={cn(
+                  "w-full h-full object-cover transition-opacity duration-300",
+                  imgLoaded ? "opacity-100" : "opacity-0",
+                )}
+                loading="lazy"
+                onLoad={() => setImgLoaded(true)}
+              />
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl text-black/10 font-black uppercase">
               {item.category[0]}
@@ -76,14 +95,18 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             onClick={handleHeart}
             aria-label={hearted ? "Unheart" : "Heart"}
             className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]
-                       active:scale-90 transition-transform"
+                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
           >
-            <Heart
-              className={cn("w-3.5 h-3.5 transition-colors",
-                hearted ? "fill-red-500 text-red-500" : "text-black/40",
-              )}
-            />
+            <motion.div
+              animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
+              transition={{ duration: 0.45, ease: "easeInOut" }}
+            >
+              <Heart
+                className={cn("w-3.5 h-3.5 transition-colors",
+                  hearted ? "fill-red-500 text-red-500" : "text-black/40",
+                )}
+              />
+            </motion.div>
           </button>
 
           {/* More (⋯) button — top-right */}
@@ -109,7 +132,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             </p>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Actions sheet (Report / Block) ── */}
       <AnimatePresence>
