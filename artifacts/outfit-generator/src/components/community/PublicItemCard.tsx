@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from "react";
-import { Heart, MoreHorizontal, Flag, Ban, Share2, Link, UserCheck, UserPlus, User } from "lucide-react";
+import { Heart, MoreHorizontal, Flag, Ban, Send, Link, UserCheck, UserPlus, User } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import type { PublicItem, SafeProfile } from "@/lib/supabase";
@@ -197,51 +197,53 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
           </button>
         </div>
 
-        {/* Action row — Share + Heart */}
-        <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1">
-          <button
-            onClick={handleShare}
-            aria-label="Share"
-            className="w-8 h-8 rounded-full bg-white border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
-          >
-            <Share2 className="w-3.5 h-3.5 text-black/50" />
-          </button>
+        {/* Info + action buttons */}
+        <div className="p-2.5 flex items-start gap-2">
+          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <p className="font-bold text-xs truncate">{item.name}</p>
+            <p className="text-[10px] text-black/40 font-medium uppercase tracking-wide">
+              {item.category}{item.brand ? ` · ${item.brand}` : ""}
+            </p>
+            {!isAnonymous && handle && (
+              <button
+                onClick={handleProfileTap}
+                className="text-[10px] text-black/30 font-medium truncate mt-0.5 text-left
+                           hover:text-black/60 transition-colors"
+              >
+                @{handle}
+              </button>
+            )}
+          </div>
 
-          <button
-            onClick={handleHeart}
-            disabled={heartSyncing}
-            aria-label={hearted ? "Unheart" : "Heart"}
-            className="w-8 h-8 rounded-full bg-white border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
-                       disabled:opacity-60"
-          >
-            <motion.div
-              animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
-              transition={{ duration: 0.45, ease: "easeInOut" }}
-            >
-              <Heart className={cn("w-3.5 h-3.5 transition-colors", hearted ? "fill-red-500 text-red-500" : "text-black/40")} />
-            </motion.div>
-          </button>
-        </div>
-
-        {/* Info */}
-        <div className="px-2.5 pb-2.5 flex flex-col gap-0.5">
-          <p className="font-bold text-xs truncate">{item.name}</p>
-          <p className="text-[10px] text-black/40 font-medium uppercase tracking-wide">
-            {item.category}{item.brand ? ` · ${item.brand}` : ""}
-          </p>
-          {!isAnonymous && handle && (
+          {/* Heart + Share stacked */}
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
             <button
-              onClick={handleProfileTap}
-              className="text-[10px] text-black/30 font-medium truncate mt-0.5 text-left
-                         hover:text-black/60 transition-colors"
+              onClick={handleHeart}
+              disabled={heartSyncing}
+              aria-label={hearted ? "Unheart" : "Heart"}
+              className="w-8 h-8 rounded-full bg-white border-2 border-black
+                         flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
+                         active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
+                         disabled:opacity-60"
             >
-              @{handle}
+              <motion.div
+                animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
+                transition={{ duration: 0.45, ease: "easeInOut" }}
+              >
+                <Heart className={cn("w-3.5 h-3.5 transition-colors", hearted ? "fill-red-500 text-red-500" : "text-black/40")} />
+              </motion.div>
             </button>
-          )}
+
+            <button
+              onClick={handleShare}
+              aria-label="Share"
+              className="w-8 h-8 rounded-full bg-white border-2 border-black
+                         flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
+                         active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+            >
+              <span className="text-sm leading-none">✈️</span>
+            </button>
+          </div>
         </div>
       </motion.div>
 
