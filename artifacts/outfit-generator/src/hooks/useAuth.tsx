@@ -106,20 +106,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ): Promise<{ error: string | null }> => {
       try {
         const sb = getSupabase();
-        const { data, error } = await sb.auth.signUp({ email, password });
+
+        // Pass handle + display_name as user metadata so the server-side
+        // `on_auth_user_created` trigger (SECURITY DEFINER) can create the
+        // profile row immediately — before the user has confirmed their email.
+        // A direct client-side INSERT would fail with an RLS violation when
+        // email confirmation is enabled, because the session is null at that
+        // point and auth.uid() returns null.
+        const { data, error } = await sb.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              handle: handle.toLowerCase().trim(),
+              display_name: displayName?.trim() || null,
+            },
+          },
+        });
+
         if (error) return { error: error.message };
         if (!data.user) return { error: "Sign up failed — no user returned" };
 
-        // Create profile row immediately
-        const { error: profileError } = await sb.from("profiles").insert({
-          id: data.user.id,
-          handle: handle.toLowerCase().trim(),
-          display_name: displayName?.trim() || null,
-        });
-        if (profileError) {
-          // Profile creation failed — still signed up but profile missing
-          return { error: `Account created but profile setup failed: ${profileError.message}` };
-        }
         return { error: null };
       } catch (e) {
         return { error: e instanceof Error ? e.message : "Sign up failed" };
@@ -148,30 +155,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const identityToken = result.response.identityToken;
       if (!identityToken) return { error: "Apple Sign-In did not return an identity token" };
 
+      // Pass name as metadata so the on_auth_user_created trigger can build
+      // the profile row if this is a brand-new Apple user. For returning users
+      // the trigger's ON CONFLICT DO NOTHING makes this a no-op.
+      const givenName  = result.response.givenName;
+      const familyName = result.response.familyName;
+      const displayName = [givenName, familyName].filter(Boolean).join(" ") || null;
+
       const { error } = await getSupabase().auth.signInWithIdToken({
         provider: "apple",
         token: identityToken,
+        options: {
+          data: {
+            display_name: displayName,
+            // handle will be derived from email by the trigger
+          },
+        },
       });
       if (error) return { error: error.message };
-
-      // Ensure profile row exists (Apple sign-in may create a new user)
-      const sb = getSupabase();
-      const { data: { user: currentUser } } = await sb.auth.getUser();
-      if (currentUser) {
-        const { data: existing } = await sb.from("profiles").select("id").eq("id", currentUser.id).single();
-        if (!existing) {
-          // Create a default profile from Apple-provided name / email
-          const givenName = result.response.givenName;
-          const familyName = result.response.familyName;
-          const displayName = [givenName, familyName].filter(Boolean).join(" ") || null;
-          const emailHandle = (currentUser.email ?? "").split("@")[0].replace(/[^a-z0-9_-]/gi, "").toLowerCase().slice(0, 30) || `user${Date.now()}`;
-          await sb.from("profiles").insert({
-            id: currentUser.id,
-            handle: emailHandle,
-            display_name: displayName,
-          });
-        }
-      }
 
       return { error: null };
     } catch (e) {
