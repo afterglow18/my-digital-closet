@@ -16,14 +16,19 @@ const BASE_URL =
   "https://mydigitalcloset.app";
 
 /**
- * App Store URL for the "Get the App" CTA on web landing pages.
- * Set VITE_APP_STORE_ID in Replit Secrets once the app is published.
- * e.g. VITE_APP_STORE_ID=123456789
+ * App Store URL for share sheets and "Get the App" CTAs.
+ *
+ * Set ONE of these in Codemagic's build_env group:
+ *   VITE_APP_STORE_URL   Full App Store URL (preferred)
+ *                        e.g. https://apps.apple.com/us/app/my-digital-closet/id6743215890
+ *   VITE_APP_STORE_ID    Numeric App Store ID only (e.g. 6743215890)
+ *                        The full URL is constructed automatically from this.
  */
 export const APP_STORE_URL: string =
-  import.meta.env.VITE_APP_STORE_ID
+  (import.meta.env.VITE_APP_STORE_URL as string | undefined)?.trim() ||
+  (import.meta.env.VITE_APP_STORE_ID
     ? `https://apps.apple.com/app/my-digital-closet/id${import.meta.env.VITE_APP_STORE_ID as string}`
-    : "https://apps.apple.com/app/my-digital-closet"; // generic search URL as fallback
+    : "");
 
 /**
  * Value for the `content` attribute of the iOS Smart App Banner meta tag.
