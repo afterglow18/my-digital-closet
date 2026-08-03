@@ -1,0 +1,246 @@
+I want to revise the Discover feature from the beginning and keep it simple.
+
+Main idea
+
+Discover is a free browse-and-share feature, not a marketplace.
+
+Anyone should be able to open Discover and browse public clothing items, outfits, and public profiles without creating an account.
+
+An account is required only when someone wants to:
+
+* Publish an item
+* Publish an outfit
+* Create or edit a public profile
+* Manage their own published content
+
+The existing closet must remain local-first and private by default. Nothing from a user’s private closet may upload to Supabase unless they explicitly choose to make that item or outfit public.
+
+Discover screen
+
+Rename Community to Discover.
+
+The Discover screen should include:
+
+* Search
+* Category filters
+* An Items / Outfits toggle
+* A public scrolling feed
+* Public profiles
+
+Signed-out users must be able to browse everything public.
+
+At the bottom of Discover, above the main navigation bar, add a yellow banner:
+
+Share Your Style
+Publish selected items or outfits for others to discover.
+
+Button:
+
+Add Items
+
+When a signed-out user taps Add Items:
+
+1. Open the sign-in/create-account sheet.
+2. After successful sign-in, automatically take them to their own wardrobe.
+3. Let them choose which item or outfit to publish.
+
+When a signed-in user taps Add Items, take them directly to their wardrobe.
+
+Publishing
+
+Add a small globe icon to the user’s own items and saved outfits.
+
+Everything starts Private.
+
+The choices in V1 are only:
+
+* Private
+* Public
+
+Do not include For Sale, price, currency, buying, checkout, messaging, offers, or seller tools in V1.
+
+When a signed-out user taps the globe:
+
+1. Explain that only the selected item or outfit will become public.
+2. Open the sign-in/create-account sheet.
+3. After sign-in, automatically finish publishing that same item or outfit.
+
+Do not make the user go find it again.
+
+Public closet
+
+Add a Share Closet or My Public Closet option.
+
+Sharing a closet must not automatically publish every private item.
+
+A public closet page should show only the items and outfits the user has individually marked Public.
+
+Include a preview option so the owner can see exactly what other people see.
+
+Accounts
+
+Use:
+
+* Continue with Apple
+* Email and password
+* Unique URL-safe @handle
+* Separate display name
+
+Browsing Discover must never require an account.
+
+Favorites
+
+The app already has Favorites. Do not create a new Favorites or Inspiration tab.
+
+Add a heart icon to every public item and outfit card in Discover.
+
+Discover favorites must be saved locally on the device only in V1.
+
+Do not require an account to heart a public post.
+
+Update the existing Favorites page with a segmented control:
+
+* My Items
+* Discover
+
+My Items must continue working exactly as it does now.
+
+Discover should show the public items and outfits the user hearted.
+
+Save only:
+
+type LocalDiscoverFavorite = {
+  postId: string;
+  postType: 'item' | 'outfit';
+  savedAt: string;
+};
+
+Do not copy public items or outfits into the user’s closet, Lookbook, or clothing database.
+
+Deleted or private posts
+
+If a creator:
+
+* Deletes a public item or outfit
+* Changes it from Public to Private
+* Has it hidden through moderation
+
+Then it must disappear from:
+
+* Discover
+* Search results
+* Public profiles
+* Every user’s Discover Favorites
+
+Do not show “This post is no longer available.”
+
+On refresh, remove stale local favorite references automatically.
+
+Public post actions
+
+On public item and outfit photos, allow only:
+
+* Heart / unheart
+* Open public post
+* View public profile
+* Report
+* Block creator
+
+Do not include:
+
+* Add to Closet
+* Add to Lookbook
+* Download
+* Edit
+* Comment
+* Message
+* Buy
+* Sell
+* Trade
+
+Public post details
+
+A public post may show only:
+
+* Published image
+* Public title
+* Category
+* Optional public caption
+* Creator display name
+* Creator handle
+* Publish date
+
+Never expose:
+
+* Private notes
+* Wear history
+* Purchase details
+* Local IDs
+* Private metadata
+* Unpublished items
+
+Moderation
+
+Add Report and Block.
+
+A report must require a signed-in account.
+
+Report reasons:
+
+* Nudity or sexual content
+* Harassment
+* Spam
+* Copyright
+* Other
+
+Prevent duplicate reports from the same user on the same post.
+
+Do not allow users to report their own content.
+
+When a post receives reports from 3 different authenticated users:
+
+* Automatically change its status to Pending Review
+* Immediately remove it from Discover
+* Remove it from search
+* Remove it from public profiles
+* Remove it from Discover Favorites
+* Do not permanently delete it yet
+
+Add an admin moderation page where I can:
+
+* Restore
+* Delete permanently
+* Suspend publishing privileges
+
+Users should not need to wait for me before reported content disappears.
+
+Privacy behavior
+
+Private closet data remains on the device unless the user explicitly publishes something.
+
+Signed-out users may make read-only network requests to load the public Discover feed.
+
+No private items, outfits, notes, images, or activity should sync in the background.
+
+Marketplace work
+
+Do not include marketplace features in V1.
+
+Do not delete prior marketplace planning permanently. Keep it in project history or a separate disabled branch for possible future use.
+
+Before coding
+
+Before changing any code, show me:
+
+1. Revised Supabase schema
+2. Storage policies
+3. Reporting and moderation schema
+4. Signed-out screen flow
+5. Signed-in screen flow
+6. Favorites flow
+7. Public/private publishing flow
+8. Exact files that will change
+9. Any new packages required
+10. Any Supabase setup I need to complete
+
+Do not begin implementation until I approve that final plan.
