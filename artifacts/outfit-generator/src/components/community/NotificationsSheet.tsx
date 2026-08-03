@@ -40,8 +40,8 @@ function timeAgo(iso: string): string {
 function NotifRow({ n }: { n: AppNotification }) {
   const label =
     n.type === "heart_item"
-      ? `Someone loved your item${n.post_name ? ` "${n.post_name}"` : ""}.`
-      : `Someone loved your outfit${n.post_name ? ` "${n.post_name}"` : ""}.`;
+      ? `Love received on "${n.post_name || "your item"}"`
+      : `Love received on "${n.post_name || "your outfit"}"`;
 
   return (
     <div
