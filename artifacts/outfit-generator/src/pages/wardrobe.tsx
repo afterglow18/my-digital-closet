@@ -263,10 +263,10 @@ export default function WardrobePage() {
       style={{
         position: "relative",
         width: "100%",
-        // Clamp to image aspect ratio so it fills the container exactly — no
-        // letterbox gap below — because the save-bar is baked into the rug at the
-        // bottom of the image.  min() prevents overflow on very short screens.
-        height: `min(calc(100dvh - ${NAV_H}px), calc(100vw * ${(IMG_H / IMG_W).toFixed(6)}))`,
+        // Fill the full available height. The image is always width-constrained
+        // (fills 100vw, anchors top) so any gap below the rug shows #F0C030
+        // yellow — matching the door colour — instead of the white page bg.
+        height: `calc(100dvh - ${NAV_H}px)`,
         overflow: "hidden",
         // Door-yellow background blends with yellow doors visible at sides/bottom
         background: "#F0C030",
