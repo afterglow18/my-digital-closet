@@ -152,6 +152,8 @@ workflows:
       - name: Xcode archive
         script: |
           cd artifacts/outfit-generator/ios/App
+          # CODE_SIGN_ENTITLEMENTS passed explicitly so the Sign In with Apple
+          # entitlement is included regardless of pbxproj state.
           xcodebuild \
             -workspace App.xcodeproj/project.xcworkspace \
             -scheme App \
@@ -159,6 +161,7 @@ workflows:
             -configuration Release \
             ONLY_ACTIVE_ARCH=NO \
             ARCHS=arm64 \
+            CODE_SIGN_ENTITLEMENTS=App/App.entitlements \
             -archivePath "$CM_BUILD_DIR/build/App.xcarchive" \
             archive
 
