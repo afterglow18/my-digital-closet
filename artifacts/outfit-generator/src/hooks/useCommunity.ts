@@ -20,6 +20,9 @@ export function useCommunityFeed(filters: FeedFilters = {}) {
   return useQuery({
     queryKey: ["community", "feed", filters],
     queryFn: async (): Promise<(PublicItem & { profiles: Profile })[]> => {
+      // Guard: if Supabase isn't configured yet, return empty rather than throw
+      const { isSupabaseConfigured } = await import("@/lib/supabase");
+      if (!isSupabaseConfigured()) return [];
       const sb = getSupabase();
       let query = sb
         .from("public_items")
