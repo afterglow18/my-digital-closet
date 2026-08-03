@@ -160,21 +160,37 @@ export default function PublicItemPage() {
 
         {/* Creator — handle only shown for public profiles */}
         {profile && (
-          <div className="flex items-center justify-between border-t-2 border-black/10 pt-4">
-            <div>
-              {isPublic ? (
-                <>
-                  <p className="font-bold text-sm">
-                    {profile.display_name ?? `@${profile.handle}`}
-                  </p>
-                  <p className="text-xs text-black/40">@{profile.handle}</p>
-                </>
-              ) : (
-                <p className="font-bold text-sm text-black/40">Anonymous</p>
+          <div className="flex flex-col gap-3 border-t-2 border-black/10 pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                {isPublic ? (
+                  <>
+                    <p className="font-bold text-sm">
+                      {profile.display_name ?? `@${profile.handle}`}
+                    </p>
+                    <p className="text-xs text-black/40">@{profile.handle}</p>
+                  </>
+                ) : (
+                  <p className="font-bold text-sm text-black/40">Anonymous creator</p>
+                )}
+              </div>
+              {isPublic && (
+                <FollowButton profileId={profile.id} handle={profile.handle ?? ""} size="sm" />
               )}
             </div>
-            {isPublic && (
-              <FollowButton profileId={profile.id} handle={profile.handle ?? ""} size="sm" />
+            {/* View their full public closet */}
+            {isPublic && isNative && (
+              <a
+                href={`/profile/${profile.handle}`}
+                onClick={(e) => { e.preventDefault(); navigate(`/profile/${profile.handle}`); }}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3",
+                  "border-2 border-black rounded-xl bg-white font-bold text-sm uppercase tracking-wide",
+                  "shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all",
+                )}
+              >
+                👗 View @{profile.handle}'s Closet
+              </a>
             )}
           </div>
         )}

@@ -52,6 +52,52 @@ async function uploadItemImage(uid: string, localId: number, filename: string): 
   return data.publicUrl;
 }
 
+// ── Avatar upload ─────────────────────────────────────────────────────────────
+
+/**
+ * Compress a File/Blob to a JPEG at most 400×400, upload to Storage,
+ * and update profiles.avatar_url. Returns the public URL or null on error.
+ */
+export async function uploadAvatar(uid: string, file: File | Blob): Promise<string | null> {
+  try {
+    // Compress via canvas → max 400px, quality 0.85
+    const bitmap = await createImageBitmap(file);
+    const size   = 400;
+    const scale  = Math.min(size / bitmap.width, size / bitmap.height, 1);
+    const w = Math.round(bitmap.width  * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
+    const blob: Blob = await new Promise((res) =>
+      canvas.toBlob((b) => res(b!), "image/jpeg", 0.85),
+    );
+
+    const sb   = getSupabase();
+    const path = `avatars/${uid}.jpg`;
+    const { error: upErr } = await sb.storage.from(ITEMS_BUCKET).upload(path, blob, {
+      contentType: "image/jpeg",
+      upsert: true,
+    });
+    if (upErr) { console.error("[sync] avatar upload failed:", upErr.message); return null; }
+
+    // Add cache-bust so the new image shows immediately
+    const { data } = sb.storage.from(ITEMS_BUCKET).getPublicUrl(path);
+    const avatarUrl = `${data.publicUrl}?t=${Date.now()}`;
+
+    const { error: dbErr } = await sb
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("id", uid);
+    if (dbErr) { console.error("[sync] avatar profile update failed:", dbErr.message); return null; }
+
+    return avatarUrl;
+  } catch (e) {
+    console.error("[sync] uploadAvatar error:", e);
+    return null;
+  }
+}
+
 async function deleteItemImage(uid: string, localId: number): Promise<void> {
   try {
     await getSupabase().storage.from(ITEMS_BUCKET).remove([`${uid}/${localId}.jpg`]);

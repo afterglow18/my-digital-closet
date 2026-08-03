@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
 import { getFollowCount } from "@/lib/localFollows";
 import { migrateLocalFollowsToSupabase } from "@/hooks/useFollows";
+import { migrateLocalBlocksToSupabase } from "@/lib/blockedUsers";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
@@ -191,10 +192,11 @@ export default function CommunityPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Migrate localStorage follows to Supabase once on sign-in
+  // Migrate localStorage follows + blocks to Supabase once on sign-in
   useEffect(() => {
     if (user) {
       migrateLocalFollowsToSupabase(user.id).catch(() => {});
+      migrateLocalBlocksToSupabase(user.id).catch(() => {});
     }
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

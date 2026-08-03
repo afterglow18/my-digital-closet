@@ -212,3 +212,41 @@ export async function migrateLocalFollowsToSupabase(userId: string): Promise<num
   }
   return data?.length ?? 0;
 }
+
+// ── Counts ────────────────────────────────────────────────────────────────────
+
+/** Number of people following a given profile. */
+export function useFollowerCount(profileId: string | undefined) {
+  return useQuery({
+    queryKey: ["follows", "follower-count", profileId],
+    queryFn: async (): Promise<number> => {
+      if (!profileId || !isSupabaseConfigured()) return 0;
+      const { count, error } = await getSupabase()
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("followed_id", profileId);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: Boolean(profileId),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+/** Number of profiles a given user follows. */
+export function useFollowingCount(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["follows", "following-count", userId],
+    queryFn: async (): Promise<number> => {
+      if (!userId || !isSupabaseConfigured()) return 0;
+      const { count, error } = await getSupabase()
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", userId);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: Boolean(userId),
+    staleTime: 1000 * 60 * 2,
+  });
+}

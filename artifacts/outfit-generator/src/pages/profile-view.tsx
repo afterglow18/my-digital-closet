@@ -12,6 +12,7 @@ import { ShareButton } from "@/components/community/ShareButton";
 import { profileShareUrl } from "@/lib/share";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicProfile, usePublicProfileItems, usePublicProfileOutfits } from "@/hooks/useCommunity";
+import { useFollowerCount } from "@/hooks/useFollows";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export default function ProfileViewPage() {
   const { data: profile, isLoading: profileLoading, error: profileError } = usePublicProfile(handle);
   const { data: items,   isLoading: itemsLoading }  = usePublicProfileItems(profile?.id);
   const { data: outfits, isLoading: outfitsLoading } = usePublicProfileOutfits(profile?.id);
+  const { data: followerCount = 0 } = useFollowerCount(profile?.id);
 
   if (profileLoading) {
     return (
@@ -110,6 +112,7 @@ export default function ProfileViewPage() {
           <div className="flex gap-4 text-sm font-bold flex-1">
             <span>{items?.length ?? 0} items</span>
             <span>{outfits?.length ?? 0} outfits</span>
+            <span>{followerCount} {followerCount === 1 ? "follower" : "followers"}</span>
           </div>
           <div className="flex items-center gap-2">
             {profile.id !== user?.id && (

@@ -255,9 +255,13 @@ export default function SettingsPage() {
     if (!user) return;
     setDeleteStatus({ kind: "loading" });
     try {
+      // Step 1: remove uploaded images from storage
       await deleteAccountStorage(user.id);
-      const { error } = await getSupabase().from("profiles").delete().eq("id", user.id);
+      // Step 2: delete all DB data + auth record via RPC (SECURITY DEFINER)
+      // This is what Apple requires — the auth.users row is permanently removed.
+      const { error } = await getSupabase().rpc("delete_user");
       if (error) throw error;
+      // Step 3: clear local session (auth record is already gone)
       await signOut();
       navigate("/");
     } catch (e) {
@@ -566,13 +570,13 @@ export default function SettingsPage() {
                     >
                       <Trash2 className="w-4 h-4 text-black/25 ml-1.5 flex-shrink-0" />
                       <span className="text-xs font-bold text-black/30 uppercase tracking-wide hover:text-red-500 transition-colors">
-                        Delete Community Account
+                        Delete Account
                       </span>
                     </button>
                   ) : (
                     <div className="p-4 flex flex-col gap-3">
                       <p className="text-sm font-bold text-red-800">
-                        This deletes your profile and all published items. Your local closet stays on your device.
+                        This permanently deletes your account, profile, and all published posts. Your local wardrobe stays on this device.
                       </p>
                       <StatusMessage status={deleteStatus} />
                       <div className="flex gap-2">

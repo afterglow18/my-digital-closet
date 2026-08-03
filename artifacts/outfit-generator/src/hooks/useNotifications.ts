@@ -5,7 +5,7 @@
  * We never expose WHO liked — notifications are intentionally anonymous.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,8 +53,36 @@ export const notifQueryKey = (userId: string) => ["notifications", userId] as co
 
 export function useNotifications() {
   const { user } = useAuth();
+  const qc = useQueryClient();
+  const key = notifQueryKey(user?.id ?? "");
+
+  // Supabase Realtime subscription — invalidates the query the moment a new
+  // notification row arrives, so the badge updates without any polling delay.
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured()) return;
+    const channel = getSupabase()
+      .channel(`notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: key });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      getSupabase().removeChannel(channel);
+    };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return useQuery({
-    queryKey: notifQueryKey(user?.id ?? ""),
+    queryKey: key,
     queryFn: async (): Promise<AppNotification[]> => {
       if (!user || !isSupabaseConfigured()) return [];
       const { data, error } = await getSupabase()
@@ -67,8 +95,8 @@ export function useNotifications() {
       return (data ?? []) as AppNotification[];
     },
     enabled: Boolean(user) && isSupabaseConfigured(),
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 30,
+    staleTime: 1000 * 60,      // Realtime handles instant updates; poll as fallback
+    refetchInterval: 1000 * 60, // 60s fallback poll (was 30s)
   });
 }
 

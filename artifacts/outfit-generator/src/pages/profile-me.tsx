@@ -8,17 +8,18 @@
  * Settings (privacy, plan, export/import, sign-out) live at /settings.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Edit2, Check, X, Shirt, Globe, Loader2,
-  Lock, Eye, Share2,
+  Lock, Eye, Share2, Camera,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hooks/useCommunity";
+import { useFollowerCount, useFollowingCount } from "@/hooks/useFollows";
 import { getSupabase } from "@/lib/supabase";
-import { unpublishItem, unpublishOutfit } from "@/lib/sync";
+import { unpublishItem, unpublishOutfit, uploadAvatar } from "@/lib/sync";
 import { updateClothingItem, updateOutfit } from "@/lib/db";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
@@ -37,6 +38,23 @@ export default function ProfileMePage() {
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile(user?.id);
   const { data: pubItems,   isLoading: itemsLoading,   refetch: refetchItems }   = useMyPublishedItems(user?.id);
   const { data: pubOutfits, isLoading: outfitsLoading, refetch: refetchOutfits } = useMyPublishedOutfits(user?.id);
+  const { data: followerCount  = 0 } = useFollowerCount(user?.id);
+  const { data: followingCount = 0 } = useFollowingCount(user?.id);
+
+  // ── Avatar upload ─────────────────────────────────────────────────────────
+  const avatarInputRef               = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setAvatarUploading(true);
+    const url = await uploadAvatar(user.id, file);
+    if (url) await refetchProfile();
+    setAvatarUploading(false);
+    // Reset input so same file can be re-selected if needed
+    e.target.value = "";
+  };
 
   // ── Display name + bio edit ───────────────────────────────────────────────
   const [editMode,      setEditMode]      = useState(false);
@@ -180,16 +198,41 @@ export default function ProfileMePage() {
 
               {/* ── Header row: avatar + handle + edit pencil ── */}
               <div className="flex items-center gap-4">
-                {/* Avatar */}
-                <div className="w-16 h-16 rounded-full border-4 border-black bg-primary flex items-center justify-center
-                                shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex-shrink-0">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.handle} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-display font-black text-2xl uppercase">
-                      {(profile?.display_name ?? profile?.handle ?? user.email ?? "?")[0]}
-                    </span>
+                {/* Avatar — tap to change */}
+                <div className="relative flex-shrink-0">
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="w-16 h-16 rounded-full border-4 border-black bg-primary flex items-center justify-center
+                               shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden relative"
+                  >
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile.handle} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-display font-black text-2xl uppercase">
+                        {(profile?.display_name ?? profile?.handle ?? user.email ?? "?")[0]}
+                      </span>
+                    )}
+                    {avatarUploading && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                      </div>
+                    )}
+                  </button>
+                  {/* Camera badge */}
+                  {!avatarUploading && (
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black border-2 border-white
+                                    flex items-center justify-center pointer-events-none">
+                      <Camera className="w-2.5 h-2.5 text-white" />
+                    </div>
                   )}
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
                 </div>
 
                 {/* Handle + change button */}
@@ -357,6 +400,8 @@ export default function ProfileMePage() {
               <div className="flex gap-4 text-sm font-bold pt-1">
                 <span>{pubItems?.length ?? 0} items</span>
                 <span>{pubOutfits?.length ?? 0} outfits</span>
+                <span>{followerCount} {followerCount === 1 ? "follower" : "followers"}</span>
+                <span>{followingCount} following</span>
               </div>
 
               {/* Preview + Share public profile */}
