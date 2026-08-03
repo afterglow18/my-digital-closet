@@ -70,7 +70,7 @@ export function buildItemShareText(
   handle: string | undefined,
 ): string {
   const credit = privacyMode === "public" && handle ? ` by @${handle}` : "";
-  return `✨ Check out "${itemName}"${credit} on My Digital Closet!\n\nDownload the app 👇`;
+  return `✨ Check out "${itemName}"${credit} on My Digital Closet!\n\n${APP_STORE_URL}`;
 }
 
 /**
@@ -84,7 +84,7 @@ export function buildOutfitShareText(
 ): string {
   const name   = outfitName?.trim() || "this outfit";
   const credit = privacyMode === "public" && handle ? ` by @${handle}` : "";
-  return `✨ Check out "${name}"${credit} on My Digital Closet!\n\nDownload the app 👇`;
+  return `✨ Check out "${name}"${credit} on My Digital Closet!\n\n${APP_STORE_URL}`;
 }
 
 // ── Share action ──────────────────────────────────────────────────────────────
