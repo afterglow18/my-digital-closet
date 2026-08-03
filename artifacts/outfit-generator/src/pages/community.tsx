@@ -219,6 +219,20 @@ export default function CommunityPage() {
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* My profile shortcut — only for signed-in users */}
+            {user && (
+              <button
+                onClick={() => navigate("/profile/me")}
+                className="w-9 h-9 flex items-center justify-center border-2 border-black
+                           rounded-full bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
+                           text-base leading-none"
+                aria-label="My profile"
+              >
+                ✨
+              </button>
+            )}
+
             {/* Notification bell — only for signed-in users with notifications on */}
             {user && heartNotifsEnabled && (
               <button
