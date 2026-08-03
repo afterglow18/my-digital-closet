@@ -63,9 +63,15 @@ async function deleteItemImage(uid: string, localId: number): Promise<void> {
 /**
  * Publish (or re-publish) an item. Uploads image best-effort.
  * Safe to call multiple times — upserts on (user_id, local_id).
+ *
+ * Returns { ok: true } on success or { ok: false, error } on failure so the
+ * caller can surface the problem to the user.
  */
-export async function publishItem(item: ClothingItem, uid: string): Promise<void> {
-  if (!item.visibility || item.visibility === "private") return;
+export async function publishItem(
+  item: ClothingItem,
+  uid: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!item.visibility || item.visibility === "private") return { ok: true };
   try {
     const sb = getSupabase();
     let imageUrl: string | null = null;
@@ -86,12 +92,30 @@ export async function publishItem(item: ClothingItem, uid: string): Promise<void
         // notes intentionally omitted — private, local-only, never sent to Supabase
         image_url:  imageUrl,
         visibility: "public",
+        // Always (re-)set status to active so re-publishing a previously
+        // reported row makes it visible again, and so the row passes the
+        // feed query's `.eq("status", "active")` filter.
+        status:     "active",
       },
       { onConflict: "user_id,local_id" },
     );
-    if (error) console.error("[sync] publishItem failed:", error.message);
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error(
+          "[sync] publishItem failed\n" +
+          `  code:    ${error.code ?? "(none)"}\n` +
+          `  message: ${error.message}\n` +
+          `  details: ${error.details ?? "(none)"}\n` +
+          `  hint:    ${error.hint    ?? "(none)"}`,
+        );
+      }
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[sync] publishItem error:", e);
+    return { ok: false, error: msg };
   }
 }
 

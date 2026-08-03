@@ -357,8 +357,9 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
   const deleteItem  = useDeleteClothingItem();
   const queryClient = useQueryClient();
   const { user }    = useAuth();
-  const [showAuthSheet,   setShowAuthSheet]   = useState(false);
+  const [showAuthSheet,    setShowAuthSheet]    = useState(false);
   const [showShareConfirm, setShowShareConfirm] = useState(false);
+  const [publishError,     setPublishError]     = useState<string | null>(null);
 
   // Reset form whenever item changes
   useEffect(() => {
@@ -413,15 +414,26 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
         onSuccess: (savedItem) => {
           queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
-          // Sync to Supabase (fire-and-forget).
-          // Uses getSession() directly to avoid reading stale React user state —
-          // important for the auto-publish-after-sign-in flow.
+          setPublishError(null);
+          // Sync to Supabase then invalidate the Discover cache so the item
+          // appears immediately. Uses getSession() directly to avoid stale
+          // React user state (important for auto-publish-after-sign-in).
           if (savedItem && isSupabaseConfigured()) {
-            getSupabase().auth.getSession().then(({ data: { session } }) => {
+            getSupabase().auth.getSession().then(async ({ data: { session } }) => {
               const uid = session?.user?.id;
               if (!uid) return;
-              if (newVisibility !== "private") publishItem(savedItem, uid);
-              else if (prevVisibility !== "private") unpublishItem(item.id, uid);
+              if (newVisibility !== "private") {
+                const result = await publishItem(savedItem, uid);
+                if (!result.ok) {
+                  setPublishError(`Could not publish to Discover: ${result.error}`);
+                } else {
+                  // Invalidate after the write completes so the feed sees the new row.
+                  queryClient.invalidateQueries({ queryKey: ["community"] });
+                }
+              } else if (prevVisibility !== "private") {
+                await unpublishItem(item.id, uid);
+                queryClient.invalidateQueries({ queryKey: ["community"] });
+              }
             });
           }
           onClose();
@@ -732,6 +744,11 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
 
       {/* ── Footer actions ── */}
       <div className="sticky bottom-0 px-4 py-4 bg-white border-t-2 border-black flex-shrink-0 flex flex-col gap-2">
+
+        {/* Publish error (set when Supabase upsert fails after a local save) */}
+        {publishError && (
+          <p className="text-xs text-red-600 text-center -mb-1">{publishError}</p>
+        )}
 
         {/* Save (only when dirty) */}
         <AnimatePresence>
