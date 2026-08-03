@@ -100,6 +100,16 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
 
   const label = isExtras || showAll ? "Extra" : (category ? CATEGORY_LABELS[category] : "Item");
 
+  // Pre-compute grouped sections for showAll mode
+  const CAT_ORDER: Category[] = ["dresses", "outerwear", "accessories", "tops", "bottoms", "shoes"];
+  const groupedSections: { cat: Category; items: ClothingItem[] }[] = showAll
+    ? CAT_ORDER.reduce<{ cat: Category; items: ClothingItem[] }[]>((acc, cat) => {
+        const catItems = (items ?? []).filter(i => i.category === cat);
+        if (catItems.length) acc.push({ cat, items: catItems });
+        return acc;
+      }, [])
+    : [];
+
   const handleClose = () => onOpenChange(false);
 
   const handlePick = (item: ClothingItem) => {
@@ -150,37 +160,26 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
             </div>
           ) : items && items.length > 0 ? (
             showAll ? (
-              // Grouped by category: others → tops → bottoms → shoes
-              (() => {
-                const CAT_ORDER: Category[] = ["dresses", "outerwear", "accessories", "tops", "bottoms", "shoes"];
-                const grouped: Partial<Record<Category, ClothingItem[]>> = {};
-                for (const item of items) {
-                  const cat = item.category as Category;
-                  if (!grouped[cat]) grouped[cat] = [];
-                  grouped[cat]!.push(item);
-                }
-                const sections = CAT_ORDER.filter(c => grouped[c]?.length);
-                return (
-                  <div className="flex flex-col gap-5">
-                    {sections.map(cat => (
-                      <div key={cat}>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-black/40 mb-2">
-                          {CATEGORY_LABELS[cat]}
-                        </p>
-                        <div className="grid grid-cols-3 gap-3">
-                          {grouped[cat]!.map(item => <ItemTile key={item.id} item={item} existingItemIds={existingItemIds} onPick={handlePick} onDelete={id => deleteItem.mutate({ id })} />)}
-                        </div>
-                      </div>
-                    ))}
+              <div className="flex flex-col gap-5">
+                {groupedSections.map(({ cat, items: catItems }) => (
+                  <div key={cat}>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-black/40 mb-2">
+                      {CATEGORY_LABELS[cat]}
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {catItems.map(item => (
+                        <ItemTile key={item.id} item={item} existingItemIds={existingItemIds} onPick={handlePick} onDelete={id => deleteItem.mutate({ id })} />
+                      ))}
+                    </div>
                   </div>
-                );
-              })()
+                ))}
+              </div>
             ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {items.map((item) => (
-                <ItemTile key={item.id} item={item} existingItemIds={existingItemIds} onPick={handlePick} onDelete={id => deleteItem.mutate({ id })} />
-              ))}
-            </div>
+              <div className="grid grid-cols-3 gap-3">
+                {items.map((item) => (
+                  <ItemTile key={item.id} item={item} existingItemIds={existingItemIds} onPick={handlePick} onDelete={id => deleteItem.mutate({ id })} />
+                ))}
+              </div>
             )
           ) : (
             <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
