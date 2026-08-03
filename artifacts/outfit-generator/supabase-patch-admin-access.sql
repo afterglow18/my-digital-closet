@@ -13,5 +13,5 @@ ALTER TABLE profiles
 UPDATE profiles
 SET is_admin = true
 WHERE id = (
-  SELECT id FROM auth.users WHERE email = 'YOUR_EMAIL_HERE'
+  SELECT id FROM auth.users WHERE email = 'afterglowtanning18@gmail.com'
 );
