@@ -55,6 +55,20 @@ workflows:
           # linked into node_modules by pnpm, so it is picked up automatically.
           npx cap sync ios
 
+      - name: Add Sign In with Apple entitlement
+        script: |
+          ENTITLEMENTS="artifacts/outfit-generator/ios/App/App/App.entitlements"
+          # Capacitor creates this file but without the Sign In with Apple key.
+          # Without it iOS throws AuthorizationError 1000 at runtime.
+          /usr/libexec/PlistBuddy \
+            -c "Delete :com.apple.developer.applesignin" "$ENTITLEMENTS" 2>/dev/null || true
+          /usr/libexec/PlistBuddy \
+            -c "Add :com.apple.developer.applesignin array" "$ENTITLEMENTS"
+          /usr/libexec/PlistBuddy \
+            -c "Add :com.apple.developer.applesignin:0 string Default" "$ENTITLEMENTS"
+          echo "Entitlements after patch:"
+          cat "$ENTITLEMENTS"
+
       - name: Set export compliance
         script: |
           PLIST="artifacts/outfit-generator/ios/App/App/Info.plist"
