@@ -2,7 +2,8 @@
  * admin.tsx — Moderation dashboard.
  *
  * Only accessible to users with is_admin = true in their profile row.
- * Shows posts in pending_review status and allows Restore or permanent Delete.
+ * Shows posts in pending_review status, their report reasons, and
+ * allows Restore (return to feed) or permanent Delete.
  */
 
 import React, { useState } from "react";
@@ -12,6 +13,30 @@ import { useAuth } from "@/hooks/useAuth";
 import { getSupabase, isSupabaseConfigured, type PublicItem, type PublicOutfit, type Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+
+type ReportReason = "nudity" | "harassment" | "spam" | "copyright" | "other";
+
+const REASON_LABELS: Record<ReportReason, string> = {
+  nudity:     "Nudity",
+  harassment: "Harassment",
+  spam:       "Spam",
+  copyright:  "Copyright",
+  other:      "Other",
+};
+
+const REASON_COLORS: Record<ReportReason, string> = {
+  nudity:     "bg-red-100 text-red-700 border-red-300",
+  harassment: "bg-orange-100 text-orange-700 border-orange-300",
+  spam:       "bg-yellow-100 text-yellow-700 border-yellow-300",
+  copyright:  "bg-purple-100 text-purple-700 border-purple-300",
+  other:      "bg-gray-100 text-gray-600 border-gray-300",
+};
+
+interface ReportSummary {
+  post_id: string;
+  reasons: ReportReason[];
+  count: number;
+}
 
 type PendingItem   = PublicItem   & { profiles?: Profile; report_count?: number };
 type PendingOutfit = PublicOutfit & { profiles?: Profile; report_count?: number };
@@ -37,20 +62,28 @@ function useAdminCheck() {
   });
 }
 
-// ── Pending items query ────────────────────────────────────────────────────────
+// ── Pending items + report reasons ────────────────────────────────────────────
 
 function usePendingItems() {
   return useQuery({
     queryKey: ["admin", "pending-items"],
-    queryFn: async (): Promise<PendingItem[]> => {
-      if (!isSupabaseConfigured()) return [];
-      const { data, error } = await getSupabase()
+    queryFn: async (): Promise<{ posts: PendingItem[]; reports: ReportSummary[] }> => {
+      if (!isSupabaseConfigured()) return { posts: [], reports: [] };
+      const sb = getSupabase();
+
+      const { data: posts, error } = await sb
         .from("public_items")
         .select("*, profiles(id, handle, display_name, avatar_url)")
         .eq("status", "pending_review")
         .order("updated_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return (data ?? []) as PendingItem[];
+
+      const postIds = (posts ?? []).map((p: { id: string }) => p.id);
+      const reports = postIds.length
+        ? await fetchReportSummaries(sb, postIds)
+        : [];
+
+      return { posts: (posts ?? []) as PendingItem[], reports };
     },
     staleTime: 0,
   });
@@ -59,18 +92,50 @@ function usePendingItems() {
 function usePendingOutfits() {
   return useQuery({
     queryKey: ["admin", "pending-outfits"],
-    queryFn: async (): Promise<PendingOutfit[]> => {
-      if (!isSupabaseConfigured()) return [];
-      const { data, error } = await getSupabase()
+    queryFn: async (): Promise<{ posts: PendingOutfit[]; reports: ReportSummary[] }> => {
+      if (!isSupabaseConfigured()) return { posts: [], reports: [] };
+      const sb = getSupabase();
+
+      const { data: posts, error } = await sb
         .from("public_outfits")
         .select("*, profiles(id, handle, display_name, avatar_url)")
         .eq("status", "pending_review")
         .order("updated_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return (data ?? []) as PendingOutfit[];
+
+      const postIds = (posts ?? []).map((p: { id: string }) => p.id);
+      const reports = postIds.length
+        ? await fetchReportSummaries(sb, postIds)
+        : [];
+
+      return { posts: (posts ?? []) as PendingOutfit[], reports };
     },
     staleTime: 0,
   });
+}
+
+async function fetchReportSummaries(
+  sb: ReturnType<typeof getSupabase>,
+  postIds: string[],
+): Promise<ReportSummary[]> {
+  const { data } = await sb
+    .from("reports")
+    .select("post_id, reason")
+    .in("post_id", postIds);
+
+  if (!data) return [];
+
+  // Group by post_id
+  const map: Record<string, ReportReason[]> = {};
+  for (const row of data as { post_id: string; reason: ReportReason }[]) {
+    if (!map[row.post_id]) map[row.post_id] = [];
+    if (!map[row.post_id].includes(row.reason)) map[row.post_id].push(row.reason);
+  }
+  return Object.entries(map).map(([post_id, reasons]) => ({
+    post_id,
+    reasons,
+    count: data.filter((r: { post_id: string }) => r.post_id === post_id).length,
+  }));
 }
 
 // ── Action helpers ─────────────────────────────────────────────────────────────
@@ -99,6 +164,7 @@ function PendingRow({
   imageUrl,
   handle,
   category,
+  reportSummary,
   onRestore,
   onDelete,
 }: {
@@ -107,6 +173,7 @@ function PendingRow({
   imageUrl?: string | null;
   handle?: string | null;
   category?: string;
+  reportSummary?: ReportSummary;
   onRestore: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -119,63 +186,87 @@ function PendingRow({
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-white border-2 border-black rounded-xl
-                    shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-      {/* Thumbnail */}
-      <div className="w-14 h-14 rounded-lg bg-primary/30 border-2 border-black overflow-hidden flex-shrink-0">
-        {imageUrl ? (
-          <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-black/30 uppercase">
-            {category?.[0] ?? "?"}
-          </div>
-        )}
+    <div className="bg-white border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+      <div className="flex items-center gap-3 p-3">
+        {/* Thumbnail */}
+        <div className="w-14 h-14 rounded-lg bg-primary/30 border-2 border-black overflow-hidden flex-shrink-0">
+          {imageUrl ? (
+            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-black/30 uppercase">
+              {category?.[0] ?? "?"}
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-sm truncate">{name || "Untitled"}</p>
+          {category && (
+            <p className="text-[10px] uppercase font-bold text-black/40 tracking-wide">{category}</p>
+          )}
+          {handle && (
+            <p className="text-[10px] text-black/30 font-medium">@{handle}</p>
+          )}
+          {/* Report count */}
+          {reportSummary && (
+            <p className="text-[10px] font-bold text-red-500 mt-0.5">
+              {reportSummary.count} report{reportSummary.count !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 flex-shrink-0">
+          <button
+            onClick={() => act("restore", onRestore)}
+            disabled={busy !== null}
+            className={cn(
+              "w-9 h-9 rounded-xl border-2 border-black flex items-center justify-center",
+              "bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+              "active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all",
+              "disabled:opacity-40",
+            )}
+            title="Restore to feed"
+          >
+            {busy === "restore"
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <RotateCcw className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => act("delete", onDelete)}
+            disabled={busy !== null}
+            className={cn(
+              "w-9 h-9 rounded-xl border-2 border-black flex items-center justify-center",
+              "bg-red-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+              "active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all",
+              "disabled:opacity-40",
+            )}
+            title="Delete permanently"
+          >
+            {busy === "delete"
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Trash2 className="w-4 h-4 text-red-600" />}
+          </button>
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-sm truncate">{name || "Untitled"}</p>
-        {category && (
-          <p className="text-[10px] uppercase font-bold text-black/40 tracking-wide">{category}</p>
-        )}
-        {handle && (
-          <p className="text-[10px] text-black/30 font-medium">@{handle}</p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-2 flex-shrink-0">
-        <button
-          onClick={() => act("restore", onRestore)}
-          disabled={busy !== null}
-          className={cn(
-            "w-9 h-9 rounded-xl border-2 border-black flex items-center justify-center",
-            "bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-            "active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all",
-            "disabled:opacity-40",
-          )}
-          title="Restore"
-        >
-          {busy === "restore"
-            ? <Loader2 className="w-4 h-4 animate-spin" />
-            : <RotateCcw className="w-4 h-4" />}
-        </button>
-        <button
-          onClick={() => act("delete", onDelete)}
-          disabled={busy !== null}
-          className={cn(
-            "w-9 h-9 rounded-xl border-2 border-black flex items-center justify-center",
-            "bg-red-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-            "active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all",
-            "disabled:opacity-40",
-          )}
-          title="Delete permanently"
-        >
-          {busy === "delete"
-            ? <Loader2 className="w-4 h-4 animate-spin" />
-            : <Trash2 className="w-4 h-4 text-red-600" />}
-        </button>
-      </div>
+      {/* Report reason tags */}
+      {reportSummary && reportSummary.reasons.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+          {reportSummary.reasons.map((r) => (
+            <span
+              key={r}
+              className={cn(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                REASON_COLORS[r] ?? "bg-gray-100 text-gray-600 border-gray-300",
+              )}
+            >
+              {REASON_LABELS[r] ?? r}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -215,9 +306,14 @@ export default function AdminPage() {
     );
   }
 
-  const pendingItems   = itemsQuery.data ?? [];
-  const pendingOutfits = outfitsQuery.data ?? [];
+  const pendingItems   = itemsQuery.data?.posts   ?? [];
+  const pendingOutfits = outfitsQuery.data?.posts ?? [];
+  const itemReports    = itemsQuery.data?.reports   ?? [];
+  const outfitReports  = outfitsQuery.data?.reports ?? [];
   const total          = pendingItems.length + pendingOutfits.length;
+
+  const getReport = (reports: ReportSummary[], postId: string) =>
+    reports.find((r) => r.post_id === postId);
 
   return (
     <div
@@ -245,7 +341,7 @@ export default function AdminPage() {
               onClick={() => setTab(t)}
               className={cn(
                 "flex-1 py-2.5 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5",
-                tab === t ? "bg-primary border-r-0" : "bg-white",
+                tab === t ? "bg-primary" : "bg-white",
               )}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -281,6 +377,7 @@ export default function AdminPage() {
                   imageUrl={item.image_url}
                   handle={(item.profiles as Profile | undefined)?.handle}
                   category={item.category}
+                  reportSummary={getReport(itemReports, item.id)}
                   onRestore={async () => {
                     await restorePost("public_items", item.id);
                     qc.invalidateQueries({ queryKey: ["admin", "pending-items"] });
@@ -299,6 +396,7 @@ export default function AdminPage() {
                   name={outfit.name ?? "Untitled Look"}
                   imageUrl={outfit.image_url}
                   handle={(outfit.profiles as Profile | undefined)?.handle}
+                  reportSummary={getReport(outfitReports, outfit.id)}
                   onRestore={async () => {
                     await restorePost("public_outfits", outfit.id);
                     qc.invalidateQueries({ queryKey: ["admin", "pending-outfits"] });

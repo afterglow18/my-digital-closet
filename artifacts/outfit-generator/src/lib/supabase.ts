@@ -62,6 +62,7 @@ export interface Profile {
   created_at: string;
   /** ISO timestamp of the last handle change. NULL = never changed. */
   handle_changed_at: string | null;
+  is_admin?: boolean;
 }
 
 /**

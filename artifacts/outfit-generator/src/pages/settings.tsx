@@ -413,6 +413,21 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* ── Admin ── (only visible to admins) */}
+          {profile?.is_admin && (
+            <div>
+              <SectionLabel>Admin</SectionLabel>
+              <SettingsCard>
+                <Row
+                  emoji="🛡️"
+                  label="Moderation"
+                  onClick={() => navigate("/admin")}
+                  chevron
+                />
+              </SettingsCard>
+            </div>
+          )}
+
           {/* ── Notifications ── */}
           <div>
             <SectionLabel>Notifications</SectionLabel>
