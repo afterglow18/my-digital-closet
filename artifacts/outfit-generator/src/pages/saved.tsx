@@ -643,7 +643,7 @@ export default function SavedPage() {
                                 </button>
                                 {item.isFavorite && <span className="absolute top-0 left-0 text-[9px] leading-none">❤️</span>}
                                 <span className="text-[8px] font-bold uppercase text-muted-foreground">
-                                  {SLOT_LABELS[item.category as SlotKey] ?? item.category}
+                                  Extras
                                 </span>
                               </div>
                             ))}
@@ -668,7 +668,7 @@ export default function SavedPage() {
                                 className="absolute top-0 right-0 w-4 h-4 bg-white border border-black rounded-full flex items-center justify-center shadow-sm z-10">
                                 <X className="w-2 h-2" />
                               </button>
-                              <span className="text-[8px] font-bold uppercase text-muted-foreground truncate w-full text-center">{SLOT_LABELS[item.category as SlotKey] ?? item.category}</span>
+                              <span className="text-[8px] font-bold uppercase text-muted-foreground truncate w-full text-center">Extras</span>
                               {item.isFavorite && <span className="absolute top-0 left-0 text-[9px] leading-none">⭐</span>}
                             </div>
                           ))}
