@@ -367,8 +367,7 @@ export default function CommunityPage() {
                 <Globe className="w-10 h-10 text-black/15" />
                 <p className="text-sm font-bold text-black/40 uppercase">Nothing here yet</p>
                 <p className="text-xs text-black/30 max-w-xs">
-                  Be the first to share your style. Open{" "}
-                  {feedTab === "items" ? "any item" : "any saved look"} and set it to Public.
+                  Be the first to share your style.
                 </p>
               </>
             )}
