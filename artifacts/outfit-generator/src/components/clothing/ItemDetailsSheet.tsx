@@ -419,24 +419,30 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
           // appears immediately. Uses getSession() directly to avoid stale
           // React user state (important for auto-publish-after-sign-in).
           if (savedItem && isSupabaseConfigured()) {
+            // Run Supabase sync BEFORE closing so publish errors remain visible
+            // and so invalidateQueries fires while the sheet is still mounted
+            // (guaranteeing the Discover feed refetches regardless of whether
+            // that tab is currently active).
             getSupabase().auth.getSession().then(async ({ data: { session } }) => {
               const uid = session?.user?.id;
-              if (!uid) return;
-              if (newVisibility !== "private") {
-                const result = await publishItem(savedItem, uid);
-                if (!result.ok) {
-                  setPublishError(`Could not publish to Discover: ${result.error}`);
-                } else {
-                  // Invalidate after the write completes so the feed sees the new row.
+              if (uid) {
+                if (newVisibility !== "private") {
+                  const result = await publishItem(savedItem, uid);
+                  if (!result.ok) {
+                    setPublishError(`Could not publish to Discover: ${result.error}`);
+                    return; // keep sheet open so the user sees the error
+                  }
+                  queryClient.invalidateQueries({ queryKey: ["community"] });
+                } else if (prevVisibility !== "private") {
+                  await unpublishItem(item.id, uid);
                   queryClient.invalidateQueries({ queryKey: ["community"] });
                 }
-              } else if (prevVisibility !== "private") {
-                await unpublishItem(item.id, uid);
-                queryClient.invalidateQueries({ queryKey: ["community"] });
               }
+              onClose();
             });
+          } else {
+            onClose();
           }
-          onClose();
         },
       }
     );

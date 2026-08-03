@@ -74,10 +74,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    // Listen for auth state changes
-    const { data: listener } = sb.auth.onAuthStateChange((_event, sess) => {
+    // Listen for auth state changes.
+    // On SIGNED_IN: heal any missing profile row so publishItem never hits a
+    // FK violation. This handles users who signed up before the
+    // on_auth_user_created trigger was installed (their initial profile insert
+    // failed due to the RLS bug fixed by that trigger, so no row was created).
+    const { data: listener } = sb.auth.onAuthStateChange((event, sess) => {
       setSession(sess);
       setUser(sess?.user ?? null);
+
+      if (event === "SIGNED_IN" && sess?.user) {
+        const uid   = sess.user.id;
+        const email = sess.user.email ?? "";
+        // Fire-and-forget: check for missing profile and create it if absent.
+        (async () => {
+          const { data: existing } = await sb
+            .from("profiles")
+            .select("id")
+            .eq("id", uid)
+            .maybeSingle();
+          if (!existing) {
+            const raw   = email.split("@")[0].replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase().slice(0, 30);
+            const handle = raw || `user${uid.slice(0, 8)}`;
+            await sb.from("profiles").insert({ id: uid, handle, display_name: null });
+          }
+        })();
+      }
     });
 
     return () => { listener.subscription.unsubscribe(); };
