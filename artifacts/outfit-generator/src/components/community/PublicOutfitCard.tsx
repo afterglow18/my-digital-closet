@@ -18,7 +18,7 @@ import React, { useState } from "react";
 import { Shirt, Heart, MoreHorizontal, Flag, Ban, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
-import type { PublicOutfit, Profile } from "@/lib/supabase";
+import type { PublicOutfit, SafeProfile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useCommunity";
@@ -31,9 +31,10 @@ import { shareContent, outfitShareUrl, buildOutfitShareText } from "@/lib/share"
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface PublicOutfitCardProps {
-  outfit: PublicOutfit & { profiles?: Profile };
+  outfit: PublicOutfit & { profiles?: SafeProfile };
   onClick?: () => void;
   className?: string;
 }
@@ -42,8 +43,11 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   const { user }                      = useAuth();
   const { data: myProfile }           = useMyProfile(user?.id);
   const [, navigate]                  = useLocation();
+  const queryClient                    = useQueryClient();
   const [hearted,      setHearted]    = useState(() => isDiscoverFavorite(outfit.id));
   const [heartAnim,    setHeartAnim]  = useState(false);
+  const [heartSyncing, setHeartSyncing] = useState(false);
+  const [heartError,   setHeartError]   = useState<string | null>(null);
   const [blocked,      setBlocked]    = useState(() => isBlocked(outfit.user_id));
   const [showMenu,     setShowMenu]   = useState(false);
   const [showReport,   setShowReport] = useState(false);
@@ -58,17 +62,30 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   const isOwn       = user?.id === outfit.user_id;
   const items       = outfit.item_names ?? [];
 
-  const handleHeart = (e: React.MouseEvent) => {
+  const handleHeart = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user)                                 { setShowAuth(true);     return; }
     if (myProfile?.privacy_mode === "private") { setShowPrivGate(true); return; }
+    if (heartSyncing) return; // prevent rapid duplicate requests
+
+    const prev = hearted;
     const next = toggleDiscoverFavorite(outfit.id, "outfit");
     setHearted(next);
-    if (next) {
-      setHeartAnim(true);
-      setTimeout(() => setHeartAnim(false), 500);
+    setHeartError(null);
+    if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); }
+
+    setHeartSyncing(true);
+    const result = await syncLike(outfit.id, "outfit", next, user.id);
+    setHeartSyncing(false);
+
+    if (!result.ok) {
+      toggleDiscoverFavorite(outfit.id, "outfit");
+      setHearted(prev);
+      setHeartError("Couldn't sync ❤️. Try again.");
+      setTimeout(() => setHeartError(null), 3000);
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
-    syncLike(outfit.id, "outfit", next, user.id); // fire-and-forget; triggers notification
   };
 
   const handleProfileTap = (e: React.MouseEvent) => {
@@ -85,6 +102,14 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
 
   return (
     <div className={cn("relative", className)}>
+      {/* Heart sync error toast */}
+      {heartError && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap
+                        bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
+          {heartError}
+        </div>
+      )}
+
       {/* ── Card body ── */}
       <motion.div
         onClick={onClick}
@@ -181,7 +206,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                   setShowMenu(false);
                   shareContent(
                     outfitShareUrl(outfit.id),
-                    buildOutfitShareText(outfit.name, privacyMode, profile?.handle, outfitShareUrl(outfit.id)),
+                    buildOutfitShareText(outfit.name, privacyMode, profile?.handle ?? undefined, outfitShareUrl(outfit.id)),
                     "My Digital Closet",
                   );
                 }}
@@ -246,10 +271,21 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               if (!user) return;
               await changePrivacyMode(user.id, mode);
               setSharingPref(mode);
-              const next = toggleDiscoverFavorite(outfit.id, "outfit");
+              const prev2 = hearted;
+              const next  = toggleDiscoverFavorite(outfit.id, "outfit");
               setHearted(next);
               if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); }
-              syncLike(outfit.id, "outfit", next, user.id);
+              setHeartSyncing(true);
+              const r = await syncLike(outfit.id, "outfit", next, user.id);
+              setHeartSyncing(false);
+              if (!r.ok) {
+                toggleDiscoverFavorite(outfit.id, "outfit");
+                setHearted(prev2);
+                setHeartError("Couldn't sync ❤️. Try again.");
+                setTimeout(() => setHeartError(null), 3000);
+              } else {
+                queryClient.invalidateQueries({ queryKey: ["notifications"] });
+              }
             }}
           />
         )}

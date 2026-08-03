@@ -14,7 +14,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Shirt } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { getSupabase, isSupabaseConfigured, type PublicOutfit, type Profile } from "@/lib/supabase";
+import { getSupabase, isSupabaseConfigured, type PublicOutfit, type SafeProfile } from "@/lib/supabase";
 import { ShareButton } from "@/components/community/ShareButton";
 import {
   outfitShareUrl,
@@ -33,15 +33,15 @@ export default function PublicOutfitPage() {
 
   const { data: outfit, isLoading } = useQuery({
     queryKey: ["public-outfit-page", id],
-    queryFn: async (): Promise<(PublicOutfit & { profiles?: Profile }) | null> => {
+    queryFn: async (): Promise<(PublicOutfit & { profiles?: SafeProfile }) | null> => {
       if (!id || !isSupabaseConfigured()) return null;
       const { data } = await getSupabase()
         .from("public_outfits")
-        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
+        .select("*, profiles:safe_profiles(*)")
         .eq("id", id)
         .eq("status", "active")
         .single();
-      return (data as (PublicOutfit & { profiles?: Profile })) ?? null;
+      return (data as (PublicOutfit & { profiles?: SafeProfile })) ?? null;
     },
     enabled: Boolean(id),
     staleTime: 1000 * 60 * 5,
@@ -74,7 +74,7 @@ export default function PublicOutfitPage() {
   const isPublic = privMode === "public";
   const items    = outfit.item_names ?? [];
   const shareUrl = outfitShareUrl(outfit.id);
-  const shareText = buildOutfitShareText(outfit.name, privMode, profile?.handle, shareUrl);
+  const shareText = buildOutfitShareText(outfit.name, privMode, profile?.handle ?? undefined, shareUrl);
 
   // ── iOS Smart App Banner — shows "Open in My Digital Closet" in Safari ──
   useEffect(() => {
@@ -165,7 +165,7 @@ export default function PublicOutfitPage() {
               )}
             </div>
             {isPublic && (
-              <FollowButton profileId={profile.id} handle={profile.handle} size="sm" />
+              <FollowButton profileId={profile.id} handle={profile.handle ?? ""} size="sm" />
             )}
           </div>
         )}

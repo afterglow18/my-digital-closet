@@ -22,6 +22,7 @@ import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
 import { getFollowCount } from "@/lib/localFollows";
+import { migrateLocalFollowsToSupabase } from "@/hooks/useFollows";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
@@ -64,7 +65,7 @@ export default function CommunityPage() {
   // ── Infinite queries ───────────────────────────────────────────────────────
   const itemsQuery   = useCommunityItems({ category: category || undefined, search: search || undefined });
   const outfitsQuery = useCommunityOutfits({ search: search || undefined });
-  const followingQuery = useFollowingFeed();
+  const followingQuery = useFollowingFeed(user?.id);
 
   // Flatten pages into a single array
   const items      = itemsQuery.data?.pages.flat()   ?? [];
@@ -188,6 +189,13 @@ export default function CommunityPage() {
     return () => setAboveNav(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Migrate localStorage follows to Supabase once on sign-in
+  useEffect(() => {
+    if (user) {
+      migrateLocalFollowsToSupabase(user.id).catch(() => {});
+    }
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (authLoading) {
     return (

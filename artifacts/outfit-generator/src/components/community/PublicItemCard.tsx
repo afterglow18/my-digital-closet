@@ -19,7 +19,7 @@ import React, { useState } from "react";
 import { Heart, MoreHorizontal, Flag, Ban, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
-import type { PublicItem, Profile } from "@/lib/supabase";
+import type { PublicItem, SafeProfile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useCommunity";
@@ -32,9 +32,10 @@ import { shareContent, itemShareUrl, buildItemShareText } from "@/lib/share";
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface PublicItemCardProps {
-  item: PublicItem & { profiles?: Profile };
+  item: PublicItem & { profiles?: SafeProfile };
   onClick?: () => void;
   className?: string;
 }
@@ -43,8 +44,11 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
   const { user }                             = useAuth();
   const { data: myProfile }                  = useMyProfile(user?.id);
   const [, navigate]                         = useLocation();
+  const queryClient                            = useQueryClient();
   const [hearted,       setHearted]          = useState(() => isDiscoverFavorite(item.id));
   const [heartAnim,     setHeartAnim]        = useState(false);
+  const [heartSyncing,  setHeartSyncing]     = useState(false);
+  const [heartError,    setHeartError]       = useState<string | null>(null);
   const [blocked,       setBlocked]          = useState(() => isBlocked(item.user_id));
   const [showMenu,      setShowMenu]         = useState(false);
   const [showReport,    setShowReport]       = useState(false);
@@ -59,17 +63,31 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
   const isAnonymous = privacyMode === "anonymous";
   const isOwn       = user?.id === item.user_id;
 
-  const handleHeart = (e: React.MouseEvent) => {
+  const handleHeart = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user)                                      { setShowAuth(true);     return; }
-    if (myProfile?.privacy_mode === "private")      { setShowPrivGate(true); return; }
+    if (!user)                                 { setShowAuth(true);     return; }
+    if (myProfile?.privacy_mode === "private") { setShowPrivGate(true); return; }
+    if (heartSyncing) return; // prevent rapid duplicate requests
+
+    const prev = hearted;
     const next = toggleDiscoverFavorite(item.id, "item");
     setHearted(next);
-    if (next) {
-      setHeartAnim(true);
-      setTimeout(() => setHeartAnim(false), 500);
+    setHeartError(null);
+    if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); }
+
+    setHeartSyncing(true);
+    const result = await syncLike(item.id, "item", next, user.id);
+    setHeartSyncing(false);
+
+    if (!result.ok) {
+      // Revert local state
+      toggleDiscoverFavorite(item.id, "item");
+      setHearted(prev);
+      setHeartError("Couldn't sync ❤️. Try again.");
+      setTimeout(() => setHeartError(null), 3000);
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
-    syncLike(item.id, "item", next, user.id); // fire-and-forget; triggers notification
   };
 
   const handleProfileTap = (e: React.MouseEvent) => {
@@ -86,6 +104,14 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
 
   return (
     <div className={cn("relative", className)}>
+      {/* Heart sync error toast */}
+      {heartError && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap
+                        bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
+          {heartError}
+        </div>
+      )}
+
       {/* ── Card body ── */}
       <motion.div
         onClick={onClick}
@@ -121,9 +147,11 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
           {/* Heart button */}
           <button
             onClick={handleHeart}
+            disabled={heartSyncing}
             aria-label={hearted ? "Unheart" : "Heart"}
             className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
+                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]
+                       disabled:opacity-60"
           >
             <motion.div
               animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
@@ -189,7 +217,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                   setShowMenu(false);
                   shareContent(
                     itemShareUrl(item.id),
-                    buildItemShareText(item.name, privacyMode, profile?.handle, itemShareUrl(item.id)),
+                    buildItemShareText(item.name, privacyMode, profile?.handle ?? undefined, itemShareUrl(item.id)),
                     "My Digital Closet",
                   );
                 }}
@@ -254,10 +282,21 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
               if (!user) return;
               await changePrivacyMode(user.id, mode);
               setSharingPref(mode);
-              const next = toggleDiscoverFavorite(item.id, "item");
+              const prev2 = hearted;
+              const next  = toggleDiscoverFavorite(item.id, "item");
               setHearted(next);
               if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); }
-              syncLike(item.id, "item", next, user.id);
+              setHeartSyncing(true);
+              const r = await syncLike(item.id, "item", next, user.id);
+              setHeartSyncing(false);
+              if (!r.ok) {
+                toggleDiscoverFavorite(item.id, "item");
+                setHearted(prev2);
+                setHeartError("Couldn't sync ❤️. Try again.");
+                setTimeout(() => setHeartError(null), 3000);
+              } else {
+                queryClient.invalidateQueries({ queryKey: ["notifications"] });
+              }
             }}
           />
         )}

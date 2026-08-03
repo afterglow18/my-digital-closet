@@ -64,6 +64,20 @@ export interface Profile {
   handle_changed_at: string | null;
 }
 
+/**
+ * Safe profile — returned by the `safe_profiles` DB view for community feeds.
+ * handle, display_name, bio, and avatar_url are NULL for anonymous users.
+ * Private users are excluded from the view entirely.
+ */
+export interface SafeProfile {
+  id: string;
+  privacy_mode: "anonymous" | "public";
+  handle:       string | null;  // null → anonymous
+  display_name: string | null;
+  bio:          string | null;
+  avatar_url:   string | null;
+}
+
 /** A clothing item published to the community (V1: visibility is always 'public'). */
 export interface PublicItem {
   id: string;
@@ -82,7 +96,7 @@ export interface PublicItem {
   status: "active" | "pending_review" | "removed";
   created_at: string;
   updated_at: string;
-  profiles?: Profile;
+  profiles?: SafeProfile;
 }
 
 /** A saved outfit published to the community. */
@@ -97,7 +111,7 @@ export interface PublicOutfit {
   status: "active" | "pending_review" | "removed";
   created_at: string;
   updated_at: string;
-  profiles?: Profile;
+  profiles?: SafeProfile;
 }
 
 // ── Reporting ─────────────────────────────────────────────────────────────────

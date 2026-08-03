@@ -1,0 +1,49 @@
+Please fix the community gaps in this order without changing the current design or participation model:
+
+1. Anonymous privacy — highest priority
+    Do not send anonymous users’ handles, display names, bios, avatar URLs, or profile IDs to other clients.
+
+Replace the current profiles(*) feed joins with a secure database view or RPC that returns only safe public profile information based on privacy_mode.
+
+Expected behavior:
+
+* Public users: return handle, display name, bio, and avatar as allowed.
+* Anonymous users: return no handle or identifying profile information.
+* Private users: their posts should never appear.
+* Do not rely only on hiding the handle in the UI.
+* Update every community query, including Items, Outfits, Following, search, detail pages, and shared landing pages, to use the safe response.
+
+2. Supabase follows
+    Create a follows table with:
+
+* follower_id
+* followed_id
+* created_at
+* unique constraint on (follower_id, followed_id)
+* prevent self-following
+
+Add RLS so:
+
+* authenticated users can create and delete only their own follows
+* users can read their own following list
+* public follower/following counts may be returned safely if needed
+* anonymous profile identities must not be exposed through follows
+
+Replace localFollows.ts as the source of truth with Supabase-backed follow hooks.
+
+Use optimistic UI, but revert the follow button if syncing fails. Optionally migrate existing local follows after sign-in when the followed account can be safely matched.
+
+3. Heart reliability
+    Update heart toggling so it is no longer silent fire-and-forget:
+
+* optimistically update the UI
+* await the Supabase operation
+* revert the heart and count if it fails
+* show a small error message
+* prevent rapid duplicate requests
+* invalidate or reconcile the relevant community and notification queries afterward
+
+4. Blocks
+    Leave the existing local block behavior in place for now. Do not expand blocking until the first three fixes are complete and tested.
+
+Do not modify local closet items, sharing without an account, reporting, notification wording, privacy-mode behavior, or the existing community layout.

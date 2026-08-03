@@ -14,7 +14,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { getSupabase, isSupabaseConfigured, type PublicItem, type Profile } from "@/lib/supabase";
+import { getSupabase, isSupabaseConfigured, type PublicItem, type SafeProfile } from "@/lib/supabase";
 import { ShareButton } from "@/components/community/ShareButton";
 import {
   itemShareUrl,
@@ -33,15 +33,15 @@ export default function PublicItemPage() {
 
   const { data: item, isLoading } = useQuery({
     queryKey: ["public-item-page", id],
-    queryFn: async (): Promise<(PublicItem & { profiles?: Profile }) | null> => {
+    queryFn: async (): Promise<(PublicItem & { profiles?: SafeProfile }) | null> => {
       if (!id || !isSupabaseConfigured()) return null;
       const { data } = await getSupabase()
         .from("public_items")
-        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
+        .select("*, profiles:safe_profiles(*)")
         .eq("id", id)
         .eq("status", "active")
         .single();
-      return (data as (PublicItem & { profiles?: Profile })) ?? null;
+      return (data as (PublicItem & { profiles?: SafeProfile })) ?? null;
     },
     enabled: Boolean(id),
     staleTime: 1000 * 60 * 5,
@@ -74,7 +74,7 @@ export default function PublicItemPage() {
   const privMode   = profile?.privacy_mode ?? "anonymous";
   const isPublic   = privMode === "public";
   const shareUrl   = itemShareUrl(item.id);
-  const shareText  = buildItemShareText(item.name, privMode, profile?.handle, shareUrl);
+  const shareText  = buildItemShareText(item.name, privMode, profile?.handle ?? undefined, shareUrl);
 
   // ── iOS Smart App Banner — shows "Open in My Digital Closet" in Safari ──
   useEffect(() => {
@@ -166,7 +166,7 @@ export default function PublicItemPage() {
               )}
             </div>
             {isPublic && (
-              <FollowButton profileId={profile.id} handle={profile.handle} size="sm" />
+              <FollowButton profileId={profile.id} handle={profile.handle ?? ""} size="sm" />
             )}
           </div>
         )}
