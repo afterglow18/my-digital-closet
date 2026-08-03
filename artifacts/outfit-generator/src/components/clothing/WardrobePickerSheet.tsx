@@ -22,12 +22,12 @@ import { QuickAddSheet } from "./QuickAddSheet";
 type Category = "tops" | "bottoms" | "shoes" | "accessories" | "outerwear" | "dresses";
 
 const CATEGORY_LABELS: Record<Category, string> = {
-  tops:        "Top",
-  bottoms:     "Bottom",
+  tops:        "Tops",
+  bottoms:     "Bottoms",
   shoes:       "Shoes",
-  accessories: "Accessory",
-  outerwear:   "Jacket",
-  dresses:     "Dress",
+  accessories: "Accessories",
+  outerwear:   "Jackets",
+  dresses:     "Dresses",
 };
 
 interface Props {
