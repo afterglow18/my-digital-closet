@@ -179,36 +179,6 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             </div>
           )}
 
-          {/* Share button — bottom-left */}
-          <button
-            onClick={handleShare}
-            aria-label="Share"
-            className="absolute bottom-2 left-2 w-8 h-8 rounded-full bg-white/90 border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]
-                       active:scale-90 transition-transform"
-          >
-            <Share2 className="w-3.5 h-3.5 text-black/50" />
-          </button>
-
-          {/* Heart button — bottom-right */}
-          <button
-            onClick={handleHeart}
-            aria-label={hearted ? "Unheart" : "Heart"}
-            className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 border-2 border-black
-                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
-          >
-            <motion.div
-              animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
-              transition={{ duration: 0.45, ease: "easeInOut" }}
-            >
-              <Heart
-                className={cn("w-3.5 h-3.5 transition-colors",
-                  hearted ? "fill-red-500 text-red-500" : "text-black/40",
-                )}
-              />
-            </motion.div>
-          </button>
-
           {/* More (⋯) button — top-right */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(true); }}
@@ -220,8 +190,36 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
           </button>
         </div>
 
+        {/* Action row — Share + Heart */}
+        <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1">
+          <button
+            onClick={handleShare}
+            aria-label="Share"
+            className="w-8 h-8 rounded-full bg-white border-2 border-black
+                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
+                       active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+          >
+            <Share2 className="w-3.5 h-3.5 text-black/50" />
+          </button>
+
+          <button
+            onClick={handleHeart}
+            aria-label={hearted ? "Unheart" : "Heart"}
+            className="w-8 h-8 rounded-full bg-white border-2 border-black
+                       flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
+                       active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+          >
+            <motion.div
+              animate={heartAnim ? { scale: [1, 1.6, 0.8, 1.15, 1] } : { scale: 1 }}
+              transition={{ duration: 0.45, ease: "easeInOut" }}
+            >
+              <Heart className={cn("w-3.5 h-3.5 transition-colors", hearted ? "fill-red-500 text-red-500" : "text-black/40")} />
+            </motion.div>
+          </button>
+        </div>
+
         {/* Info */}
-        <div className="p-2.5 flex flex-col gap-0.5">
+        <div className="px-2.5 pb-2.5 flex flex-col gap-0.5">
           <p className="font-bold text-xs truncate">{outfit.name || "Untitled Look"}</p>
           <p className="text-[10px] text-black/40 font-medium">
             {items.length} {items.length === 1 ? "piece" : "pieces"}
