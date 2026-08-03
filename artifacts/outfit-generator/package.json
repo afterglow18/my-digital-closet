@@ -81,6 +81,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/app": "^8.1.1",
     "@capacitor/camera": "^8.2.1",
     "@capacitor/cli": "^8.4.1",
@@ -95,6 +96,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@imgly/background-removal": "^1.7.0",
     "@revenuecat/purchases-capacitor": "^13.2.2",
+    "@supabase/supabase-js": "^2.111.0",
     "capacitor-native-biometric": "^4.2.2",
     "idb": "^8.0.3",
     "jszip": "^3.10.1",

@@ -26,6 +26,12 @@ import {
 } from "@/lib/local-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { getImageUrl } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { publishItem, unpublishItem, syncItemEdit } from "@/lib/sync";
+import { VisibilityPicker } from "@/components/clothing/VisibilityPicker";
+import { PriceField } from "@/components/community/PriceField";
+import { AuthSheet } from "@/components/auth/AuthSheet";
+import type { Currency } from "@/lib/supabase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -246,6 +252,9 @@ interface FormState {
   isFavorite: boolean;
   category: string;
   timesWorn: string;
+  visibility: "private" | "public" | "for_sale";
+  price: string;
+  currency: string;
 }
 
 function toForm(item: ClothingItem): FormState {
@@ -262,6 +271,9 @@ function toForm(item: ClothingItem): FormState {
     isFavorite:    item.isFavorite    ?? false,
     category:      item.category      ?? "",
     timesWorn:     String(item.timesWorn ?? 0),
+    visibility:    (item.visibility   ?? "private") as "private" | "public" | "for_sale",
+    price:         item.price != null  ? String(item.price) : "",
+    currency:      item.currency       ?? "",
   };
 }
 
@@ -278,7 +290,10 @@ function isDirty(form: FormState, item: ClothingItem): boolean {
     form.notes         !== (item.notes         ?? "") ||
     form.isFavorite    !== (item.isFavorite    ?? false) ||
     form.category      !== (item.category      ?? "")  ||
-    form.timesWorn     !== String(item.timesWorn ?? 0)
+    form.timesWorn     !== String(item.timesWorn ?? 0) ||
+    form.visibility    !== (item.visibility    ?? "private") ||
+    form.price         !== (item.price != null  ? String(item.price) : "") ||
+    form.currency      !== (item.currency      ?? "")
   );
 }
 
@@ -347,6 +362,8 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
   const updateItem  = useUpdateClothingItem();
   const deleteItem  = useDeleteClothingItem();
   const queryClient = useQueryClient();
+  const { user }    = useAuth();
+  const [showAuthSheet, setShowAuthSheet] = useState(false);
 
   // Reset form whenever item changes
   useEffect(() => {
@@ -368,6 +385,11 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
     setForm((prev) => prev ? { ...prev, [key]: value } : prev);
 
   const handleSave = () => {
+    const prevVisibility = item.visibility ?? "private";
+    const newVisibility  = form.visibility;
+    const parsedPrice    = form.price ? parseFloat(form.price) : null;
+    const chosenCurrency = (form.currency || null) as Currency | null;
+
     updateItem.mutate(
       {
         id: item.id,
@@ -386,12 +408,23 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
           isFavorite:    form.isFavorite,
           category:      (form.category || item.category) as ClothingItemUpdateCategory,
           timesWorn:     Math.max(0, parseInt(form.timesWorn, 10) || 0),
+          visibility:    newVisibility,
+          price:         newVisibility === "for_sale" ? parsedPrice : null,
+          currency:      newVisibility === "for_sale" ? chosenCurrency : null,
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (savedItem) => {
           queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+          // Sync to Supabase community (fire-and-forget)
+          if (user && savedItem) {
+            if (newVisibility !== "private") {
+              publishItem(savedItem, user.id);
+            } else if (prevVisibility !== "private") {
+              unpublishItem(item.id, user.id);
+            }
+          }
           onClose();
         },
       }
@@ -466,6 +499,10 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
   };
 
   const handleDelete = () => {
+    // Unpublish from Supabase before deleting locally (fire-and-forget)
+    if (user && (item.visibility ?? "private") !== "private") {
+      unpublishItem(item.id, user.id);
+    }
     deleteItem.mutate(
       { id: item.id },
       {
@@ -647,6 +684,25 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
           />
         </div>
 
+        {/* ── Community: Visibility ── */}
+        <div className="border-2 border-black/10 rounded-xl p-3 bg-white flex flex-col gap-3">
+          <VisibilityPicker
+            value={form.visibility}
+            onChange={(v) => patch("visibility")(v)}
+            onNeedSignIn={() => setShowAuthSheet(true)}
+            isSignedIn={Boolean(user)}
+          />
+          {/* Price field — only when For Sale */}
+          {form.visibility === "for_sale" && (
+            <PriceField
+              price={form.price}
+              currency={form.currency as Currency | ""}
+              onPriceChange={patch("price") as (v: string) => void}
+              onCurrencyChange={(v) => patch("currency")(v)}
+            />
+          )}
+        </div>
+
         {/* Category + Times Worn */}
         <div className="grid grid-cols-2 gap-3">
           <SelectField
@@ -749,6 +805,13 @@ export function ItemDetailsSheet({ item, onClose, onDeleted, showAddToLookbook =
     <AnimatePresence>
       {showLookbookSheet && (
         <AddToLookbookSheet item={item} onClose={() => setShowLookbookSheet(false)} />
+      )}
+    </AnimatePresence>
+
+    {/* ── Auth sheet (triggered when user tries to publish without signing in) ── */}
+    <AnimatePresence>
+      {showAuthSheet && (
+        <AuthSheet onClose={() => setShowAuthSheet(false)} />
       )}
     </AnimatePresence>
     </>

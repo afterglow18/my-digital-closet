@@ -8,6 +8,12 @@ const config: CapacitorConfig = {
   // -------------------------------------------------------------------------
   // iOS-specific configuration
   // -------------------------------------------------------------------------
+  server: {
+    // Custom URL scheme for deep-link callbacks (email confirmation, password reset)
+    // Supabase Auth redirect URL should be set to: mydigitalcloset://auth/callback
+    iosScheme: 'mydigitalcloset',
+  },
+
   ios: {
     // Allow the WKWebView to scroll; the app manages its own scroll areas
     scrollEnabled: true,

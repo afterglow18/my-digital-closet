@@ -8,6 +8,11 @@
  * imageObjectPath stores just the filename (e.g. "tops-1234567890.jpg").
  */
 
+export const CLOTHING_CATEGORIES = [
+  "tops", "bottoms", "shoes", "accessories", "outerwear", "dresses",
+] as const;
+export type ClothingCategory = (typeof CLOTHING_CATEGORIES)[number];
+
 export interface ClothingItem {
   id: number;
   name: string;
@@ -29,6 +34,11 @@ export interface ClothingItem {
   visionText?:    string[];
   visionVersion?: number;        // 0=unanalyzed, 1=iOS, 4=web, 5=web-empty
   createdAt?: string | null;
+  // ── Community fields ──────────────────────────────────────────────────────
+  // Absent/undefined is treated as 'private' everywhere — no migration needed.
+  visibility?: "private" | "public" | "for_sale";
+  price?: number | null;        // structured price for for_sale items
+  currency?: string | null;     // e.g. 'USD', 'EUR'
 }
 
 export interface Outfit {
@@ -90,6 +100,7 @@ export function createClothingItem(
   const item: ClothingItem = {
     ...data,
     id: nextId(),
+    visibility: data.visibility ?? "private",
     timesWorn: data.timesWorn ?? 0,
     createdAt: new Date().toISOString(),
   };
