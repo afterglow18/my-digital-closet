@@ -416,10 +416,12 @@ export default function SettingsPage() {
             <SectionLabel>Notifications</SectionLabel>
             <SettingsCard>
               <Row
-                emoji="🔔"
-                label="Notifications"
-                value={<span className="text-[10px] font-bold uppercase tracking-wide bg-black/8 text-black/40 px-2 py-0.5 rounded-full">Coming soon</span>}
-                disabled
+                emoji="❤️"
+                label="Heart Notifications"
+                sublabel="See who loved your posts in Discover"
+                value={<span className="text-[10px] font-bold uppercase tracking-wide text-green-600 px-2 py-0.5 rounded-full bg-green-50">Active</span>}
+                onClick={() => navigate("/community")}
+                chevron
               />
             </SettingsCard>
           </div>

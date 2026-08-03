@@ -270,8 +270,8 @@ export async function changePrivacyMode(
     if (error) throw error;
     return { ok: true };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to update privacy mode";
-    if (import.meta.env.DEV) console.error("[sync] changePrivacyMode failed:", e);
+    const msg = (e as any)?.message ?? (e instanceof Error ? e.message : "Failed to update privacy mode");
+    console.error("[sync] changePrivacyMode failed:", e);
     return { ok: false, error: msg };
   }
 }
