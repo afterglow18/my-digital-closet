@@ -176,7 +176,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectURI: "mydigitalcloset://auth/callback",
         scopes: "email name",
         state: Math.random().toString(36).substring(2),
-        nonce: Math.random().toString(36).substring(2),
+        // No nonce — if a nonce is passed to Apple it gets embedded in the
+        // id_token, and Supabase will reject the token unless the raw nonce
+        // is also forwarded via signInWithIdToken. Omitting it avoids the
+        // "nonce mismatch" error without reducing security for native flows.
       });
 
       const identityToken = result.response.identityToken;
