@@ -6,11 +6,19 @@
 -- How to run:
 --   Supabase dashboard → SQL Editor → New query → paste → Run
 --
+-- SAFE TO RERUN: every statement is idempotent.
+--   • Tables:    CREATE TABLE IF NOT EXISTS
+--   • Indexes:   CREATE INDEX IF NOT EXISTS
+--   • Function:  CREATE OR REPLACE FUNCTION
+--   • Triggers:  DROP TRIGGER IF EXISTS → CREATE TRIGGER
+--   • Policies:  DROP POLICY IF EXISTS  → CREATE POLICY
+--   No user data is deleted by rerunning this file.
+--
 -- Prerequisites (dashboard only — cannot be done in SQL):
 --   • Authentication → Providers → Email: enable "Email/Password"
 --   • Authentication → Providers → Apple: enable if using Apple Sign-In
 --   • Storage → New bucket → Name: public-items → Public bucket: YES
---     (public bucket = image URLs work without a signed token)
+--     (public bucket = image URLs accessible without a signed token)
 --
 -- After this file runs successfully, run supabase-schema-update.sql.
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -19,6 +27,7 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Utility: updated_at auto-stamp
 -- Used by public_items and public_outfits triggers below.
+-- CREATE OR REPLACE means this is safe to rerun at any time.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -49,6 +58,11 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE INDEX IF NOT EXISTS idx_profiles_handle ON profiles (handle);
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Profiles are publicly readable"  ON profiles;
+DROP POLICY IF EXISTS "Users can create own profile"    ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile"    ON profiles;
+DROP POLICY IF EXISTS "Users can delete own profile"    ON profiles;
 
 -- Anyone can browse public profiles (handle, display name, avatar, bio).
 CREATE POLICY "Profiles are publicly readable"
@@ -106,11 +120,17 @@ CREATE INDEX IF NOT EXISTS idx_public_items_user_id    ON public_items (user_id)
 CREATE INDEX IF NOT EXISTS idx_public_items_category   ON public_items (category);
 CREATE INDEX IF NOT EXISTS idx_public_items_created_at ON public_items (created_at DESC);
 
+DROP TRIGGER IF EXISTS trg_public_items_updated_at ON public_items;
 CREATE TRIGGER trg_public_items_updated_at
   BEFORE UPDATE ON public_items
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 ALTER TABLE public_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public items are readable by anyone" ON public_items;
+DROP POLICY IF EXISTS "Users can publish own items"         ON public_items;
+DROP POLICY IF EXISTS "Users can update own items"          ON public_items;
+DROP POLICY IF EXISTS "Users can delete own items"          ON public_items;
 
 -- Anyone can read all public items.
 -- NOTE: supabase-schema-update.sql drops this policy and replaces it with a
@@ -131,7 +151,7 @@ CREATE POLICY "Users can update own items"
   USING (auth.uid() = user_id);
 
 -- Only the owning user may unpublish/delete their item.
--- NOTE: supabase-schema-update.sql drops this and adds admin delete rights.
+-- NOTE: supabase-schema-update.sql extends this to also allow admin deletes.
 CREATE POLICY "Users can delete own items"
   ON public_items FOR DELETE
   USING (auth.uid() = user_id);
@@ -161,11 +181,17 @@ CREATE TABLE IF NOT EXISTS public_outfits (
 CREATE INDEX IF NOT EXISTS idx_public_outfits_user_id    ON public_outfits (user_id);
 CREATE INDEX IF NOT EXISTS idx_public_outfits_created_at ON public_outfits (created_at DESC);
 
+DROP TRIGGER IF EXISTS trg_public_outfits_updated_at ON public_outfits;
 CREATE TRIGGER trg_public_outfits_updated_at
   BEFORE UPDATE ON public_outfits
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 ALTER TABLE public_outfits ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public outfits are readable by anyone" ON public_outfits;
+DROP POLICY IF EXISTS "Users can publish own outfits"         ON public_outfits;
+DROP POLICY IF EXISTS "Users can update own outfits"          ON public_outfits;
+DROP POLICY IF EXISTS "Users can delete own outfits"          ON public_outfits;
 
 -- Anyone can read all public outfits.
 -- NOTE: supabase-schema-update.sql drops this policy and replaces it with a
@@ -185,7 +211,7 @@ CREATE POLICY "Users can update own outfits"
   USING (auth.uid() = user_id);
 
 -- Only the owning user may unpublish/delete their outfit.
--- NOTE: supabase-schema-update.sql drops this and adds admin delete rights.
+-- NOTE: supabase-schema-update.sql extends this to also allow admin deletes.
 CREATE POLICY "Users can delete own outfits"
   ON public_outfits FOR DELETE
   USING (auth.uid() = user_id);
@@ -201,6 +227,11 @@ CREATE POLICY "Users can delete own outfits"
 --    File layout inside the bucket: {user_id}/{local_id}.jpg
 --    sync.ts uses storage.foldername(name)[1] = user_id to scope access.
 -- ─────────────────────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Public item images are readable by anyone" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own item images"          ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own item images"          ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own item images"          ON storage.objects;
 
 CREATE POLICY "Public item images are readable by anyone"
   ON storage.objects FOR SELECT
