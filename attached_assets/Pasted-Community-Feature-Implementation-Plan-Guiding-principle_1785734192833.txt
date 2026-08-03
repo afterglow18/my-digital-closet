@@ -1,0 +1,125 @@
+Community Feature — Implementation Plan
+
+Guiding principles
+
+Local closet is never touched unless the user opts in. visibility: 'private' is the default for every item, old and new. Private items stay on-device forever.
+Auth is progressive. The app loads without any account. A sign-in prompt appears only when the user tries to publish an item or visit their profile.
+Supabase holds only what the user explicitly makes public. No background sync, no telemetry.
+New visibility field
+
+Add one field to ClothingItem:
+
+visibility?: 'private' | 'public' | 'for_sale'   // default: 'private'
+All existing items are treated as 'private' at read-time (no migration script needed — the field just being absent is equivalent to private).
+
+Supabase database schema
+
+-- 1. User profiles (one per Supabase auth user)
+create table profiles (
+  id            uuid primary key references auth.users on delete cascade,
+  username      text unique not null,          -- chosen at sign-up, URL-safe
+  display_name  text,
+  avatar_url    text,
+  bio           text,
+  created_at    timestamptz default now()
+);
+-- 2. Public items (only non-private items land here)
+create table public_items (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references profiles(id) on delete cascade,
+  local_id      integer not null,              -- ClothingItem.id on the owner's device
+  name          text not null,
+  category      text not null,
+  color         text,
+  brand         text,
+  size          text,
+  season        text,
+  occasion      text,
+  image_url     text,                          -- Supabase Storage public URL
+  notes         text,
+  price_label   text,                          -- display-only ("$40", "Best offer", etc.)
+  visibility    text not null
+                  check (visibility in ('public','for_sale')),
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now(),
+  unique (user_id, local_id)
+);
+-- 3. Supabase Storage bucket for public images
+-- bucket name: "public-items"   (public read, authenticated write)
+Row Level Security policies
+
+-- profiles
+alter table profiles enable row level security;
+create policy "Anyone can read profiles"
+  on profiles for select using (true);
+create policy "Owner can update own profile"
+  on profiles for update using (auth.uid() = id);
+create policy "Owner can insert own profile"
+  on profiles for insert with check (auth.uid() = id);
+-- public_items
+alter table public_items enable row level security;
+create policy "Anyone can read public items"
+  on public_items for select using (true);
+create policy "Owner can insert own items"
+  on public_items for insert with check (auth.uid() = user_id);
+create policy "Owner can update own items"
+  on public_items for update using (auth.uid() = user_id);
+create policy "Owner can delete own items"
+  on public_items for delete using (auth.uid() = user_id);
+-- Storage: public-items bucket
+-- Read: public (anon)
+-- Write: authenticated users, path must start with their uid/
+How sync works
+
+User action	What happens
+Item visibility changed → public or for_sale (signed in)	Item metadata + image upserted to public_items; image uploaded to Supabase Storage at {uid}/{local_id}.jpg
+Item visibility changed → private (signed in)	Row deleted from public_items; Storage object deleted
+Item edited while public/for_sale	Row updated in public_items
+Item deleted locally	Row deleted from public_items if it existed
+User signs out	No local data changes. Remote rows persist until they sign back in and explicitly unpublish.
+User never signs in	Supabase client is never initialised. Zero network calls.
+Files that need to change
+
+New files
+
+File	Purpose
+src/lib/supabase.ts	Supabase client — initialised lazily only when auth is needed
+src/lib/sync.ts	publishItem(item), unpublishItem(localId), syncItemEdit(item) — all Supabase write helpers
+src/hooks/useAuth.ts	Wraps Supabase auth state; exposes user, signIn(), signOut(), signUp()
+src/hooks/useCommunity.ts	Queries public_items with filters (category, for_sale, search)
+src/pages/community.tsx	Browse feed — public/for-sale items from all users
+src/pages/profile-me.tsx	Signed-in user's own profile: edit username/bio, see published items
+src/pages/profile-view.tsx	Public profile by username — read-only
+src/components/auth/AuthSheet.tsx	Bottom sheet: sign in / sign up / forgot password (email only for now)
+src/components/community/PublicItemCard.tsx	Card shown in community feed
+src/components/clothing/VisibilityPicker.tsx	3-option toggle: 🔒 Private · 🌍 Public · 🏷 For Sale
+Modified files
+
+File	What changes
+src/types/local.ts	Add visibility?: 'private' | 'public' | 'for_sale' to ClothingItem
+src/lib/db.ts	Same field addition; addItem defaults visibility to 'private'
+src/components/clothing/ClothingForm.tsx	Add VisibilityPicker — visible only when user is signed in
+src/components/clothing/ItemDetailsSheet.tsx	Show visibility badge; tapping it opens VisibilityPicker (prompts sign-in if not authed)
+src/App.tsx	Wrap in AuthProvider; add /community, /profile/me, /profile/:username routes
+src/components/AppLayout.tsx	Add Community tab to bottom nav
+src/pages/account.tsx	Add "Sign in / Create account" section; show profile link + sign-out when signed in
+Migration plan (no data loss)
+
+No localStorage migration needed. Items without a visibility field are treated as 'private' in every read path. No script required.
+Supabase schema is applied to a new project via the Supabase dashboard or CLI before any code ships.
+Feature flag approach (recommended): wrap community UI behind user !== null checks so the tab and options are invisible until the user signs in. This means the community tab can be released to everyone but only activates on sign-in.
+Image re-upload: when a user first publishes an item, the local Capacitor image is read from the filesystem and uploaded to Supabase Storage. No pre-migration needed.
+What is explicitly out of scope (this phase)
+
+Payments / checkout for "For Sale" items (visibility label only)
+Messaging / DMs
+Likes, saves, follows
+Push notifications
+Moderation / reporting
+Open questions before I build
+
+Username format — do you want to allow spaces (display name only) or enforce URL-safe handles (e.g. @jane_doe)?
+Sign-in methods — email + password only, or also Apple Sign-In (which Capacitor supports natively and is required by Apple if any other social login is offered)?
+Community tab placement — replace one of the existing 5 tabs or add a 6th? (iOS standard is max 5 in a tab bar.)
+"For Sale" price — free-text label only for now (e.g. user types "$40"), or a structured price field?
+Let me know when you're happy with the plan and I'll start building.
