@@ -33,26 +33,34 @@ const CATEGORY_LABELS: Record<Category, string> = {
 interface Props {
   open:         boolean;
   onOpenChange: (open: boolean) => void;
-  category:     Category;
+  /** Single category filter — mutually exclusive with `categories` */
+  category?:    Category;
+  /** Multi-category filter for "Extras" mode (dresses/outerwear/accessories) */
+  categories?:  string[];
   /** Called with the chosen item so the parent can add it to the outfit */
   onPick:       (item: ClothingItem) => void;
   /** Items already in the outfit — shown with a checkmark but still tappable */
   existingItemIds?: number[];
 }
 
-export function WardrobePickerSheet({ open, onOpenChange, category, onPick, existingItemIds = [] }: Props) {
+export function WardrobePickerSheet({ open, onOpenChange, category, categories, onPick, existingItemIds = [] }: Props) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const queryClient = useQueryClient();
   const deleteItem = useDeleteClothingItem();
 
-  // Fetch all items in this category
-  const params = { category: category as ListClothingCategory };
-  const { data: items, isLoading } = useListClothing(
+  const isExtras = !!categories && categories.length > 0;
+
+  // Fetch all items (filtered by category if single, or all for multi-category extras)
+  const params = isExtras ? {} : { category: category as ListClothingCategory };
+  const { data: rawItems, isLoading } = useListClothing(
     params,
     { query: { queryKey: getListClothingQueryKey(params), enabled: open } }
   );
+  const items = isExtras
+    ? (rawItems ?? []).filter(i => categories!.includes(i.category))
+    : rawItems;
 
-  const label = CATEGORY_LABELS[category];
+  const label = isExtras ? "Extra" : (category ? CATEGORY_LABELS[category] : "Item");
 
   const handleClose = () => onOpenChange(false);
 
@@ -155,7 +163,9 @@ export function WardrobePickerSheet({ open, onOpenChange, category, onPick, exis
             <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
               <span className="text-4xl">👗</span>
               <p className="text-sm text-muted-foreground font-medium">
-                No {label.toLowerCase()}s in your closet yet.
+                {isExtras
+                  ? "No extras (dresses, jackets, accessories) in your closet yet."
+                  : `No ${label.toLowerCase()}s in your closet yet.`}
               </p>
             </div>
           )}
@@ -172,7 +182,7 @@ export function WardrobePickerSheet({ open, onOpenChange, category, onPick, exis
                        active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
           >
             <Plus className="w-5 h-5" />
-            Add New {label} to Closet
+            {isExtras ? "Add New Extra to Closet" : `Add New ${label} to Closet`}
           </button>
         </div>
       </motion.div>
@@ -183,7 +193,7 @@ export function WardrobePickerSheet({ open, onOpenChange, category, onPick, exis
           <QuickAddSheet
             open
             onOpenChange={(o) => setShowQuickAdd(o)}
-            category={category}
+            category={category ?? "accessories"}
             existingCount={items?.length ?? 0}
             onCreated={handleNewlyAdded}
           />

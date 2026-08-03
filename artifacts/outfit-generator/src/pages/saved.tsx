@@ -106,6 +106,7 @@ export default function SavedPage() {
   // Map<outfitId, Map<itemId, prevDate>>
   const prevItemWornDatesRef = useRef<Map<number, Map<number, string | null>>>(new Map());
   const [replacingSlot, setReplacingSlot] = useState<{ outfitId: number; category: SlotKey } | null>(null);
+  const [extrasPickerOutfitId, setExtrasPickerOutfitId] = useState<number | null>(null);
   const [detailsItem, setDetailsItem] = useState<ClothingItem | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -236,6 +237,15 @@ export default function SavedPage() {
       { id: replacingSlot.outfitId, itemId: item.id },
       { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) }
     );
+  };
+
+  const handleExtrasPickedItem = (item: ClothingItem) => {
+    if (extrasPickerOutfitId == null) return;
+    addItemToOutfit.mutate(
+      { id: extrasPickerOutfitId, itemId: item.id },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) }
+    );
+    setExtrasPickerOutfitId(null);
   };
 
   return (
@@ -658,14 +668,14 @@ export default function SavedPage() {
                                 className="absolute top-0 right-0 w-4 h-4 bg-white border border-black rounded-full flex items-center justify-center shadow-sm z-10">
                                 <X className="w-2 h-2" />
                               </button>
-                              <span className="text-[8px] font-bold uppercase text-muted-foreground truncate w-full text-center">Acc</span>
+                              <span className="text-[8px] font-bold uppercase text-muted-foreground truncate w-full text-center">{SLOT_LABELS[item.category as SlotKey] ?? item.category}</span>
                               {item.isFavorite && <span className="absolute top-0 left-0 text-[9px] leading-none">⭐</span>}
                             </div>
                           ))}
                           {Array.from({ length: emptySlots }).map((_, i) => (
                             <button
                               key={`empty-${i}`}
-                              onClick={() => setReplacingSlot({ outfitId: outfit.id, category: "accessories" })}
+                              onClick={() => setExtrasPickerOutfitId(outfit.id)}
                               className="flex flex-col items-center gap-0.5"
                             >
                               <div
@@ -675,7 +685,7 @@ export default function SavedPage() {
                                 <Plus className="w-3.5 h-3.5 text-black/25" />
                               </div>
                               {i === 0 ? (
-                                <span className="text-[8px] font-bold uppercase text-black/25 whitespace-nowrap">+ ACC</span>
+                                <span className="text-[8px] font-bold uppercase text-black/25 whitespace-nowrap">+ Extras</span>
                               ) : (
                                 <span className="text-[8px]">&nbsp;</span>
                               )}
@@ -780,6 +790,22 @@ export default function SavedPage() {
               outfits?.find((o) => o.id === replacingSlot.outfitId)?.items?.map((i) => i.id) ?? []
             }
             onPick={handlePickedItem}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Extras picker — dresses / outerwear / accessories */}
+      <AnimatePresence>
+        {extrasPickerOutfitId !== null && (
+          <WardrobePickerSheet
+            key={`extras-${extrasPickerOutfitId}`}
+            open
+            onOpenChange={(open) => { if (!open) setExtrasPickerOutfitId(null); }}
+            categories={["dresses", "outerwear", "accessories"]}
+            existingItemIds={
+              outfits?.find((o) => o.id === extrasPickerOutfitId)?.items?.map((i) => i.id) ?? []
+            }
+            onPick={handleExtrasPickedItem}
           />
         )}
       </AnimatePresence>
