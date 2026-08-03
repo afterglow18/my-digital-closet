@@ -18,7 +18,7 @@ import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
-import { shareContent, outfitShareUrl, buildOutfitShareText } from "@/lib/share";
+import { shareContent, APP_STORE_URL, buildOutfitShareText } from "@/lib/share";
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
@@ -94,15 +94,15 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     shareContent(
-      outfitShareUrl(outfit.id),
-      buildOutfitShareText(outfit.name, privacyMode, handle || undefined, outfitShareUrl(outfit.id)),
+      APP_STORE_URL,
+      buildOutfitShareText(outfit.name, privacyMode, handle || undefined),
       "My Digital Closet",
     );
   };
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(outfitShareUrl(outfit.id)).then(() => {
+    navigator.clipboard.writeText(APP_STORE_URL).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });

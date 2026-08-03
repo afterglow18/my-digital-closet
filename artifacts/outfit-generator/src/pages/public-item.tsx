@@ -17,9 +17,8 @@ import { Capacitor } from "@capacitor/core";
 import { getSupabase, isSupabaseConfigured, type PublicItem, type SafeProfile } from "@/lib/supabase";
 import { ShareButton } from "@/components/community/ShareButton";
 import {
-  itemShareUrl,
-  buildItemShareText,
   APP_STORE_URL,
+  buildItemShareText,
   smartBannerContent,
 } from "@/lib/share";
 import { FollowButton } from "@/components/community/FollowButton";
@@ -81,8 +80,8 @@ export default function PublicItemPage() {
   const profile    = item.profiles;
   const privMode   = profile?.privacy_mode ?? "anonymous";
   const isPublic   = privMode === "public";
-  const shareUrl   = itemShareUrl(item.id);
-  const shareText  = buildItemShareText(item.name, privMode, profile?.handle ?? undefined, shareUrl);
+  const shareUrl   = APP_STORE_URL;
+  const shareText  = buildItemShareText(item.name, privMode, profile?.handle ?? undefined);
 
   // ── iOS Smart App Banner — shows "Open in My Digital Closet" in Safari ──
   useEffect(() => {

@@ -17,9 +17,8 @@ import { Capacitor } from "@capacitor/core";
 import { getSupabase, isSupabaseConfigured, type PublicOutfit, type SafeProfile } from "@/lib/supabase";
 import { ShareButton } from "@/components/community/ShareButton";
 import {
-  outfitShareUrl,
-  buildOutfitShareText,
   APP_STORE_URL,
+  buildOutfitShareText,
   smartBannerContent,
 } from "@/lib/share";
 import { FollowButton } from "@/components/community/FollowButton";
@@ -81,8 +80,8 @@ export default function PublicOutfitPage() {
   const privMode = profile?.privacy_mode ?? "anonymous";
   const isPublic = privMode === "public";
   const items    = outfit.item_names ?? [];
-  const shareUrl = outfitShareUrl(outfit.id);
-  const shareText = buildOutfitShareText(outfit.name, privMode, profile?.handle ?? undefined, shareUrl);
+  const shareUrl = APP_STORE_URL;
+  const shareText = buildOutfitShareText(outfit.name, privMode, profile?.handle ?? undefined);
 
   // ── iOS Smart App Banner — shows "Open in My Digital Closet" in Safari ──
   useEffect(() => {
