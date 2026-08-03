@@ -83,7 +83,7 @@ export async function publishItem(item: ClothingItem, uid: string): Promise<void
         size:       item.size     ?? null,
         season:     item.season   ?? null,
         occasion:   item.occasion ?? null,
-        notes:      item.notes    ?? null,
+        // notes intentionally omitted — private, local-only, never sent to Supabase
         image_url:  imageUrl,
         visibility: "public",
       },
@@ -126,7 +126,7 @@ export async function syncItemEdit(item: ClothingItem, uid: string): Promise<voi
         size:     item.size     ?? null,
         season:   item.season   ?? null,
         occasion: item.occasion ?? null,
-        notes:    item.notes    ?? null,
+        // notes intentionally omitted — private, local-only, never sent to Supabase
       })
       .eq("user_id", uid)
       .eq("local_id", item.id);

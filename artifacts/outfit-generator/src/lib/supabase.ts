@@ -74,7 +74,7 @@ export interface PublicItem {
   season: string | null;
   occasion: string | null;
   image_url: string | null;
-  notes: string | null;
+  // notes is intentionally absent — private, local-only, never stored in Supabase
   visibility: "public";    // V1 only
   status: "active" | "pending_review" | "removed";
   created_at: string;

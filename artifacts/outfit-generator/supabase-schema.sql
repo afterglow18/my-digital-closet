@@ -76,9 +76,9 @@ CREATE POLICY "Users can delete own profile"
 --    Clothing items voluntarily published to the Discover feed.
 --    Only created when the user explicitly sets an item to Public.
 --    NOTE: status column is added by supabase-schema-update.sql.
---    NOTE: notes is stored here (written by sync.ts) but intentionally not
---          displayed in any public-facing UI — it is a server-side mirror of
---          the local private notes field, kept for owner editing convenience.
+--    Private item notes (the notes field in localStorage) are intentionally
+--    excluded. They are local-only and must not be stored in or readable from
+--    the public Supabase API.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public_items (
@@ -92,7 +92,8 @@ CREATE TABLE IF NOT EXISTS public_items (
   size        text,
   season      text,
   occasion    text,
-  notes       text,                          -- stored but never shown publicly (see note above)
+  -- notes column intentionally omitted — private item notes are local-only and
+  -- must never be stored in or exposed through the public Supabase API.
   image_url   text,                          -- public URL in the public-items storage bucket
   visibility  text        NOT NULL DEFAULT 'public'
                           CHECK (visibility IN ('public')),
