@@ -10,6 +10,8 @@
 #
 # Group "build_env":
 #   VITE_API_BASE_URL                  Your deployed API URL
+#   VITE_SUPABASE_URL                  Your Supabase project URL
+#   VITE_SUPABASE_ANON_KEY             Your Supabase anon/public key
 
 workflows:
   ios-app-store:
@@ -42,7 +44,10 @@ workflows:
       - name: Build web assets
         script: |
           cd artifacts/outfit-generator
-          VITE_API_BASE_URL=$VITE_API_BASE_URL pnpm vite build --config vite.capacitor.config.ts
+          VITE_API_BASE_URL=$VITE_API_BASE_URL \
+          VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+          VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+          pnpm vite build --config vite.capacitor.config.ts
 
       - name: Capacitor add iOS and sync
         script: |
