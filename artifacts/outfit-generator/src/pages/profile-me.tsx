@@ -421,9 +421,16 @@ export default function ProfileMePage() {
             {itemsLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-black/30" /></div>
             ) : !pubItems?.length ? (
-              <div className="text-center py-8 flex flex-col gap-1">
-                <p className="text-sm font-bold text-black/40 uppercase">No published items yet</p>
-                <p className="text-xs text-black/30">Open any item in your closet → set Sharing to Public</p>
+              <div className="text-center py-10 flex flex-col items-center gap-3">
+                <span className="text-3xl">🌍</span>
+                <button
+                  onClick={() => navigate("/")}
+                  className="px-4 py-2 border-2 border-black rounded-full text-sm font-bold
+                             shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                             active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+                >
+                  + Add from Closet
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
@@ -456,9 +463,16 @@ export default function ProfileMePage() {
             {outfitsLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-black/30" /></div>
             ) : !pubOutfits?.length ? (
-              <div className="text-center py-8 flex flex-col gap-1">
-                <p className="text-sm font-bold text-black/40 uppercase">No published outfits yet</p>
-                <p className="text-xs text-black/30">Go to Saved Looks and tap 🌍 on any outfit</p>
+              <div className="text-center py-10 flex flex-col items-center gap-3">
+                <span className="text-3xl">🌍</span>
+                <button
+                  onClick={() => navigate("/saved")}
+                  className="px-4 py-2 border-2 border-black rounded-full text-sm font-bold
+                             shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                             active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+                >
+                  + Add from Saved Looks
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
