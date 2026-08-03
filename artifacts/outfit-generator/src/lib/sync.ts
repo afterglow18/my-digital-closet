@@ -331,10 +331,12 @@ export async function changePrivacyMode(
 export async function deleteAccountStorage(uid: string): Promise<void> {
   try {
     const sb = getSupabase();
-    const { data: files, error } = await sb.storage.from(ITEMS_BUCKET).list(uid);
-    if (error || !files?.length) return;
-    const paths = files.map((f) => `${uid}/${f.name}`);
-    await sb.storage.from(ITEMS_BUCKET).remove(paths);
+    // Remove all item images stored under uid/
+    const { data: files } = await sb.storage.from(ITEMS_BUCKET).list(uid);
+    const itemPaths = (files ?? []).map((f) => `${uid}/${f.name}`);
+    // Also remove avatar
+    const allPaths = [...itemPaths, `avatars/${uid}.jpg`];
+    if (allPaths.length) await sb.storage.from(ITEMS_BUCKET).remove(allPaths);
   } catch (e) {
     console.error("[sync] deleteAccountStorage error:", e);
   }
