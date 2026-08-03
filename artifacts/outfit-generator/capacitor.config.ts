@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mydigitalcloset.app',
+  appId: 'com.mydigitalcloset.communitydev',
   appName: 'My Closet',
   webDir: 'dist/public',
 

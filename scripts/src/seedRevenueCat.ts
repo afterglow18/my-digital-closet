@@ -43,9 +43,9 @@ import {
 // ── App config ────────────────────────────────────────────────────────────────
 const PROJECT_NAME       = "My Digital Closet";
 const APP_STORE_APP_NAME = "My Digital Closet";
-const APP_STORE_BUNDLE_ID = "com.mydigitalcloset.app";
+const APP_STORE_BUNDLE_ID = "com.mydigitalcloset.communitydev";
 const PLAY_STORE_APP_NAME    = "My Digital Closet Android";
-const PLAY_STORE_PACKAGE_NAME = "com.mydigitalcloset.app";
+const PLAY_STORE_PACKAGE_NAME = "com.mydigitalcloset.communitydev";
 
 // ── Entitlement ───────────────────────────────────────────────────────────────
 const ENTITLEMENT_IDENTIFIER   = "unlock";
