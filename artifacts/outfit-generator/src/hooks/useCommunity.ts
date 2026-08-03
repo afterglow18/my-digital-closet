@@ -4,13 +4,15 @@
  * All queries are guarded by isSupabaseConfigured() and return empty data
  * gracefully when Supabase env vars are not yet set.
  *
- * Unauthenticated users can call these hooks freely — SELECT queries only.
- *
  * Privacy model enforced at the DB level:
- *  • All profile joins use safe_profiles, which nulls out handle/display_name/
- *    bio/avatar_url for anonymous users and excludes private users entirely.
+ *  • All profile data is fetched from safe_profiles, which nulls out
+ *    handle/display_name/bio/avatar_url for anonymous users and excludes
+ *    private users entirely.
+ *  • Profile data is fetched as a SEPARATE query from posts so we never rely
+ *    on PostgREST FK inference through the view. Posts load independently;
+ *    if safe_profiles doesn't exist yet the feed still renders (no profile info).
  *  • usePublicProfile only returns public profiles (anonymous handles are null
- *    in safe_profiles, so a .eq("handle", …) query never matches them).
+ *    in safe_profiles, so .eq("handle", …) never matches them).
  */
 
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
@@ -44,6 +46,25 @@ function logSupabaseError(
   }
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch safe_profiles for a list of user IDs and return a map of id → profile.
+ * Does NOT throw — if safe_profiles doesn't exist yet (patch not run), returns {}.
+ */
+async function fetchSafeProfiles(
+  sb: ReturnType<typeof getSupabase>,
+  userIds: string[],
+): Promise<Record<string, SafeProfile>> {
+  if (!userIds.length) return {};
+  const { data } = await sb
+    .from("safe_profiles")
+    .select("*")
+    .in("id", userIds);
+  if (!data) return {};
+  return Object.fromEntries((data as SafeProfile[]).map((p) => [p.id, p]));
+}
+
 // ── Feed filters ──────────────────────────────────────────────────────────────
 
 export interface FeedFilters {
@@ -58,15 +79,14 @@ const PAGE_SIZE = 20;
 export function useCommunityItems(filters: FeedFilters = {}) {
   return useInfiniteQuery({
     queryKey: ["community", "items", filters],
-    queryFn: async ({ pageParam }): Promise<(PublicItem & { profiles: SafeProfile })[]> => {
+    queryFn: async ({ pageParam }): Promise<(PublicItem & { profiles?: SafeProfile })[]> => {
       if (!isSupabaseConfigured()) return [];
       const sb = getSupabase();
+
+      // Step 1: fetch posts (no profile join — avoids PostgREST view FK inference)
       let q = sb
         .from("public_items")
-        // profiles:safe_profiles(*) — masks anonymous users at the DB level.
-        // handle/display_name/bio/avatar_url are NULL for anonymous posters;
-        // private-mode users are excluded from safe_profiles entirely.
-        .select("*, profiles:safe_profiles(*)")
+        .select("*")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -75,7 +95,16 @@ export function useCommunityItems(filters: FeedFilters = {}) {
       if (filters.search)   q = q.ilike("name", `%${filters.search}%`);
       const { data, error } = await q;
       if (error) { logSupabaseError("useCommunityItems", error); throw new Error(error.message); }
-      return (data ?? []) as (PublicItem & { profiles: SafeProfile })[];
+      const posts = (data ?? []) as PublicItem[];
+
+      // Step 2: fetch safe profiles for the returned user IDs
+      const profileMap = await fetchSafeProfiles(
+        sb,
+        [...new Set(posts.map((p) => p.user_id))],
+      );
+
+      // Step 3: merge
+      return posts.map((item) => ({ ...item, profiles: profileMap[item.user_id] }));
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
@@ -89,12 +118,13 @@ export function useCommunityItems(filters: FeedFilters = {}) {
 export function useCommunityOutfits(filters: FeedFilters = {}) {
   return useInfiniteQuery({
     queryKey: ["community", "outfits", filters],
-    queryFn: async ({ pageParam }): Promise<(PublicOutfit & { profiles: SafeProfile })[]> => {
+    queryFn: async ({ pageParam }): Promise<(PublicOutfit & { profiles?: SafeProfile })[]> => {
       if (!isSupabaseConfigured()) return [];
       const sb = getSupabase();
+
       let q = sb
         .from("public_outfits")
-        .select("*, profiles:safe_profiles(*)")
+        .select("*")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -102,7 +132,14 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
       if (filters.search) q = q.ilike("name", `%${filters.search}%`);
       const { data, error } = await q;
       if (error) { logSupabaseError("useCommunityOutfits", error); throw new Error(error.message); }
-      return (data ?? []) as (PublicOutfit & { profiles: SafeProfile })[];
+      const posts = (data ?? []) as PublicOutfit[];
+
+      const profileMap = await fetchSafeProfiles(
+        sb,
+        [...new Set(posts.map((p) => p.user_id))],
+      );
+
+      return posts.map((outfit) => ({ ...outfit, profiles: profileMap[outfit.user_id] }));
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
@@ -114,9 +151,9 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
 // ── Public profile ─────────────────────────────────────────────────────────────
 
 /**
- * Fetches a public profile by handle.
- * Queries safe_profiles so anonymous users (null handle) are never matched.
- * Cast as Profile — when this query finds a row, it is always a public user.
+ * Fetches a public profile by handle from safe_profiles.
+ * Anonymous users have null handles so .eq("handle", x) never matches them.
+ * Cast as Profile — when this query finds a row it is always a public user.
  */
 export function usePublicProfile(handle: string | undefined) {
   return useQuery({
@@ -170,10 +207,7 @@ type FollowFeedEntry =
  * Private automatically prunes that user from the follow feed.
  */
 export function useFollowingFeed(userId?: string) {
-  // Supabase follow IDs when logged in
   const { data: supabaseIds } = useMyFollowIds(userId);
-
-  // Resolve follow IDs: Supabase when authed, local when not
   const followIds = userId
     ? (supabaseIds ?? [])
     : getLocalFollows().map((f) => f.profileId);
@@ -187,18 +221,19 @@ export function useFollowingFeed(userId?: string) {
       const sb = getSupabase();
 
       const [profilesRes, itemsRes, outfitsRes] = await Promise.all([
-        // Use safe_profiles so users who switch to Private are pruned automatically
+        // Check which followed profiles still exist in safe_profiles
+        // (private-mode users are excluded automatically)
         sb.from("safe_profiles").select("id").in("id", followIds),
         sb
           .from("public_items")
-          .select("*, profiles:safe_profiles(*)")
+          .select("*")
           .in("user_id", followIds)
           .eq("status", "active")
           .order("created_at", { ascending: false })
           .limit(60),
         sb
           .from("public_outfits")
-          .select("*, profiles:safe_profiles(*)")
+          .select("*")
           .in("user_id", followIds)
           .eq("status", "active")
           .order("created_at", { ascending: false })
@@ -208,13 +243,19 @@ export function useFollowingFeed(userId?: string) {
       // Prune local follows whose profiles no longer appear in safe_profiles
       pruneStaleFollows((profilesRes.data ?? []).map((p) => p.id as string));
 
-      const items = (
-        (itemsRes.data ?? []) as (PublicItem & { profiles?: SafeProfile })[]
-      ).filter((i) => !blocked.has(i.user_id));
+      const allUserIds = [
+        ...(itemsRes.data   ?? []).map((i: { user_id: string }) => i.user_id),
+        ...(outfitsRes.data ?? []).map((o: { user_id: string }) => o.user_id),
+      ];
+      const profileMap = await fetchSafeProfiles(sb, [...new Set(allUserIds)]);
 
-      const outfits = (
-        (outfitsRes.data ?? []) as (PublicOutfit & { profiles?: SafeProfile })[]
-      ).filter((o) => !blocked.has(o.user_id));
+      const items = ((itemsRes.data ?? []) as PublicItem[])
+        .filter((i) => !blocked.has(i.user_id))
+        .map((i) => ({ ...i, profiles: profileMap[i.user_id] }));
+
+      const outfits = ((outfitsRes.data ?? []) as PublicOutfit[])
+        .filter((o) => !blocked.has(o.user_id))
+        .map((o) => ({ ...o, profiles: profileMap[o.user_id] }));
 
       const feed: FollowFeedEntry[] = [
         ...items.map((d): FollowFeedEntry   => ({ type: "item",   data: d })),
@@ -227,7 +268,6 @@ export function useFollowingFeed(userId?: string) {
 
       return feed;
     },
-    // Only run when we have resolved IDs (wait for Supabase fetch when logged in)
     enabled: userId ? supabaseIds !== undefined : true,
     staleTime: 1000 * 60 * 2,
   });
@@ -235,11 +275,6 @@ export function useFollowingFeed(userId?: string) {
 
 // ── Discover Favorites ────────────────────────────────────────────────────────
 
-/**
- * Fetches the actual Supabase records for locally-hearted posts.
- * Prunes stale favorites (deleted / hidden) after each successful fetch.
- * No account required.
- */
 export function useDiscoverFavoriteItems() {
   return useQuery({
     queryKey: ["discover-favorites"],
@@ -256,30 +291,25 @@ export function useDiscoverFavoriteItems() {
 
       const [itemsRes, outfitsRes] = await Promise.all([
         itemIds.length
-          ? sb
-              .from("public_items")
-              .select("*, profiles:safe_profiles(*)")
-              .in("id", itemIds)
-              .eq("status", "active")
-          : Promise.resolve({ data: [], error: null }),
+          ? sb.from("public_items").select("*").in("id", itemIds).eq("status", "active")
+          : Promise.resolve({ data: [] as PublicItem[], error: null }),
         outfitIds.length
-          ? sb
-              .from("public_outfits")
-              .select("*, profiles:safe_profiles(*)")
-              .in("id", outfitIds)
-              .eq("status", "active")
-          : Promise.resolve({ data: [], error: null }),
+          ? sb.from("public_outfits").select("*").in("id", outfitIds).eq("status", "active")
+          : Promise.resolve({ data: [] as PublicOutfit[], error: null }),
       ]);
 
-      const items   = (itemsRes.data   ?? []) as (PublicItem   & { profiles?: SafeProfile })[];
-      const outfits = (outfitsRes.data ?? []) as (PublicOutfit & { profiles?: SafeProfile })[];
+      const items   = (itemsRes.data   ?? []) as PublicItem[];
+      const outfits = (outfitsRes.data ?? []) as PublicOutfit[];
 
-      pruneStaleDiscoverFavorites(
-        items.map((i) => i.id),
-        outfits.map((o) => o.id),
-      );
+      pruneStaleDiscoverFavorites(items.map((i) => i.id), outfits.map((o) => o.id));
 
-      return { items, outfits };
+      const allUserIds = [...items.map((i) => i.user_id), ...outfits.map((o) => o.user_id)];
+      const profileMap = await fetchSafeProfiles(sb, [...new Set(allUserIds)]);
+
+      return {
+        items:   items.map((i) => ({ ...i, profiles: profileMap[i.user_id] })),
+        outfits: outfits.map((o) => ({ ...o, profiles: profileMap[o.user_id] })),
+      };
     },
     staleTime: 1000 * 60 * 2,
   });

@@ -35,13 +35,21 @@ export default function PublicOutfitPage() {
     queryKey: ["public-outfit-page", id],
     queryFn: async (): Promise<(PublicOutfit & { profiles?: SafeProfile }) | null> => {
       if (!id || !isSupabaseConfigured()) return null;
-      const { data } = await getSupabase()
+      const sb = getSupabase();
+      const { data } = await sb
         .from("public_outfits")
-        .select("*, profiles:safe_profiles(*)")
+        .select("*")
         .eq("id", id)
         .eq("status", "active")
         .single();
-      return (data as (PublicOutfit & { profiles?: SafeProfile })) ?? null;
+      if (!data) return null;
+      const outfitRow = data as PublicOutfit;
+      const { data: profileData } = await sb
+        .from("safe_profiles")
+        .select("*")
+        .eq("id", outfitRow.user_id)
+        .maybeSingle();
+      return { ...outfitRow, profiles: (profileData as SafeProfile) ?? undefined };
     },
     enabled: Boolean(id),
     staleTime: 1000 * 60 * 5,

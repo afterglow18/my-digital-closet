@@ -35,13 +35,21 @@ export default function PublicItemPage() {
     queryKey: ["public-item-page", id],
     queryFn: async (): Promise<(PublicItem & { profiles?: SafeProfile }) | null> => {
       if (!id || !isSupabaseConfigured()) return null;
-      const { data } = await getSupabase()
+      const sb = getSupabase();
+      const { data } = await sb
         .from("public_items")
-        .select("*, profiles:safe_profiles(*)")
+        .select("*")
         .eq("id", id)
         .eq("status", "active")
         .single();
-      return (data as (PublicItem & { profiles?: SafeProfile })) ?? null;
+      if (!data) return null;
+      const item = data as PublicItem;
+      const { data: profileData } = await sb
+        .from("safe_profiles")
+        .select("*")
+        .eq("id", item.user_id)
+        .maybeSingle();
+      return { ...item, profiles: (profileData as SafeProfile) ?? undefined };
     },
     enabled: Boolean(id),
     staleTime: 1000 * 60 * 5,
