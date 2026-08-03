@@ -48,7 +48,7 @@ export function useCommunityItems(filters: FeedFilters = {}) {
       const sb = getSupabase();
       let q = sb
         .from("public_items")
-        .select("*, profiles(id, handle, display_name, avatar_url)")
+        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -76,7 +76,7 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
       const sb = getSupabase();
       let q = sb
         .from("public_outfits")
-        .select("*, profiles(id, handle, display_name, avatar_url)")
+        .select("*, profiles(id, handle, display_name, avatar_url, privacy_mode)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);

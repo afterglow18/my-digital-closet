@@ -226,6 +226,38 @@ export async function syncOutfitEdit(outfit: Outfit, uid: string): Promise<void>
   }
 }
 
+// ── Privacy mode ─────────────────────────────────────────────────────────────
+
+/**
+ * Change the user's privacy mode.
+ *
+ * The RLS policy on public_items / public_outfits enforces the result:
+ * private-mode users' posts are excluded from every Discover query at the
+ * database level — no client-side filtering required.
+ *
+ * anonymous ↔ public: only the profile row changes; posts stay 'active'.
+ * → private: posts remain 'active' in the DB but are hidden by RLS.
+ * private → anything: posts become visible again the moment the profile
+ * row is updated; no post-level changes needed.
+ */
+export async function changePrivacyMode(
+  userId: string,
+  newMode: "private" | "anonymous" | "public",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { error } = await getSupabase()
+      .from("profiles")
+      .update({ privacy_mode: newMode })
+      .eq("id", userId);
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Failed to update privacy mode";
+    if (import.meta.env.DEV) console.error("[sync] changePrivacyMode failed:", e);
+    return { ok: false, error: msg };
+  }
+}
+
 // ── Account cleanup ───────────────────────────────────────────────────────────
 
 /**

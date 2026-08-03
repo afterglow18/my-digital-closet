@@ -15,6 +15,7 @@ import {
   Download, Upload, RefreshCw, CheckCircle2, AlertCircle,
   LogOut, Trash2, Lock, Eye, Share2,
 } from "lucide-react";
+import { changePrivacyMode } from "@/lib/sync";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hooks/useCommunity";
 import { getSupabase } from "@/lib/supabase";
@@ -32,6 +33,28 @@ import type { PublicItem, PublicOutfit } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type ContentTab = "items" | "outfits";
+type PrivacyMode = "private" | "anonymous" | "public";
+
+const PRIVACY_OPTIONS: { mode: PrivacyMode; icon: string; label: string; desc: string }[] = [
+  {
+    mode: "private",
+    icon: "🔒",
+    label: "Private",
+    desc: "Your closet is completely private. Nothing appears in Discover.",
+  },
+  {
+    mode: "anonymous",
+    icon: "🕶️",
+    label: "Anonymous Sharing",
+    desc: "Share to Discover without revealing your @handle or identity.",
+  },
+  {
+    mode: "public",
+    icon: "🌟",
+    label: "Public Profile",
+    desc: "Your @handle appears on posts. Others can open your profile and follow you.",
+  },
+];
 
 type Status =
   | { kind: "idle" }
@@ -64,6 +87,25 @@ export default function ProfileMePage() {
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile(user?.id);
   const { data: pubItems,   isLoading: itemsLoading,   refetch: refetchItems }   = useMyPublishedItems(user?.id);
   const { data: pubOutfits, isLoading: outfitsLoading, refetch: refetchOutfits } = useMyPublishedOutfits(user?.id);
+
+  // Privacy mode
+  const [changingMode, setChangingMode] = useState<PrivacyMode | null>(null);
+  const [privacyErr,   setPrivacyErr]   = useState<string | null>(null);
+
+  const handleChangeMode = async (newMode: PrivacyMode) => {
+    if (!user) return;
+    const current = (profile?.privacy_mode ?? "public") as PrivacyMode;
+    if (current === newMode) return;
+    setChangingMode(newMode);
+    setPrivacyErr(null);
+    const result = await changePrivacyMode(user.id, newMode);
+    if (result.ok) {
+      await refetchProfile();
+    } else {
+      setPrivacyErr(result.error);
+    }
+    setChangingMode(null);
+  };
 
   // Profile edit
   const [editMode,      setEditMode]      = useState(false);
@@ -431,6 +473,66 @@ export default function ProfileMePage() {
         {/* ── Settings ── */}
         <div className="px-4 flex flex-col gap-4">
           <h2 className="font-display font-bold text-lg uppercase tracking-tight">Settings</h2>
+
+          {/* Privacy Mode */}
+          <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔐</span>
+              <h3 className="font-display font-bold text-base uppercase tracking-tight">Privacy</h3>
+            </div>
+            <p className="text-xs text-black/50 leading-snug">
+              Choose how you appear on Discover. You can switch at any time.
+            </p>
+
+            {PRIVACY_OPTIONS.map(({ mode, icon, label, desc }) => {
+              const currentMode = (profile?.privacy_mode ?? "public") as PrivacyMode;
+              const isActive    = currentMode === mode;
+              const isChanging  = changingMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => handleChangeMode(mode)}
+                  disabled={isActive || changingMode !== null}
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all",
+                    isActive
+                      ? "border-black bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                      : "border-black/20 hover:border-black/40 bg-white active:bg-black/5",
+                    !isActive && changingMode !== null ? "opacity-40" : "",
+                  )}
+                >
+                  <span className="text-xl leading-none mt-0.5 flex-shrink-0">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm">{label}</p>
+                      {isChanging && <Loader2 className="w-3 h-3 animate-spin text-black/40" />}
+                    </div>
+                    <p className="text-[11px] text-black/50 mt-0.5 leading-snug">{desc}</p>
+                  </div>
+                  {isActive && <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-black/60" />}
+                </button>
+              );
+            })}
+
+            {privacyErr && <p className="text-xs text-red-600">{privacyErr}</p>}
+
+            {/* Contextual tip for public mode */}
+            {(profile?.privacy_mode ?? "public") === "public" && (
+              <p className="text-[10px] text-black/35 leading-snug">
+                💡 Your public posts and profile are visible to everyone on Discover.
+              </p>
+            )}
+            {(profile?.privacy_mode ?? "public") === "anonymous" && (
+              <p className="text-[10px] text-black/35 leading-snug">
+                💡 Your posts appear in Discover but your @handle and profile are hidden.
+              </p>
+            )}
+            {(profile?.privacy_mode ?? "public") === "private" && (
+              <p className="text-[10px] text-black/35 leading-snug">
+                💡 Your posts are hidden from Discover. Switch to Anonymous or Public to share again.
+              </p>
+            )}
+          </section>
 
           {/* Subscription */}
           <section className="border-2 border-black rounded-2xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 flex flex-col gap-3">

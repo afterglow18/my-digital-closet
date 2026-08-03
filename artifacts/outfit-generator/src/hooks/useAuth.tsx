@@ -33,9 +33,10 @@ export interface AuthContextValue {
     password: string,
     handle: string,
     displayName?: string,
+    privacyMode?: "private" | "anonymous" | "public",
   ) => Promise<{ error: string | null }>;
   /** Native Apple Sign-In (Capacitor only). No-op on web. */
-  signInWithApple: () => Promise<{ error: string | null }>;
+  signInWithApple: () => Promise<{ error: string | null; isNewUser?: boolean; userId?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -125,23 +126,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string,
       handle: string,
       displayName?: string,
+      privacyMode: "private" | "anonymous" | "public" = "public",
     ): Promise<{ error: string | null }> => {
       try {
         const sb = getSupabase();
 
-        // Pass handle + display_name as user metadata so the server-side
-        // `on_auth_user_created` trigger (SECURITY DEFINER) can create the
-        // profile row immediately — before the user has confirmed their email.
-        // A direct client-side INSERT would fail with an RLS violation when
-        // email confirmation is enabled, because the session is null at that
-        // point and auth.uid() returns null.
+        // Pass metadata to the on_auth_user_created SECURITY DEFINER trigger so
+        // the profile row is created before email confirmation (when auth.uid()
+        // is null and a direct INSERT would fail RLS). privacy_mode is stored
+        // directly on the profile so the user's choice takes effect immediately.
         const { data, error } = await sb.auth.signUp({
           email,
           password,
           options: {
             data: {
-              handle: handle.toLowerCase().trim(),
+              handle: handle.toLowerCase().trim() || undefined,
               display_name: displayName?.trim() || null,
+              privacy_mode: privacyMode,
             },
           },
         });
@@ -158,7 +159,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ── Apple Sign-In ──────────────────────────────────────────────────────────
-  const signInWithApple = useCallback(async (): Promise<{ error: string | null }> => {
+  const signInWithApple = useCallback(async (): Promise<{
+    error: string | null;
+    isNewUser?: boolean;
+    userId?: string;
+  }> => {
     try {
       const { Capacitor } = await import("@capacitor/core");
       if (!Capacitor.isNativePlatform()) {
@@ -177,22 +182,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const identityToken = result.response.identityToken;
       if (!identityToken) return { error: "Apple Sign-In did not return an identity token" };
 
-      // signInWithIdToken does not accept a `data` option, so we cannot inject
-      // metadata here. For a brand-new Apple user the on_auth_user_created
-      // trigger reads whatever raw_user_meta_data Supabase populates from
-      // Apple's identity token (which includes the name on first sign-in) and
-      // derives the handle from the email prefix. For returning users the
-      // trigger's ON CONFLICT DO NOTHING makes it a no-op.
+      // signInWithIdToken does not accept a `data` option so we cannot inject
+      // privacy_mode here. New Apple users see the privacy picker after auth
+      // and we call changePrivacyMode() at that point.
       const { error } = await getSupabase().auth.signInWithIdToken({
         provider: "apple",
         token: identityToken,
       });
       if (error) return { error: error.message };
 
-      return { error: null };
+      // Detect new vs returning user by how recently the account was created.
+      const { data: { session: newSession } } = await getSupabase().auth.getSession();
+      const userId     = newSession?.user?.id;
+      const createdAt  = new Date(newSession?.user?.created_at ?? 0);
+      const isNewUser  = (Date.now() - createdAt.getTime()) < 60_000;
+
+      return { error: null, isNewUser, userId };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // User cancelled
       if (msg.includes("cancel") || msg.includes("dismiss")) return { error: null };
       return { error: msg };
     }

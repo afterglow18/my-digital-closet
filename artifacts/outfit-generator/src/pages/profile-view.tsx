@@ -6,7 +6,7 @@
 import React, { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, Shirt, Globe, Loader2 } from "lucide-react";
+import { ArrowLeft, Shirt, Globe, Loader2, Lock } from "lucide-react";
 import { FollowButton } from "@/components/community/FollowButton";
 import { ShareButton } from "@/components/community/ShareButton";
 import { profileShareUrl } from "@/lib/share";
@@ -42,6 +42,24 @@ export default function ProfileViewPage() {
       <div className="flex flex-col items-center justify-center gap-4 h-64 px-6 text-center"
         style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <p className="font-bold text-black/40 uppercase text-sm">Profile not found</p>
+        <button onClick={() => navigate("/community")}
+          className="text-xs font-bold text-black/40 underline hover:text-black">
+          Back to Discover
+        </button>
+      </div>
+    );
+  }
+
+  // Anonymous or private accounts don't have a browsable public profile page.
+  if (profile.privacy_mode !== "public") {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 h-64 px-6 text-center"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <Lock className="w-10 h-10 text-black/15" />
+        <p className="font-bold text-black/40 uppercase text-sm">This profile is private</p>
+        <p className="text-xs text-black/30 max-w-xs">
+          This user hasn't made their profile public.
+        </p>
         <button onClick={() => navigate("/community")}
           className="text-xs font-bold text-black/40 underline hover:text-black">
           Back to Discover

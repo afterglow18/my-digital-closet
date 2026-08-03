@@ -58,6 +58,7 @@ export interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  privacy_mode: "private" | "anonymous" | "public";
   created_at: string;
 }
 

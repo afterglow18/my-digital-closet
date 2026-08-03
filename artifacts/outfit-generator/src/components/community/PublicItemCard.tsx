@@ -1,22 +1,31 @@
 /**
  * PublicItemCard — item card shown in the Discover feed and Discover Favorites.
  *
- * Includes:
- *  • Heart toggle with bounce animation (local-only, no account required)
- *  • "⋯" menu → Report (requires account) or Block creator (local-only)
- *  • Blocked creators' cards render null (hidden immediately)
+ * Privacy:
+ *  • anonymous profile → handle and profile link are hidden
+ *  • public profile    → @handle shown; tapping it navigates to their profile
+ *
+ * Auth gating:
+ *  • Hearting requires a signed-in account — tapping the heart when logged out
+ *    opens AuthSheet instead.
+ *
+ * Also includes:
+ *  • Heart toggle with bounce animation
+ *  • "⋯" menu → Report / Block creator
  *  • Shimmer placeholder while image loads
  */
 
 import React, { useState } from "react";
 import { Heart, MoreHorizontal, Flag, Ban, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useLocation } from "wouter";
 import type { PublicItem, Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { isDiscoverFavorite, toggleDiscoverFavorite } from "@/lib/discoverFavorites";
 import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
+import { AuthSheet } from "@/components/auth/AuthSheet";
 import { shareContent, itemShareUrl } from "@/lib/share";
 
 interface PublicItemCardProps {
@@ -27,25 +36,36 @@ interface PublicItemCardProps {
 
 export function PublicItemCard({ item, onClick, className }: PublicItemCardProps) {
   const { user }                             = useAuth();
+  const [, navigate]                         = useLocation();
   const [hearted,     setHearted]            = useState(() => isDiscoverFavorite(item.id));
   const [heartAnim,   setHeartAnim]          = useState(false);
   const [blocked,     setBlocked]            = useState(() => isBlocked(item.user_id));
   const [showMenu,    setShowMenu]           = useState(false);
   const [showReport,  setShowReport]         = useState(false);
+  const [showAuth,    setShowAuth]           = useState(false);
   const [imgLoaded,   setImgLoaded]          = useState(false);
 
   if (blocked) return null;
 
-  const isOwn = user?.id === item.user_id;
+  const profile     = item.profiles;
+  const privacyMode = profile?.privacy_mode ?? "public";
+  const isAnonymous = privacyMode === "anonymous";
+  const isOwn       = user?.id === item.user_id;
 
   const handleHeart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!user) { setShowAuth(true); return; }
     const next = toggleDiscoverFavorite(item.id, "item");
     setHearted(next);
     if (next) {
       setHeartAnim(true);
       setTimeout(() => setHeartAnim(false), 500);
     }
+  };
+
+  const handleProfileTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (profile && privacyMode === "public") navigate(`/profile/${profile.handle}`);
   };
 
   const handleBlock = (e: React.MouseEvent) => {
@@ -57,7 +77,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
 
   return (
     <div className={cn("relative", className)}>
-      {/* ── Card body (main tap area) ── */}
+      {/* ── Card body ── */}
       <motion.div
         onClick={onClick}
         whileTap={{ scale: 0.97, y: 2 }}
@@ -69,7 +89,6 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
         <div className="aspect-square w-full bg-[#f9f4ee] overflow-hidden relative">
           {item.image_url ? (
             <>
-              {/* Shimmer placeholder */}
               {!imgLoaded && (
                 <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[#ede8e1] via-[#f5f0ea] to-[#ede8e1]" />
               )}
@@ -90,7 +109,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             </div>
           )}
 
-          {/* Heart button — bottom-right of image */}
+          {/* Heart button */}
           <button
             onClick={handleHeart}
             aria-label={hearted ? "Unheart" : "Heart"}
@@ -109,7 +128,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             </motion.div>
           </button>
 
-          {/* More (⋯) button — top-right */}
+          {/* More (⋯) button */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(true); }}
             aria-label="More actions"
@@ -126,15 +145,20 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
           <p className="text-[10px] text-black/40 font-medium uppercase tracking-wide">
             {item.category}{item.brand ? ` · ${item.brand}` : ""}
           </p>
-          {item.profiles && (
-            <p className="text-[10px] text-black/30 font-medium truncate mt-0.5">
-              @{item.profiles.handle}
-            </p>
+          {/* Handle — only for public profiles */}
+          {!isAnonymous && profile && (
+            <button
+              onClick={handleProfileTap}
+              className="text-[10px] text-black/30 font-medium truncate mt-0.5 text-left
+                         hover:text-black/60 transition-colors"
+            >
+              @{profile.handle}
+            </button>
           )}
         </div>
       </motion.div>
 
-      {/* ── Actions sheet (Report / Block) ── */}
+      {/* ── Actions sheet ── */}
       <AnimatePresence>
         {showMenu && (
           <>
@@ -154,15 +178,10 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMenu(false);
-                  shareContent(
-                    itemShareUrl(item.id),
-                    `Check out this item on My Digital Closet.`,
-                    "My Digital Closet",
-                  );
+                  shareContent(itemShareUrl(item.id), `Check out this item on My Digital Closet.`, "My Digital Closet");
                 }}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                           border-black/15 bg-white text-sm font-bold text-left
-                           active:bg-black/5 transition-colors"
+                           border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
               >
                 <Share2 className="w-4 h-4 text-black/50" /> Share
               </button>
@@ -170,8 +189,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowReport(true); }}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                             border-black/15 bg-white text-sm font-bold text-left
-                             active:bg-black/5 transition-colors"
+                             border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
                 >
                   <Flag className="w-4 h-4 text-black/50" /> Report
                 </button>
@@ -180,16 +198,14 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                 <button
                   onClick={handleBlock}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                             border-black/15 bg-white text-sm font-bold text-left
-                             text-red-600 active:bg-red-50 transition-colors"
+                             border-black/15 bg-white text-sm font-bold text-left text-red-600 active:bg-red-50"
                 >
                   <Ban className="w-4 h-4" /> Block creator
                 </button>
               )}
               <button
                 onClick={() => setShowMenu(false)}
-                className="w-full py-3 rounded-xl border-2 border-black/10 text-sm font-bold
-                           text-black/40 active:bg-black/5 transition-colors"
+                className="w-full py-3 rounded-xl border-2 border-black/10 text-sm font-bold text-black/40 active:bg-black/5"
               >
                 Cancel
               </button>
@@ -200,12 +216,19 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
 
       {/* ── Report sheet ── */}
       {showReport && (
-        <ReportSheet
-          postId={item.id}
-          postType="item"
-          onClose={() => setShowReport(false)}
-        />
+        <ReportSheet postId={item.id} postType="item" onClose={() => setShowReport(false)} />
       )}
+
+      {/* ── Auth sheet (heart tapped while logged out) ── */}
+      <AnimatePresence>
+        {showAuth && (
+          <AuthSheet
+            onClose={() => setShowAuth(false)}
+            onSuccess={() => setShowAuth(false)}
+            defaultTab="signup"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

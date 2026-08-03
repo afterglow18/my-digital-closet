@@ -1,21 +1,30 @@
 /**
  * PublicOutfitCard — outfit card for the Discover feed and Discover Favorites.
  *
- * Includes:
- *  • Heart toggle with bounce animation (local-only, no account required)
- *  • "⋯" menu → Report (requires account) or Block creator (local-only)
- *  • Blocked creators' cards render null
+ * Privacy:
+ *  • anonymous profile → handle and profile link are hidden
+ *  • public profile    → @handle shown; tapping it navigates to their profile
+ *
+ * Auth gating:
+ *  • Hearting requires a signed-in account — tapping the heart when logged out
+ *    opens AuthSheet instead.
+ *
+ * Also includes:
+ *  • Heart toggle with bounce animation
+ *  • "⋯" menu → Report / Block creator
  */
 
 import React, { useState } from "react";
 import { Shirt, Heart, MoreHorizontal, Flag, Ban, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useLocation } from "wouter";
 import type { PublicOutfit, Profile } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { isDiscoverFavorite, toggleDiscoverFavorite } from "@/lib/discoverFavorites";
 import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
+import { AuthSheet } from "@/components/auth/AuthSheet";
 import { shareContent, outfitShareUrl } from "@/lib/share";
 
 interface PublicOutfitCardProps {
@@ -26,25 +35,36 @@ interface PublicOutfitCardProps {
 
 export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCardProps) {
   const { user }                     = useAuth();
+  const [, navigate]                 = useLocation();
   const [hearted,    setHearted]     = useState(() => isDiscoverFavorite(outfit.id));
   const [heartAnim,  setHeartAnim]   = useState(false);
   const [blocked,    setBlocked]     = useState(() => isBlocked(outfit.user_id));
   const [showMenu,   setShowMenu]    = useState(false);
   const [showReport, setShowReport]  = useState(false);
+  const [showAuth,   setShowAuth]    = useState(false);
 
   if (blocked) return null;
 
-  const isOwn  = user?.id === outfit.user_id;
-  const items  = outfit.item_names ?? [];
+  const profile     = outfit.profiles;
+  const privacyMode = profile?.privacy_mode ?? "public";
+  const isAnonymous = privacyMode === "anonymous";
+  const isOwn       = user?.id === outfit.user_id;
+  const items       = outfit.item_names ?? [];
 
   const handleHeart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!user) { setShowAuth(true); return; }
     const next = toggleDiscoverFavorite(outfit.id, "outfit");
     setHearted(next);
     if (next) {
       setHeartAnim(true);
       setTimeout(() => setHeartAnim(false), 500);
     }
+  };
+
+  const handleProfileTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (profile && privacyMode === "public") navigate(`/profile/${profile.handle}`);
   };
 
   const handleBlock = (e: React.MouseEvent) => {
@@ -64,7 +84,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-white rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview area */}
+        {/* Preview */}
         <div className="aspect-square w-full bg-primary/50 relative flex flex-col
                         items-center justify-center gap-2 px-3">
           <Shirt className="w-8 h-8 text-black/30" />
@@ -117,10 +137,15 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
           <p className="text-[10px] text-black/40 font-medium">
             {items.length} {items.length === 1 ? "piece" : "pieces"}
           </p>
-          {outfit.profiles && (
-            <p className="text-[10px] text-black/30 font-medium truncate mt-0.5">
-              @{outfit.profiles.handle}
-            </p>
+          {/* Handle — only for public profiles */}
+          {!isAnonymous && profile && (
+            <button
+              onClick={handleProfileTap}
+              className="text-[10px] text-black/30 font-medium truncate mt-0.5 text-left
+                         hover:text-black/60 transition-colors"
+            >
+              @{profile.handle}
+            </button>
           )}
         </div>
       </motion.div>
@@ -145,15 +170,10 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMenu(false);
-                  shareContent(
-                    outfitShareUrl(outfit.id),
-                    `Check out this look on My Digital Closet.`,
-                    "My Digital Closet",
-                  );
+                  shareContent(outfitShareUrl(outfit.id), `Check out this look on My Digital Closet.`, "My Digital Closet");
                 }}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                           border-black/15 bg-white text-sm font-bold text-left
-                           active:bg-black/5 transition-colors"
+                           border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
               >
                 <Share2 className="w-4 h-4 text-black/50" /> Share
               </button>
@@ -161,8 +181,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowReport(true); }}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                             border-black/15 bg-white text-sm font-bold text-left
-                             active:bg-black/5 transition-colors"
+                             border-black/15 bg-white text-sm font-bold text-left active:bg-black/5"
                 >
                   <Flag className="w-4 h-4 text-black/50" /> Report
                 </button>
@@ -171,16 +190,14 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                 <button
                   onClick={handleBlock}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2
-                             border-black/15 bg-white text-sm font-bold text-left
-                             text-red-600 active:bg-red-50 transition-colors"
+                             border-black/15 bg-white text-sm font-bold text-left text-red-600 active:bg-red-50"
                 >
                   <Ban className="w-4 h-4" /> Block creator
                 </button>
               )}
               <button
                 onClick={() => setShowMenu(false)}
-                className="w-full py-3 rounded-xl border-2 border-black/10 text-sm font-bold
-                           text-black/40 active:bg-black/5 transition-colors"
+                className="w-full py-3 rounded-xl border-2 border-black/10 text-sm font-bold text-black/40 active:bg-black/5"
               >
                 Cancel
               </button>
@@ -191,12 +208,19 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
 
       {/* ── Report sheet ── */}
       {showReport && (
-        <ReportSheet
-          postId={outfit.id}
-          postType="outfit"
-          onClose={() => setShowReport(false)}
-        />
+        <ReportSheet postId={outfit.id} postType="outfit" onClose={() => setShowReport(false)} />
       )}
+
+      {/* ── Auth sheet (heart tapped while logged out) ── */}
+      <AnimatePresence>
+        {showAuth && (
+          <AuthSheet
+            onClose={() => setShowAuth(false)}
+            onSuccess={() => setShowAuth(false)}
+            defaultTab="signup"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
