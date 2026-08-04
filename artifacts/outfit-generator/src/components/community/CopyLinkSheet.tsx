@@ -19,7 +19,7 @@ const APPS = [
     bg: "#1877F2",
     // Opens FB composer; falls back to FB app or store
     scheme: "fb://",
-    fallback: "https://apps.apple.com/us/app/facebook/id284882215",
+    fallback: "itms-apps://itunes.apple.com/app/id284882215",
     content: (
       <span className="text-white font-black text-xl leading-none" style={{ fontFamily: "Georgia, serif" }}>
         f
@@ -37,14 +37,14 @@ const APPS = [
     name: "Instagram",
     bg: "linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
     scheme: "instagram://",
-    fallback: "https://apps.apple.com/us/app/instagram/id389801252",
+    fallback: "itms-apps://itunes.apple.com/app/id389801252",
     content: <span className="text-xl leading-none">📷</span>,
   },
   {
     name: "WhatsApp",
     bg: "#25D366",
     scheme: "whatsapp://",
-    fallback: "https://apps.apple.com/us/app/whatsapp-messenger/id310633997",
+    fallback: "itms-apps://itunes.apple.com/app/id310633997",
     content: <span className="text-white font-black text-base leading-none">W</span>,
   },
   {
@@ -58,7 +58,7 @@ const APPS = [
     name: "X",
     bg: "#000000",
     scheme: "twitter://",
-    fallback: "https://apps.apple.com/us/app/x/id333903271",
+    fallback: "itms-apps://itunes.apple.com/app/id333903271",
     content: (
       <span className="text-white font-black text-lg leading-none">𝕏</span>
     ),
