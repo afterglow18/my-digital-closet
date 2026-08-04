@@ -157,50 +157,45 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — polished photo grid: 3 big + up to 5 small, photos only */}
+        {/* Preview — 2 tall portraits + accessory strip */}
         {(() => {
-          const allWithUrls = items.map((name, i) => ({
-            name, url: outfit.item_image_urls?.[i] ?? null,
-          }));
-          const mainSlots  = allWithUrls.slice(0, 3).filter((s) => s.url);
-          const extraSlots = allWithUrls.slice(3, 8).filter((s) => s.url);
-          const hasAny     = mainSlots.length > 0 || extraSlots.length > 0;
+          const slots  = items.map((name, i) => ({ name, url: outfit.item_image_urls?.[i] ?? null }));
+          const main   = slots.slice(0, 2);
+          const extras = slots.slice(2, 7);
 
           return (
-            <div className="w-full relative px-2.5 pt-2.5 pb-2"
-              style={{ background: "rgba(255,255,255,0.25)" }}>
-              {hasAny ? (
-                <>
-                  {/* Top row — up to 3 big */}
-                  {mainSlots.length > 0 && (
-                    <div className={`grid gap-1.5 mb-1.5`}
-                      style={{ gridTemplateColumns: `repeat(${mainSlots.length}, 1fr)` }}>
-                      {mainSlots.map(({ name, url }, i) => (
-                        <div key={i} className="aspect-square rounded-2xl overflow-hidden shadow-sm">
-                          <img src={url!} alt={name} className="w-full h-full object-cover" />
+            <div className="w-full relative overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.18)" }}>
+
+              {/* Two tall portrait photos */}
+              <div className="flex gap-1.5 p-2.5 pb-1.5">
+                {main.map(({ name, url }, i) => (
+                  <div key={i} className="flex-1 rounded-2xl overflow-hidden"
+                    style={{ aspectRatio: "2/3" }}>
+                    {url
+                      ? <img src={url} alt={name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-white/40">
+                          <Shirt className="w-6 h-6 text-black/20" />
+                          <p className="text-[8px] font-bold uppercase text-black/35 text-center px-1 truncate w-full">{name}</p>
                         </div>
-                      ))}
+                    }
+                  </div>
+                ))}
+              </div>
+
+              {/* Accessory strip */}
+              {extras.length > 0 && (
+                <div className="flex gap-1.5 px-2.5 pb-2.5">
+                  {extras.map(({ name, url }, i) => (
+                    <div key={i} className="flex-1 aspect-square rounded-xl overflow-hidden">
+                      {url
+                        ? <img src={url} alt={name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center bg-white/40">
+                            <Shirt className="w-3.5 h-3.5 text-black/20" />
+                          </div>
+                      }
                     </div>
-                  )}
-                  {/* Bottom row — up to 5 small */}
-                  {extraSlots.length > 0 && (
-                    <div className="grid gap-1"
-                      style={{ gridTemplateColumns: `repeat(${extraSlots.length}, 1fr)` }}>
-                      {extraSlots.map(({ name, url }, i) => (
-                        <div key={i} className="aspect-square rounded-xl overflow-hidden shadow-sm">
-                          <img src={url!} alt={name} className="w-full h-full object-cover" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* No photos yet — minimal placeholder */
-                <div className="h-24 flex items-center justify-center gap-2">
-                  <Shirt className="w-6 h-6 text-black/20" />
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-black/25">
-                    {items.length} pieces
-                  </p>
+                  ))}
                 </div>
               )}
 
