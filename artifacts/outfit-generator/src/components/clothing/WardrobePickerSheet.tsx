@@ -30,6 +30,15 @@ const CATEGORY_LABELS: Record<Category, string> = {
   dresses:     "Dresses",
 };
 
+const CATEGORY_SINGULAR: Record<Category, string> = {
+  tops:        "Top",
+  bottoms:     "Bottom",
+  shoes:       "Shoe",
+  accessories: "Accessory",
+  outerwear:   "Jacket",
+  dresses:     "Dress",
+};
+
 interface Props {
   open:         boolean;
   onOpenChange: (open: boolean) => void;
@@ -98,7 +107,8 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
     ? (rawItems ?? []).filter(i => categories!.includes(i.category))
     : rawItems;
 
-  const label = isExtras || showAll ? "Extra" : (category ? CATEGORY_LABELS[category] : "Item");
+  const label         = isExtras || showAll ? "Extra" : (category ? CATEGORY_LABELS[category] : "Item");
+  const singularLabel = isExtras || showAll ? "Extra" : (category ? CATEGORY_SINGULAR[category] : "Item");
 
   // Pre-compute grouped sections for showAll mode
   const CAT_ORDER: Category[] = ["dresses", "outerwear", "accessories", "tops", "bottoms", "shoes"];
@@ -140,7 +150,7 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
         <div className="flex items-center justify-between px-4 pb-3 bg-white border-b-2 border-black flex-shrink-0"
              style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
           <h2 className="font-display font-bold text-xl uppercase tracking-tight">
-            Pick {/^[aeiou]/i.test(label) ? 'an' : 'a'} {label}
+            Pick {/^[aeiou]/i.test(singularLabel) ? 'an' : 'a'} {singularLabel}
           </h2>
           <button
             onClick={handleClose}
@@ -187,7 +197,7 @@ export function WardrobePickerSheet({ open, onOpenChange, category, categories, 
               <p className="text-sm text-muted-foreground font-medium">
                 {isExtras
                   ? "No extras (dresses, jackets, accessories) in your closet yet."
-                  : `No ${label.toLowerCase()}s in your closet yet.`}
+                  : `No ${label.toLowerCase()} in your closet yet.`}
               </p>
             </div>
           )}
