@@ -157,32 +157,48 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — main 2-col stack (tops/bottoms/shoes) + side column of 5 accessories */}
+        {/* Preview — fixed 3 big slots (top/bottom/shoes) + fixed 5 extra slots */}
         {(() => {
-          const ACC_CATS = new Set(["accessories", "bags", "jewellery", "hats", "jewelry"]);
-          const CAT_ORDER: Record<string, number> = {
-            tops: 0, dresses: 0, bottoms: 1, shoes: 2, outerwear: 3,
-          };
           const raw = items.map((name, i) => ({
             name,
-            url:  outfit.item_image_urls?.[i]  ?? null,
-            cat:  outfit.item_categories?.[i]  ?? null,
+            url: outfit.item_image_urls?.[i] ?? null,
+            cat: (outfit.item_categories?.[i] ?? "").toLowerCase(),
           }));
-          const mainItems = raw
-            .filter((s) => !ACC_CATS.has(s.cat ?? ""))
-            .sort((a, b) => (CAT_ORDER[a.cat ?? ""] ?? 5) - (CAT_ORDER[b.cat ?? ""] ?? 5))
-            .slice(0, 6);
-          const accItems = raw
-            .filter((s) => ACC_CATS.has(s.cat ?? ""))
-            .slice(0, 5);
 
-          const ItemBox = ({ name, url, round }: { name: string; url: string | null; round: string }) => (
-            <div className={`aspect-square ${round} overflow-hidden`}>
-              {url
-                ? <img src={url} alt={name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-white/40">
-                    <Shirt className="w-4 h-4 text-black/20" />
-                    <p className="text-[6px] font-bold uppercase text-black/30 text-center px-0.5 truncate w-full">{name}</p>
+          const pick = (cats: string[]) => {
+            const found = raw.find((s) => cats.includes(s.cat));
+            return found ?? null;
+          };
+
+          const topSlot    = pick(["tops", "dresses"]);
+          const bottomSlot = pick(["bottoms"]);
+          const shoesSlot  = pick(["shoes"]);
+
+          const usedNames  = new Set([topSlot?.name, bottomSlot?.name, shoesSlot?.name].filter(Boolean));
+          const extraItems = raw.filter((s) => !usedNames.has(s.name));
+          // pad to 5 slots
+          const extraSlots: (typeof raw[0] | null)[] = [
+            ...extraItems.slice(0, 5),
+            ...Array(Math.max(0, 5 - extraItems.length)).fill(null),
+          ];
+
+          const BigSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
+            <div className="flex-1 rounded-2xl overflow-hidden bg-white/30">
+              {slot?.url
+                ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center">
+                    <Shirt className="w-5 h-5 text-black/15" />
+                  </div>
+              }
+            </div>
+          );
+
+          const SmallSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
+            <div className="flex-1 rounded-xl overflow-hidden bg-white/30">
+              {slot?.url
+                ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center">
+                    <Shirt className="w-3 h-3 text-black/15" />
                   </div>
               }
             </div>
@@ -192,21 +208,19 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             <div className="w-full relative overflow-hidden"
               style={{ background: "rgba(255,255,255,0.18)" }}>
               <div className="flex gap-1.5 p-2.5">
-                {/* Main outfit pieces — single column stack */}
-                <div className="flex-1 flex flex-col gap-1.5">
-                  {mainItems.map((s, i) => (
-                    <ItemBox key={i} {...s} round="rounded-2xl" />
-                  ))}
+                {/* 3 big fixed slots — top, bottom, shoes */}
+                <div className="flex-1 flex flex-col gap-1.5" style={{ aspectRatio: "1/1" }}>
+                  <BigSlot slot={topSlot} />
+                  <BigSlot slot={bottomSlot} />
+                  <BigSlot slot={shoesSlot} />
                 </div>
 
-                {/* Accessory side column — up to 5 stacked */}
-                {accItems.length > 0 && (
-                  <div className="flex flex-col gap-1.5" style={{ width: "28%" }}>
-                    {accItems.map((s, i) => (
-                      <ItemBox key={i} {...s} round="rounded-xl" />
-                    ))}
-                  </div>
-                )}
+                {/* 5 small extra slots */}
+                <div className="flex flex-col gap-1.5" style={{ width: "30%" }}>
+                  {extraSlots.map((slot, i) => (
+                    <SmallSlot key={i} slot={slot} />
+                  ))}
+                </div>
               </div>
 
           {/* More (⋯) button — top-right */}
