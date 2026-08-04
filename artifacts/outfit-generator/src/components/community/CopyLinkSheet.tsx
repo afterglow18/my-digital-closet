@@ -17,10 +17,25 @@ interface Props {
 
 const APPS = [
   {
+    name: "Facebook",
+    bg: "#1877F2",
+    // Opens FB home screen; link is re-copied to clipboard before opening
+    // so the user can paste directly into a new post.
+    shareUrl: (_text: string) => "fb://",
+    fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id284882215",
+    copyBeforeOpen: true,
+    icon: (
+      <span className="text-white font-black text-base leading-none" style={{ fontFamily: "Georgia, serif" }}>
+        f
+      </span>
+    ),
+  },
+  {
     name: "Messages",
     bg: "#34C759",
     shareUrl: (text: string) => `sms:?body=${encodeURIComponent(text)}`,
     fallbackUrl: null,
+    copyBeforeOpen: false,
     icon: <span className="text-base leading-none">💬</span>,
   },
   {
@@ -28,6 +43,7 @@ const APPS = [
     bg: "linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
     shareUrl: (_text: string) => "instagram://",
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id389801252",
+    copyBeforeOpen: true,
     icon: <span className="text-base leading-none">📷</span>,
   },
   {
@@ -35,6 +51,7 @@ const APPS = [
     bg: "#25D366",
     shareUrl: (text: string) => `whatsapp://send?text=${encodeURIComponent(text)}`,
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id310633997",
+    copyBeforeOpen: false,
     icon: <span className="text-white font-black text-sm leading-none">W</span>,
   },
   {
@@ -43,6 +60,7 @@ const APPS = [
     shareUrl: (text: string) =>
       `mailto:?subject=${encodeURIComponent("Check out My Digital Closet")}&body=${encodeURIComponent(text)}`,
     fallbackUrl: null,
+    copyBeforeOpen: false,
     icon: <span className="text-base leading-none">✉️</span>,
   },
   {
@@ -51,6 +69,7 @@ const APPS = [
     shareUrl: (text: string) => `twitter://post?message=${encodeURIComponent(text)}`,
     fallbackUrl: (text: string) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+    copyBeforeOpen: false,
     icon: <span className="text-white font-black text-sm leading-none">𝕏</span>,
   },
 ];
@@ -67,17 +86,20 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     values[name] !== undefined ? values[name] : url;
 
   async function handleShare(app: (typeof APPS)[number], text: string) {
+    // For apps that can't accept pre-filled text (Facebook, Instagram),
+    // re-copy to clipboard so the user can paste after the app opens.
+    if (app.copyBeforeOpen) {
+      try { await navigator.clipboard.writeText(text); } catch {}
+    }
+
     const primary = app.shareUrl(text);
     const fallback = app.fallbackUrl ? app.fallbackUrl(text) : null;
 
     try {
       await App.openUrl({ url: primary });
     } catch {
-      // App not installed — open fallback (App Store or web share page)
       if (fallback) {
-        try {
-          await App.openUrl({ url: fallback });
-        } catch {
+        try { await App.openUrl({ url: fallback }); } catch {
           window.open(fallback, "_system");
         }
       }
