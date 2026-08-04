@@ -76,6 +76,10 @@ function openApp(scheme: string, fallback: string | null) {
 
 export function CopyLinkSheet({ open, onClose, url }: Props) {
   const [pastes, setPastes] = useState<Record<string, string>>({});
+  // Pre-fill all inputs with the URL whenever the sheet opens
+  React.useEffect(() => {
+    if (open) setPastes({});
+  }, [open]);
 
   return (
     <AnimatePresence>
@@ -96,13 +100,12 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
             <div className="w-10 h-1 rounded-full bg-black/20 mx-auto mb-3" />
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-0.5">
-              <p className="text-sm font-bold text-black">Link copied ✓</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-black">Share to</p>
               <button onClick={onClose} className="w-6 h-6 rounded-full bg-black/8 flex items-center justify-center">
                 <X className="w-3.5 h-3.5 text-black/50" />
               </button>
             </div>
-            <p className="text-xs text-black/40 mb-3">Paste your link, then tap Share to open the app.</p>
 
             {/* App rows */}
             <div className="space-y-2">
@@ -123,7 +126,7 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
                   <div className="flex gap-1.5 items-center">
                     <input
                       type="text"
-                      value={pastes[app.name] ?? ""}
+                      value={pastes[app.name] !== undefined ? pastes[app.name] : url}
                       onChange={(e) => setPastes((p) => ({ ...p, [app.name]: e.target.value }))}
                       placeholder="Paste"
                       className="flex-1 px-2.5 py-1.5 rounded-lg border border-black/10 bg-black/[0.03]
