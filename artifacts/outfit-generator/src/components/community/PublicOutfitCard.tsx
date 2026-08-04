@@ -200,8 +200,6 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             </div>
           );
 
-          const isDress = topSlot?.cat === "dresses";
-
           const SmallSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
             <div className="flex-1 rounded-xl overflow-hidden bg-white/30">
               {slot?.url
