@@ -76,6 +76,7 @@ const APPS = [
 
 export function CopyLinkSheet({ open, onClose, url }: Props) {
   const [values, setValues] = useState<Record<string, string>>({});
+  const [copiedApp, setCopiedApp] = useState<string | null>(null);
 
   // Reset inputs whenever the sheet opens
   React.useEffect(() => {
@@ -89,7 +90,11 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     // For apps that can't accept pre-filled text (Facebook, Instagram),
     // re-copy to clipboard so the user can paste after the app opens.
     if (app.copyBeforeOpen) {
-      try { await navigator.clipboard.writeText(text); } catch {}
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedApp(app.name);
+        setTimeout(() => setCopiedApp(null), 2500);
+      } catch {}
     }
 
     const primary = app.shareUrl(text);
@@ -165,10 +170,10 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
                       <button
                         onClick={() => handleShare(app, text)}
                         className="px-3 py-1.5 rounded-lg text-white text-xs font-bold flex-shrink-0
-                                   active:opacity-80 transition-opacity"
+                                   active:opacity-80 transition-all min-w-[64px] text-center"
                         style={{ background: app.bg }}
                       >
-                        Share
+                        {copiedApp === app.name ? "Copied ✓" : "Share"}
                       </button>
                     </div>
                   </div>
