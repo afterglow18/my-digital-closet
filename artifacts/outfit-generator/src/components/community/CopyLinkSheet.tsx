@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { App } from "@capacitor/app";
 
 interface Props {
   open: boolean;
@@ -55,6 +56,7 @@ const APPS = [
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id1235601864",
     copyBeforeOpen: true,
     useWindowOpen: false,
+    useAppOpen: true,
     icon: <span className="text-base leading-none">🎵</span>,
   },
   {
@@ -64,6 +66,7 @@ const APPS = [
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id310633997",
     copyBeforeOpen: false,
     useWindowOpen: false,
+    useAppOpen: true,
     icon: <span className="text-white font-black text-sm leading-none">W</span>,
   },
   {
@@ -79,12 +82,12 @@ const APPS = [
   {
     name: "X",
     bg: "#000000",
-    // twitter:// for the app; https: fallback opens in Safari via window.open
     shareUrl: (text: string) => `twitter://post?message=${encodeURIComponent(text)}`,
     fallbackUrl: (text: string) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
     copyBeforeOpen: false,
     useWindowOpen: false,
+    useAppOpen: true,
     icon: <span className="text-white font-black text-sm leading-none">𝕏</span>,
   },
 ];
@@ -113,7 +116,13 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setCopiedApp(app.name);
     setTimeout(() => setCopiedApp(null), 2500);
 
-    window.open(primary, "_system");
+    // TikTok, WhatsApp, X need App.openUrl — window.open hands them to Safari which errors.
+    // Everything else (fb://, sms:, instagram://, googlegmail://) works via window.open.
+    if (app.useAppOpen) {
+      try { await App.openUrl({ url: primary }); } catch {}
+    } else {
+      window.open(primary, "_system");
+    }
   }
 
   return (
