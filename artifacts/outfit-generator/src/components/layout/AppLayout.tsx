@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { Shirt, Sparkles, Bookmark, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -60,11 +60,20 @@ export function AppLayout({ children }: AppLayoutProps) {
   const unreadNotifCount                        = useUnreadNotifCount();
   const { badgeCount: heartBadge, resetBadge }  = useDiscoverFavoritesCount();
 
+  // Reset the heart badge when the user navigates AWAY from Discover
+  const prevLocation = useRef(location);
+  useEffect(() => {
+    if (prevLocation.current === "/community" && location !== "/community") {
+      resetBadge();
+    }
+    prevLocation.current = location;
+  }, [location]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const navItems = [
-    { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black", onTap: undefined as (() => void) | undefined },
-    { href: "/generate", label: "Generate", icon: Sparkles, onTap: undefined as (() => void) | undefined },
-    { href: "/saved", label: "Saved", icon: Bookmark, onTap: undefined as (() => void) | undefined },
-    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-pink-400 text-white", onTap: resetBadge },
+    { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black" },
+    { href: "/generate", label: "Generate", icon: Sparkles },
+    { href: "/saved", label: "Saved", icon: Bookmark },
+    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-pink-400 text-white" },
   ];
 
   return (
@@ -95,7 +104,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 const Icon = item.icon;
                 return (
                   <li key={item.href} className="relative">
-                    <Link href={item.href} onClick={() => item.onTap?.()} className="flex flex-col items-center gap-1 group">
+                    <Link href={item.href} className="flex flex-col items-center gap-1 group">
                       <div
                         className={cn(
                           "p-2.5 rounded-full border-2 transition-all duration-200 ease-spring relative",
