@@ -180,10 +180,11 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
           const usedNames = new Set(
             [topSlot?.name, bottomSlot?.name, shoesSlot?.name].filter(Boolean),
           );
-          const extraItems = [
-            ...(kickedOut ? [kickedOut] : []),
-            ...raw.filter((s) => !usedNames.has(s.name) && s.name !== kickedOut?.name),
-          ].slice(0, 5);
+          const naturalExtras = raw.filter((s) => !usedNames.has(s.name) && s.name !== kickedOut?.name);
+          // Only prepend kickedOut if the 5 extra slots aren't already full
+          const extraItems = (naturalExtras.length >= 5 || !kickedOut)
+            ? naturalExtras.slice(0, 5)
+            : [kickedOut, ...naturalExtras].slice(0, 5);
           const extraSlots: (typeof raw[0] | null)[] = [
             ...extraItems,
             ...Array(Math.max(0, 5 - extraItems.length)).fill(null),
