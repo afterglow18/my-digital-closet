@@ -133,8 +133,8 @@ function useImageRect(containerRef: RefObject<HTMLDivElement>): ImgRect {
         // Container wider than image: fill height, center horizontally
         rH = cH; rW = cH * iR; rT = 0; rL = (cW - rW) / 2;
       } else {
-        // Container taller than image: fill width, anchor bottom (yellow gap at top)
-        rW = cW; rH = cW / iR; rL = 0; rT = cH - cW / iR;
+        // Container taller than image: fill width, anchor top
+        rW = cW; rH = cW / iR; rL = 0; rT = 0;
       }
       setRect({ top: rT, left: rL, width: rW, height: rH, containerH: cH });
     };
