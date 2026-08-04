@@ -138,12 +138,14 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
       )}
 
       {copied && (
-        <button
-          onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
-          className="fixed bottom-[64%] left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
-        >
-          ✨ Link Copied! Paste to Post ✨
-        </button>
+        <div className="fixed bottom-[61%] left-0 right-0 z-[299] bg-[#2c2c2e] rounded-t-3xl px-4 py-4 flex items-center justify-center">
+          <button
+            onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
+            className="bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
+          >
+            ✨ Link Copied! Paste to Post ✨
+          </button>
+        </div>
       )}
 
       {/* ── Card body ── */}
