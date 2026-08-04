@@ -126,15 +126,26 @@ export default function CommunityPage() {
   const firstCardRef  = useRef<HTMLDivElement>(null);
   const [brickOffset, setBrickOffset] = useState(0);
   useEffect(() => {
-    const el = firstCardRef.current;
-    if (!el) return;
-    const update = () => setBrickOffset(el.offsetHeight / 2);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
+    if (feedTab !== "outfits") return;
+    let raf1: number, raf2: number;
+    const measure = () => {
+      const el = firstCardRef.current;
+      if (!el) return;
+      const h = el.offsetHeight;
+      if (h > 0) {
+        setBrickOffset(h / 2);
+        const ro = new ResizeObserver(() => {
+          const h2 = el.offsetHeight;
+          if (h2 > 0) setBrickOffset(h2 / 2);
+        });
+        ro.observe(el);
+      }
+    };
+    // Double rAF — waits for browser layout to complete before measuring
+    raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(measure); });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outfits[0]?.id]);
+  }, [feedTab, outfits[0]?.id]);
 
   useEffect(() => {
     const el = sentinelRef.current;
