@@ -71,13 +71,16 @@ export async function uploadAvatar(uid: string, file: File | Blob): Promise<stri
     });
     URL.revokeObjectURL(objectUrl);
 
-    const size  = 400;
-    const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight, 1);
-    const w = Math.round(img.naturalWidth  * scale);
-    const h = Math.round(img.naturalHeight * scale);
+    // Center-square crop → 400×400 so any photo fits the circle perfectly
+    const size   = 400;
+    const srcW   = img.naturalWidth;
+    const srcH   = img.naturalHeight;
+    const srcSide = Math.min(srcW, srcH);          // shorter edge
+    const srcX   = Math.round((srcW - srcSide) / 2); // center horizontally
+    const srcY   = Math.round((srcH - srcSide) / 2); // center vertically
     const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+    canvas.width = size; canvas.height = size;
+    canvas.getContext("2d")!.drawImage(img, srcX, srcY, srcSide, srcSide, 0, 0, size, size);
     const blob: Blob = await new Promise((res) =>
       canvas.toBlob((b) => res(b ?? file), "image/jpeg", 0.85),
     );
