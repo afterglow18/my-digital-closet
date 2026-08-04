@@ -38,10 +38,9 @@ function timeAgo(iso: string): string {
 // ── Notification row ─────────────────────────────────────────────────────────
 
 function NotifRow({ n }: { n: AppNotification }) {
-  const who   = n.liker_handle
-    ? `@${n.liker_handle}`
-    : n.liker_privacy_mode === "anonymous" ? "Anonymous" : "Someone";
-  const label = `❤️ ${who} loved your look`;
+  const who        = n.liker_handle ? `@${n.liker_handle}` : n.liker_privacy_mode === "anonymous" ? "@anonymous" : "@someone";
+  const isSystem   = !n.liker_handle;
+  const label      = `❤️ ${who} loved your look`;
 
   return (
     <div
@@ -74,7 +73,11 @@ function NotifRow({ n }: { n: AppNotification }) {
 
       {/* Text */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold leading-snug text-black/85 line-clamp-2">{label}</p>
+        <p className="text-xs font-semibold leading-snug line-clamp-2">
+          {isSystem ? (
+            <>❤️ <span className="text-pink-500">{who}</span> loved your look</>
+          ) : label}
+        </p>
         <p className="text-[10px] text-black/35 mt-0.5">{timeAgo(n.created_at)}</p>
       </div>
 

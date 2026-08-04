@@ -107,9 +107,10 @@ export default function ProfileMePage() {
     if (trimmed === (profile?.handle ?? "")) { setHandleEditMode(false); return; }
 
     // Client-side validation
-    if (!trimmed)                           { setHandleErr("Handle can't be empty"); return; }
-    if (trimmed.length > 15)               { setHandleErr("Max 15 characters"); return; }
-    if (!/^[a-z0-9_-]+$/.test(trimmed))   { setHandleErr("Letters, numbers, _ and - only"); return; }
+    if (!trimmed)                                          { setHandleErr("Handle can't be empty"); return; }
+    if (trimmed.length > 15)                              { setHandleErr("Max 15 characters"); return; }
+    if (!/^[a-z0-9_-]+$/.test(trimmed))                  { setHandleErr("Letters, numbers, _ and - only"); return; }
+    if (["anonymous", "someone"].includes(trimmed))       { setHandleErr(`@${trimmed} is reserved`); return; }
 
     setSavingHandle(true); setHandleErr(null);
     try {
