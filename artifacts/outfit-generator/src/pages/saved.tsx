@@ -98,6 +98,7 @@ export default function SavedPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "worn-asc" | "worn-desc">("newest");
+  const [filterVis, setFilterVis] = useState<"all" | "public" | "private">("all");
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
   const { data: allItems = [] } = useListClothing({});
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
@@ -157,6 +158,12 @@ export default function SavedPage() {
           if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
           return b.id - a.id;
         });
+    }
+    // Apply visibility filter
+    if (filterVis !== "all") {
+      return list.filter((o) =>
+        filterVis === "public" ? o.visibility === "public" : o.visibility !== "public"
+      );
     }
     return list;
   })();
@@ -420,6 +427,26 @@ export default function SavedPage() {
               <option value="worn-asc">Last worn date: oldest to newest</option>
             </select>
             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-black/50">▾</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Visibility filter (hidden during search) ── */}
+      {!searchQuery && (
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-[10px] font-bold uppercase text-black/40 tracking-wide shrink-0">Show</span>
+          <div className="flex rounded-full border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            {(["all", "public", "private"] as const).map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setFilterVis(opt)}
+                className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                  filterVis === opt ? "bg-black text-white" : "bg-white text-black/50 hover:bg-black/5"
+                }`}
+              >
+                {opt === "all" ? "All" : opt === "public" ? "🌐 Public" : "🔒 Private"}
+              </button>
+            ))}
           </div>
         </div>
       )}
