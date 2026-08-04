@@ -99,30 +99,21 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     const primary = app.shareUrl(text);
     const fallback = app.fallbackUrl ? app.fallbackUrl(text) : null;
 
-    const open = async (url: string) => {
-      try { await App.openUrl({ url }); } catch {}
-    };
+    // Copy to clipboard for all apps.
+    try { await navigator.clipboard.writeText(text); } catch {}
 
-    if (app.copyBeforeOpen) {
-      // Copy first, show "Copied! Paste to Post." for 1.2 s, then open the app.
-      try { await navigator.clipboard.writeText(text); } catch {}
-      setCopiedApp(app.name);
-      setTimeout(async () => {
-        setCopiedApp(null);
-        await open(primary);
-        // If the app isn't installed, open its App Store page after a short delay.
-        if (fallback) setTimeout(() => open(fallback), 800);
-      }, 1200);
-    } else {
-      // Copy to clipboard so the user has the text as a backup, and show
-      // a brief "✓ Copied" confirmation on the button before opening.
-      try { await navigator.clipboard.writeText(text); } catch {}
-      setCopiedApp(app.name);
-      setTimeout(async () => {
-        setCopiedApp(null);
-        await open(primary);
-        if (fallback) setTimeout(() => open(fallback), 800);
-      }, 800);
+    // Show feedback on the button.
+    setCopiedApp(app.name);
+    setTimeout(() => setCopiedApp(null), 2500);
+
+    // Open the URL immediately — iOS blocks App.openUrl inside a setTimeout
+    // because it requires a direct user-gesture context.
+    try {
+      await App.openUrl({ url: primary });
+    } catch {
+      if (fallback) {
+        try { await App.openUrl({ url: fallback }); } catch {}
+      }
     }
   }
 
