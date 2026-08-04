@@ -92,7 +92,7 @@ export function buildOutfitShareText(
  * Swallows "cancelled" errors silently — the user tapped away.
  */
 /** Pre-built share message — copied to clipboard before the native sheet opens. */
-export const SHARE_TEXT = `✨ Love This App!\nCheck Out My Digital Closet:\n${APP_STORE_URL}`;
+export const SHARE_TEXT = `✨ Link Copied! Paste to Post\nCheck Out My Digital Closet:\n${APP_STORE_URL}`;
 
 export async function shareContent(
   url: string = APP_STORE_URL,
