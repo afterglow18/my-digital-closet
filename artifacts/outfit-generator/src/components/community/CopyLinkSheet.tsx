@@ -15,15 +15,16 @@ interface Props {
   url: string;
 }
 
+// useWindowOpen: true  → window.open(_system) — required for sms: / mailto: / https: on iOS
+// useWindowOpen: false → App.openUrl          — required for custom 3rd-party schemes
 const APPS = [
   {
     name: "Facebook",
     bg: "#1877F2",
-    // Opens FB home screen; link is re-copied to clipboard before opening
-    // so the user can paste directly into a new post.
     shareUrl: (_text: string) => "fb://",
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id284882215",
     copyBeforeOpen: true,
+    useWindowOpen: false,
     icon: (
       <span className="text-white font-black text-base leading-none" style={{ fontFamily: "Georgia, serif" }}>
         f
@@ -36,7 +37,7 @@ const APPS = [
     shareUrl: (text: string) => `sms:?body=${encodeURIComponent(text)}`,
     fallbackUrl: null,
     copyBeforeOpen: false,
-    useWindowOpen: true,
+    useWindowOpen: true,   // sms: must go through window.open(_system) on iOS
     icon: <span className="text-base leading-none">💬</span>,
   },
   {
@@ -45,6 +46,7 @@ const APPS = [
     shareUrl: (_text: string) => "instagram://",
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id389801252",
     copyBeforeOpen: true,
+    useWindowOpen: false,
     icon: <span className="text-base leading-none">📷</span>,
   },
   {
@@ -53,6 +55,7 @@ const APPS = [
     shareUrl: (_text: string) => "tiktok://",
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id1235601864",
     copyBeforeOpen: true,
+    useWindowOpen: false,
     icon: <span className="text-base leading-none">🎵</span>,
   },
   {
@@ -61,6 +64,7 @@ const APPS = [
     shareUrl: (text: string) => `whatsapp://send?text=${encodeURIComponent(text)}`,
     fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id310633997",
     copyBeforeOpen: false,
+    useWindowOpen: false,
     icon: <span className="text-white font-black text-sm leading-none">W</span>,
   },
   {
@@ -76,10 +80,12 @@ const APPS = [
   {
     name: "X",
     bg: "#000000",
+    // twitter:// for the app; https: fallback opens in Safari via window.open
     shareUrl: (text: string) => `twitter://post?message=${encodeURIComponent(text)}`,
     fallbackUrl: (text: string) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
     copyBeforeOpen: false,
+    useWindowOpen: false,
     icon: <span className="text-white font-black text-sm leading-none">𝕏</span>,
   },
 ];
@@ -109,16 +115,26 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setTimeout(() => setCopiedApp(null), 2500);
 
     // Open immediately — iOS blocks any URL open inside a setTimeout.
-    // sms: and mailto: use window.open(_system); everything else uses App.openUrl.
     if (app.useWindowOpen) {
+      // sms: must use window.open(_system) on iOS.
       window.open(primary, "_system");
     } else {
-      try {
-        await App.openUrl({ url: primary });
-      } catch {
-        if (fallback) {
-          try { await App.openUrl({ url: fallback }); } catch {}
-        }
+      // App.openUrl for custom URL schemes (fb://, instagram://, whatsapp://, etc.)
+      // It resolves without throwing even on failure, so we can't use try/catch to
+      // detect failure. Fire primary; if there's a fallback (App Store or https web),
+      // use window.open for https URLs and App.openUrl for itms-apps:// URLs.
+      await App.openUrl({ url: primary });
+      if (fallback) {
+        // https:// fallbacks (X web intent) need window.open; itms-apps:// needs App.openUrl.
+        // Both fire after a short delay so primary gets a chance to open first.
+        // On a device with the app installed, the app is already open and the fallback is a no-op.
+        setTimeout(() => {
+          if (fallback.startsWith("https://")) {
+            window.open(fallback, "_system");
+          } else {
+            App.openUrl({ url: fallback }).catch(() => {});
+          }
+        }, 1500);
       }
     }
   }
