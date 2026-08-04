@@ -157,7 +157,7 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
                                active:opacity-80 transition-opacity"
                     style={{ background: app.bg }}
                   >
-                    Post
+                    Share
                   </button>
                 </div>
               ))}
