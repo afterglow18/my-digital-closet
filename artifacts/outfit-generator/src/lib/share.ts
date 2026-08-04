@@ -1,12 +1,34 @@
 /**
  * share.ts — Capacitor Share wrapper with Web Share API + clipboard fallback.
+ *
+ * BASE_URL preference order:
+ *  1. VITE_PUBLIC_BASE_URL env var  (set this once you have a custom domain)
+ *  2. https://mydigitalcloset.app   (final production domain placeholder)
+ *
+ * Set VITE_PUBLIC_BASE_URL in Replit Secrets to your deployed URL while the
+ * custom domain is being set up, e.g. https://my-app.replit.app
  */
 
 import { Share } from "@capacitor/share";
 
-/** Direct App Store link — for in-app buttons and the landing page redirect. */
-export const APP_STORE_URL = "https://apps.apple.com/us/app/my-digital-closet/id6789233372";
+const BASE_URL =
+  (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined)?.replace(/\/$/, "") ??
+  "https://mydigitalcloset.app";
 
+/**
+ * App Store URL for share sheets and "Get the App" CTAs.
+ *
+ * Set ONE of these in Codemagic's build_env group:
+ *   VITE_APP_STORE_URL   Full App Store URL (preferred)
+ *                        e.g. https://apps.apple.com/us/app/my-digital-closet/id6743215890
+ *   VITE_APP_STORE_ID    Numeric App Store ID only (e.g. 6743215890)
+ *                        The full URL is constructed automatically from this.
+ */
+export const APP_STORE_URL: string =
+  (import.meta.env.VITE_APP_STORE_URL as string | undefined)?.trim() ||
+  (import.meta.env.VITE_APP_STORE_ID
+    ? `https://apps.apple.com/app/my-digital-closet/id${import.meta.env.VITE_APP_STORE_ID as string}`
+    : "https://apps.apple.com/us/app/my-digital-closet/id6789233372");
 
 /**
  * Value for the `content` attribute of the iOS Smart App Banner meta tag.
@@ -21,16 +43,16 @@ export function smartBannerContent(postUrl: string): string {
 
 // ── URL builders ──────────────────────────────────────────────────────────────
 
-export function profileShareUrl(_handle: string): string {
-  return APP_STORE_URL;
+export function profileShareUrl(handle: string): string {
+  return `${BASE_URL}/profile/${handle}`;
 }
 
-export function itemShareUrl(_id: string): string {
-  return APP_STORE_URL;
+export function itemShareUrl(id: string): string {
+  return `${BASE_URL}/item/${id}`;
 }
 
-export function outfitShareUrl(_id: string): string {
-  return APP_STORE_URL;
+export function outfitShareUrl(id: string): string {
+  return `${BASE_URL}/outfit/${id}`;
 }
 
 // ── Share text builders ───────────────────────────────────────────────────────
