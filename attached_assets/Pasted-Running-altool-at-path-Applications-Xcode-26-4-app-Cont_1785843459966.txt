@@ -1,0 +1,49 @@
+Running altool at path '/Applications/Xcode-26.4.app/Contents/SharedFrameworks/ContentDelivery.framework/Resources/altool'...
+
+2026-08-04 11:37:11.959 ERROR: [ContentDelivery.Uploader.7DEC504C0] 
+=======================================
+UPLOAD FAILED with 1 error
+=======================================
+2026-08-04 11:37:11.963 ERROR: [altool.101A02E00] ExitFailure (31)
+{
+  "os-version" : "Version 26.4.1 (Build 25E253)",
+  "product-errors" : [
+    {
+      "code" : 90382,
+      "message" : "Upload limit reached. The upload limit for your application has been reached. Please wait 1 day and try again.",
+      "underlying-errors" : [
+        {
+          "code" : -19241,
+          "message" : "A server error occurred.",
+          "underlying-errors" : [
+
+          ],
+          "user-info" : {
+            "NSLocalizedDescription" : "A server error occurred.",
+            "code" : "90382",
+            "description" : "Upload limit reached. The upload limit for your application has been reached. Please wait 1 day and try again."
+          }
+        }
+      ],
+      "user-info" : {
+        "NSLocalizedDescription" : "Upload limit reached. The upload limit for your application has been reached. Please wait 1 day and try again.",
+        "NSLocalizedFailureReason" : "The server’s response was: ‘{\n    code = 90382;\n    description = \"Upload limit reached. The upload limit for your application has been reached. Please wait 1 day and try again.\";\n}’.",
+        "NSUnderlyingError" : "Error Domain=IrisAPI Code=-19241 \"A server error occurred.\" UserInfo={code=90382, NSLocalizedDescription=A server error occurred., description=Upload limit reached. The upload limit for your application has been reached. Please wait 1 day and try again.}",
+        "iris-code" : "90382"
+      }
+    }
+  ],
+  "tool-path" : "/Applications/Xcode-26.4.app/Contents/SharedFrameworks/ContentDelivery.framework/Resources",
+  "tool-version" : "26.30.4 (173004)"
+}
+
+Failed to upload archive at "/Users/builder/clone/build/ipa/App.ipa"
+Failed to publish /Users/builder/clone/build/ipa/App.ipa
+
+
+Build failed :|
+Step 15 script `Upload to TestFlight` exited with status code 1
+
+
+Build failed :|
+Step 15 script `Upload to TestFlight` exited with status code 1
