@@ -65,26 +65,22 @@ type PrivacyMode = "private" | "anonymous" | "public";
  * The URL is embedded in the text so it works across all share destinations.
  */
 export function buildItemShareText(
-  itemName: string,
-  privacyMode: PrivacyMode,
-  handle: string | undefined,
+  _itemName: string,
+  _privacyMode: PrivacyMode,
+  _handle: string | undefined,
 ): string {
-  const credit = privacyMode === "public" && handle ? ` by @${handle}` : "";
-  return `✨ Check out "${itemName}"${credit} on My Digital Closet!\n\n${APP_STORE_URL}`;
+  return `✨ Check this out on My Digital Closet!\n\n${APP_STORE_URL}`;
 }
 
 /**
  * Pre-filled share sheet message for an outfit post.
- * Public profiles include the @handle; anonymous profiles don't.
  */
 export function buildOutfitShareText(
-  outfitName: string | null | undefined,
-  privacyMode: PrivacyMode,
-  handle: string | undefined,
+  _outfitName: string | null | undefined,
+  _privacyMode: PrivacyMode,
+  _handle: string | undefined,
 ): string {
-  const name   = outfitName?.trim() || "this outfit";
-  const credit = privacyMode === "public" && handle ? ` by @${handle}` : "";
-  return `✨ Check out "${name}"${credit} on My Digital Closet!\n\n${APP_STORE_URL}`;
+  return `✨ Check this out on My Digital Closet!\n\n${APP_STORE_URL}`;
 }
 
 // ── Share action ──────────────────────────────────────────────────────────────

@@ -260,7 +260,7 @@ export default function CommunityPage() {
                 if (user) {
                   shareContent(
                     APP_STORE_URL,
-                    "✨ Style Starts Here\nCheck out My Digital Closet!",
+                    `✨ Check this out on My Digital Closet!\n\n${APP_STORE_URL}`,
                     "My Digital Closet",
                   );
                 } else {
