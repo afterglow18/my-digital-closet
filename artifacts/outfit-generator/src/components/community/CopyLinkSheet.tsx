@@ -91,8 +91,9 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     if (open) setValues({});
   }, [open]);
 
+  const defaultText = `✨ Love This App!\nCheck Out My Digital Closet:\n${url}`;
   const getValue = (name: string) =>
-    values[name] !== undefined ? values[name] : url;
+    values[name] !== undefined ? values[name] : defaultText;
 
   async function handleShare(app: (typeof APPS)[number], text: string) {
     const primary = app.shareUrl(text);
