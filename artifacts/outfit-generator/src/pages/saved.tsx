@@ -636,24 +636,21 @@ export default function SavedPage() {
                             </button>
                           </div>
                         </>
-                      ) : byCategory["dresses"] && outerwearItem ? (
+                      ) : byCategory["dresses"] ? (
+                        /* Dress outfit — bottom slot is disabled, labeled "Dress" */
                         <>
-                          <ItemPhoto item={outerwearItem} size="lg" onClick={() => setDetailsItem(outerwearItem)} />
-                          <div className="flex items-center justify-between px-0.5">
-                            <span className="text-[9px] font-bold uppercase text-muted-foreground">Jacket</span>
-                            <button onClick={() => handleRemoveItem(outfit.id, outerwearItem.id)}
-                              className="w-4 h-4 flex items-center justify-center rounded-full bg-black/10 hover:bg-red-100 transition-colors">
-                              <X className="w-2.5 h-2.5 text-black/50" />
-                            </button>
+                          <div className="h-32 w-full border-2 border-dashed border-black/15 rounded flex flex-col items-center justify-center gap-1 opacity-40 cursor-default" />
+                          <div className="flex items-center px-0.5">
+                            <span className="text-[9px] font-bold uppercase text-muted-foreground">Dress</span>
                           </div>
                         </>
                       ) : (
                         <button
-                          onClick={() => setReplacingSlot({ outfitId: outfit.id, category: byCategory["dresses"] ? "outerwear" : "bottoms" })}
+                          onClick={() => setReplacingSlot({ outfitId: outfit.id, category: "bottoms" })}
                           className="h-32 w-full border-2 border-dashed border-black/25 rounded flex flex-col items-center justify-center gap-1 hover:border-black/50 hover:bg-black/5 transition-colors"
                         >
                           <Plus className="w-4 h-4 text-black/30" />
-                          <span className="text-[9px] font-bold uppercase text-black/25">{byCategory["dresses"] ? "Add Jacket" : "Add Bottom"}</span>
+                          <span className="text-[9px] font-bold uppercase text-black/25">Add Bottom</span>
                         </button>
                       )}
                     </div>
