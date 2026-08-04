@@ -416,8 +416,8 @@ export default function SavedPage() {
               <option value="oldest">Oldest first</option>
               <option value="az">A → Z</option>
               <option value="za">Z → A</option>
-              <option value="worn-desc">Last worn: newest first</option>
-              <option value="worn-asc">Last worn: oldest first</option>
+              <option value="worn-desc">Past worn: newest to oldest</option>
+              <option value="worn-asc">Past worn: oldest to newest</option>
             </select>
             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-black/50">▾</span>
           </div>
