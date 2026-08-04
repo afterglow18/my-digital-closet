@@ -214,7 +214,7 @@ export default function CommunityPage() {
     <>
       <div
         className="flex flex-col min-h-full"
-        style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
+        style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "#FDECEF" }}
       >
         {/* ── Scrollable header — Discover title (scrolls away) ── */}
         <div className="px-4 pb-3 flex items-center justify-between">
@@ -275,7 +275,7 @@ export default function CommunityPage() {
         </div>
 
         {/* ── Sticky controls — tabs + search + chips ── */}
-        <div className="sticky top-0 z-20 bg-[#f8f9fa] shadow-[0px_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="sticky top-0 z-20 bg-[#FDECEF] shadow-[0px_2px_8px_rgba(0,0,0,0.06)]">
           {/* Tabs */}
           <div className="px-4 pt-1 pb-2">
             <div className="grid grid-cols-3 gap-1 bg-black/5 rounded-xl p-1">

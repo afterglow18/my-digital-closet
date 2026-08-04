@@ -153,7 +153,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
         onClick={onClick}
         whileTap={{ scale: 0.97, y: 2 }}
         transition={{ type: "spring", stiffness: 450, damping: 28 }}
-        className="group flex flex-col bg-white rounded-2xl border-2 border-black overflow-hidden
+        className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
         {/* Image */}
