@@ -412,12 +412,12 @@ export default function SavedPage() {
                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                          focus:outline-none focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
+              <option value="newest">Newest added first</option>
+              <option value="oldest">Oldest added first</option>
               <option value="az">A → Z</option>
               <option value="za">Z → A</option>
-              <option value="worn-desc">Last worn: newest to oldest</option>
-              <option value="worn-asc">Last worn: oldest to newest</option>
+              <option value="worn-desc">Last worn date: newest to oldest</option>
+              <option value="worn-asc">Last worn date: oldest to newest</option>
             </select>
             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-black/50">▾</span>
           </div>
