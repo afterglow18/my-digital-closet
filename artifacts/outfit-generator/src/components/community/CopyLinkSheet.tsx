@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { App } from "@capacitor/app";
 
 interface Props {
   open: boolean;
@@ -18,8 +19,10 @@ const APPS = [
   {
     name: "Facebook",
     bg: "#1877F2",
-    // Opens Facebook's share dialog with a link card preview
+    // fb://share opens FB composer; fallback to web sharer if app not installed
     shareUrl: (text: string) =>
+      `fb://share?link=${encodeURIComponent(text)}`,
+    fallbackUrl: (text: string) =>
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(text)}`,
     icon: (
       <span className="text-white font-black text-base leading-none" style={{ fontFamily: "Georgia, serif" }}>
@@ -30,39 +33,38 @@ const APPS = [
   {
     name: "Messages",
     bg: "#34C759",
-    // Pre-fills iMessage / SMS body
     shareUrl: (text: string) => `sms:?body=${encodeURIComponent(text)}`,
+    fallbackUrl: null,
     icon: <span className="text-base leading-none">💬</span>,
   },
   {
     name: "Instagram",
     bg: "linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
-    // Instagram doesn't support link pre-fill via URL scheme; opens the app
     shareUrl: (_text: string) => "instagram://",
+    fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id389801252",
     icon: <span className="text-base leading-none">📷</span>,
   },
   {
     name: "WhatsApp",
     bg: "#25D366",
-    // Opens WhatsApp share composer with text pre-filled
-    shareUrl: (text: string) =>
-      `whatsapp://send?text=${encodeURIComponent(text)}`,
+    shareUrl: (text: string) => `whatsapp://send?text=${encodeURIComponent(text)}`,
+    fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id310633997",
     icon: <span className="text-white font-black text-sm leading-none">W</span>,
   },
   {
     name: "Mail",
     bg: "#007AFF",
-    // Opens Mail compose with subject + body pre-filled
     shareUrl: (text: string) =>
       `mailto:?subject=${encodeURIComponent("Check out My Digital Closet")}&body=${encodeURIComponent(text)}`,
+    fallbackUrl: null,
     icon: <span className="text-base leading-none">✉️</span>,
   },
   {
     name: "X",
     bg: "#000000",
-    // Opens X compose with text pre-filled
-    shareUrl: (text: string) =>
-      `twitter://post?message=${encodeURIComponent(text)}`,
+    shareUrl: (text: string) => `twitter://post?message=${encodeURIComponent(text)}`,
+    fallbackUrl: (text: string) =>
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
     icon: <span className="text-white font-black text-sm leading-none">𝕏</span>,
   },
 ];
@@ -78,11 +80,22 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
   const getValue = (name: string) =>
     values[name] !== undefined ? values[name] : url;
 
-  function handleShare(app: (typeof APPS)[number], text: string) {
-    const shareUrl = app.shareUrl(text);
-    // _system tells Capacitor/WKWebView to hand off to iOS instead of
-    // opening in the in-app browser — routes to the native app.
-    window.open(shareUrl, "_system");
+  async function handleShare(app: (typeof APPS)[number], text: string) {
+    const primary = app.shareUrl(text);
+    const fallback = app.fallbackUrl ? app.fallbackUrl(text) : null;
+
+    try {
+      await App.openUrl({ url: primary });
+    } catch {
+      // App not installed — open fallback (App Store or web share page)
+      if (fallback) {
+        try {
+          await App.openUrl({ url: fallback });
+        } catch {
+          window.open(fallback, "_system");
+        }
+      }
+    }
   }
 
   return (
