@@ -47,6 +47,14 @@ const APPS = [
     icon: <span className="text-base leading-none">📷</span>,
   },
   {
+    name: "TikTok",
+    bg: "#010101",
+    shareUrl: (_text: string) => "tiktok://",
+    fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id1235601864",
+    copyBeforeOpen: true,
+    icon: <span className="text-base leading-none">🎵</span>,
+  },
+  {
     name: "WhatsApp",
     bg: "#25D366",
     shareUrl: (text: string) => `whatsapp://send?text=${encodeURIComponent(text)}`,
