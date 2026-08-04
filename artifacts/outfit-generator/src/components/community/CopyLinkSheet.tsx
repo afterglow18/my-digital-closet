@@ -144,6 +144,12 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
             className="fixed bottom-0 left-0 right-0 z-[201] bg-white rounded-t-3xl shadow-2xl px-4 pt-3 pb-8"
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 32 }}
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0, bottom: 0.4 }}
+            onDragEnd={(_e, info) => {
+              if (info.offset.y > 80 || info.velocity.y > 400) onClose();
+            }}
           >
             {/* Handle */}
             <div className="w-10 h-1 rounded-full bg-black/20 mx-auto mb-3" />
