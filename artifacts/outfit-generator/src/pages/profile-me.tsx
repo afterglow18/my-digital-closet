@@ -44,13 +44,20 @@ export default function ProfileMePage() {
   // ── Avatar upload ─────────────────────────────────────────────────────────
   const avatarInputRef               = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarErr,       setAvatarErr]       = useState<string | null>(null);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setAvatarUploading(true);
+    setAvatarErr(null);
     const url = await uploadAvatar(user.id, file);
-    if (url) await refetchProfile();
+    if (url) {
+      await refetchProfile();
+    } else {
+      setAvatarErr("Photo upload failed — try a smaller image");
+      setTimeout(() => setAvatarErr(null), 4000);
+    }
     setAvatarUploading(false);
     // Reset input so same file can be re-selected if needed
     e.target.value = "";
@@ -220,7 +227,7 @@ export default function ProfileMePage() {
                       </div>
                     )}
                   </button>
-                  {/* Camera badge */}
+                   {/* Camera badge */}
                   {!avatarUploading && (
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black border-2 border-white
                                     flex items-center justify-center pointer-events-none">
@@ -235,6 +242,13 @@ export default function ProfileMePage() {
                     onChange={handleAvatarChange}
                   />
                 </div>
+
+                {/* Avatar upload error */}
+                {avatarErr && (
+                  <p className="text-[10px] font-bold text-red-500 leading-tight max-w-[140px]">
+                    {avatarErr}
+                  </p>
+                )}
 
                 {/* Handle + change button */}
                 <div className="flex-1 min-w-0">

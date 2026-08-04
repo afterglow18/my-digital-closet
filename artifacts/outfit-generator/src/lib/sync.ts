@@ -61,16 +61,25 @@ async function uploadItemImage(uid: string, localId: number, filename: string): 
 export async function uploadAvatar(uid: string, file: File | Blob): Promise<string | null> {
   try {
     // Compress via canvas → max 400px, quality 0.85
-    const bitmap = await createImageBitmap(file);
-    const size   = 400;
-    const scale  = Math.min(size / bitmap.width, size / bitmap.height, 1);
-    const w = Math.round(bitmap.width  * scale);
-    const h = Math.round(bitmap.height * scale);
+    // Uses Image element (not createImageBitmap) for iOS WKWebView compatibility
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    await new Promise<void>((res, rej) => {
+      img.onload  = () => res();
+      img.onerror = () => rej(new Error("Image load failed"));
+      img.src = objectUrl;
+    });
+    URL.revokeObjectURL(objectUrl);
+
+    const size  = 400;
+    const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight, 1);
+    const w = Math.round(img.naturalWidth  * scale);
+    const h = Math.round(img.naturalHeight * scale);
     const canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
+    canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
     const blob: Blob = await new Promise((res) =>
-      canvas.toBlob((b) => res(b!), "image/jpeg", 0.85),
+      canvas.toBlob((b) => res(b ?? file), "image/jpeg", 0.85),
     );
 
     const sb   = getSupabase();
