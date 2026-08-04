@@ -178,7 +178,7 @@ export default function ProfileMePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex flex-col min-h-full pb-24"
-        style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
+        style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "#FDECEF" }}
       >
         {/* Back */}
         <div className="px-4 pb-2">
@@ -210,7 +210,7 @@ export default function ProfileMePage() {
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt={profile.handle} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="font-display font-black text-2xl uppercase">
+                      <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.75rem", lineHeight: 1 }}>
                         {(profile?.display_name ?? profile?.handle ?? user.email ?? "?")[0]}
                       </span>
                     )}

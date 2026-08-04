@@ -196,7 +196,8 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             <button
               onClick={handleProfileTap}
               className="absolute bottom-2 left-2 w-6 h-6 rounded-full bg-primary border-2 border-black
-                         flex items-center justify-center text-[9px] font-black uppercase shadow-sm"
+                         flex items-center justify-center shadow-sm"
+              style={{ fontFamily: "'Dancing Script', cursive", fontSize: "0.85rem", lineHeight: 1 }}
             >
               {handle[0]}
             </button>

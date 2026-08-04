@@ -277,7 +277,7 @@ export default function SettingsPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex flex-col min-h-full pb-24"
-        style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
+        style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "#FDECEF" }}
       >
         {/* Back */}
         <div className="px-4 pb-2">
