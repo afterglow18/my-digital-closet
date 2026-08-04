@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { App } from "@capacitor/app";
 
 interface Props {
   open: boolean;
@@ -115,7 +116,13 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setCopiedApp(app.name);
     setTimeout(() => setCopiedApp(null), 2500);
 
-    window.open(primary, "_system");
+    // sms: works via window.open; all other custom schemes use App.openUrl directly.
+    // No LSApplicationQueriesSchemes in Info.plist — adding it breaks window.open routing.
+    if (app.useWindowOpen) {
+      window.open(primary, "_system");
+    } else {
+      try { await App.openUrl({ url: primary }); } catch {}
+    }
   }
 
   return (

@@ -30,17 +30,6 @@ const config: CapacitorConfig = {
       NSPhotoLibraryUsageDescription: "My Digital Closet accesses your photo library so you can upload clothing photos to your wardrobe.",
       // Required for photo library write access — Capacitor Camera saves captured photos to the library
       NSPhotoLibraryAddUsageDescription: "My Digital Closet saves clothing photos to your photo library.",
-      // Required for iOS 9+ to open third-party apps via URL scheme.
-      // Without this list, UIApplication.canOpenURL returns false and the
-      // share buttons for these apps silently do nothing.
-      LSApplicationQueriesSchemes: [
-        "fb",             // Facebook
-        "instagram",      // Instagram
-        "tiktok",         // TikTok
-        "whatsapp",       // WhatsApp
-        "twitter",        // X (Twitter)
-        "googlegmail",    // Gmail
-      ],
     },
   },
 
