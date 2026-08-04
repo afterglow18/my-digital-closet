@@ -38,7 +38,9 @@ function timeAgo(iso: string): string {
 // ── Notification row ─────────────────────────────────────────────────────────
 
 function NotifRow({ n }: { n: AppNotification }) {
-  const who   = n.liker_handle ? `@${n.liker_handle}` : "Someone";
+  const who   = n.liker_handle
+    ? `@${n.liker_handle}`
+    : n.liker_privacy_mode === "anonymous" ? "Anonymous" : "Someone";
   const label = `❤️ ${who} loved your look`;
 
   return (
