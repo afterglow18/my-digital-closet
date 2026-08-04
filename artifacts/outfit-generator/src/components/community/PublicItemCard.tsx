@@ -138,7 +138,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
       )}
 
       {copied && (
-        <div className="fixed bottom-[61%] left-2 right-2 z-[299] bg-[#2c2c2e] rounded-t-3xl px-4 py-5 flex items-center justify-center">
+        <div className="fixed bottom-[61%] left-3 right-3 z-[299] bg-[#2c2c2e] rounded-t-3xl px-4 py-5 flex items-center justify-center">
           <button
             onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
             className="bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
