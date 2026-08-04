@@ -31,15 +31,15 @@ export function smartBannerContent(postUrl: string): string {
 // ── URL builders ──────────────────────────────────────────────────────────────
 
 export function profileShareUrl(_handle: string): string {
-  return SHARE_PAGE_URL;
+  return APP_STORE_URL;
 }
 
 export function itemShareUrl(_id: string): string {
-  return SHARE_PAGE_URL;
+  return APP_STORE_URL;
 }
 
 export function outfitShareUrl(_id: string): string {
-  return SHARE_PAGE_URL;
+  return APP_STORE_URL;
 }
 
 // ── Share text builders ───────────────────────────────────────────────────────
