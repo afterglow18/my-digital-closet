@@ -56,7 +56,7 @@ export function buildItemShareText(
   _privacyMode: PrivacyMode,
   _handle: string | undefined,
 ): string {
-  return `✨ Check this out on My Digital Closet!\n\n${SHARE_PAGE_URL}`;
+  return `✨ Check this out on My Digital Closet!\n\n${APP_STORE_URL}`;
 }
 
 /**
@@ -67,7 +67,7 @@ export function buildOutfitShareText(
   _privacyMode: PrivacyMode,
   _handle: string | undefined,
 ): string {
-  return `✨ Check this out on My Digital Closet!\n\n${SHARE_PAGE_URL}`;
+  return `✨ Check this out on My Digital Closet!\n\n${APP_STORE_URL}`;
 }
 
 // ── Share action ──────────────────────────────────────────────────────────────
