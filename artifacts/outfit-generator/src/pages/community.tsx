@@ -130,7 +130,7 @@ export default function CommunityPage() {
 
   const makeBrickEffect = (
     tab: string,
-    ref: React.RefObject<HTMLDivElement>,
+    ref: React.RefObject<HTMLDivElement | null>,
     setter: (v: number) => void,
     firstId: string | undefined,
   ) => () => {
