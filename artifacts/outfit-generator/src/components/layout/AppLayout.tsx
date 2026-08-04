@@ -97,7 +97,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         */}
         <div className="absolute bottom-0 left-0 right-0 z-[40] flex flex-col">
           {aboveNavSlot}
-          <nav className="bg-white border-t-[3px] border-black p-3 pb-safe">
+          <nav className="bg-white border-t-[3px] border-black p-3" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
             <ul className="flex items-center justify-around">
               {navItems.map((item) => {
                 const isActive = location === item.href;
