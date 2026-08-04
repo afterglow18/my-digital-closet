@@ -157,36 +157,42 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — equally-spaced item blocks (up to 5, each takes 1/N width) */}
-        <div className="h-36 w-full bg-primary/50 relative flex items-stretch gap-2 px-3 py-3">
-          {(items.length > 0 ? items.slice(0, 5) : [""]).map((name, i) => {
-            const imgUrl = outfit.item_image_urls?.[i] ?? null;
-            return (
-              <div key={i}
-                className="flex-1 min-w-0 bg-white/60 rounded-xl border border-black/10
-                           flex flex-col items-center justify-center gap-1 overflow-hidden">
-                {imgUrl ? (
-                  <img src={imgUrl} alt={name}
-                    className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    <Shirt className="w-4 h-4 text-black/20 flex-shrink-0" />
-                    {name ? (
-                      <p className="text-[8px] font-bold uppercase tracking-wide text-black/50
-                                     w-full text-center truncate px-0.5 leading-tight">
-                        {name}
-                      </p>
-                    ) : (
-                      <p className="text-[8px] text-black/25 text-center">empty</p>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-          {items.length > 5 && (
-            <div className="flex-shrink-0 w-8 flex items-center justify-center">
-              <p className="text-[9px] font-bold text-black/30">+{items.length - 5}</p>
+        {/* Preview — lookbook layout: 3 big top row + up to 5 small bottom row */}
+        <div className="w-full bg-primary/50 relative px-3 pt-3 pb-2">
+          {/* Top row — 3 big */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {items.slice(0, 3).map((name, i) => {
+              const imgUrl = outfit.item_image_urls?.[i] ?? null;
+              return (
+                <div key={i} className="aspect-square rounded-lg border-2 border-black/10
+                                        overflow-hidden bg-white/60 flex items-center justify-center">
+                  {imgUrl
+                    ? <img src={imgUrl} alt={name} className="w-full h-full object-cover" />
+                    : <div className="flex flex-col items-center gap-0.5 px-1">
+                        <Shirt className="w-5 h-5 text-black/20" />
+                        <p className="text-[7px] font-bold uppercase text-black/40 truncate w-full text-center">{name}</p>
+                      </div>
+                  }
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom row — up to 5 small extras */}
+          {items.length > 3 && (
+            <div className="grid grid-cols-5 gap-1.5 pt-1 border-t border-black/10">
+              {items.slice(3, 8).map((name, i) => {
+                const imgUrl = outfit.item_image_urls?.[i + 3] ?? null;
+                return (
+                  <div key={i} className="aspect-square rounded border-2 border-black/10
+                                          overflow-hidden bg-white/60 flex items-center justify-center">
+                    {imgUrl
+                      ? <img src={imgUrl} alt={name} className="w-full h-full object-cover" />
+                      : <Shirt className="w-3 h-3 text-black/20" />
+                    }
+                  </div>
+                );
+              })}
             </div>
           )}
 
