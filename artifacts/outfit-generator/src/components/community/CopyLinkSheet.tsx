@@ -1,7 +1,7 @@
 /**
- * CopyLinkSheet — native-style share sheet that shows common app icons.
- * The link is already on the clipboard when this opens; users just tap
- * an app icon to open it, then paste.
+ * CopyLinkSheet — native-style share sheet.
+ * The link is already on the clipboard. Tapping an app opens it directly
+ * via its URL scheme so the user can paste and post.
  */
 
 import React from "react";
@@ -17,6 +17,9 @@ const APPS = [
   {
     name: "Facebook",
     bg: "#1877F2",
+    // Opens FB composer; falls back to FB app or store
+    scheme: "fb://",
+    fallback: "https://apps.apple.com/us/app/facebook/id284882215",
     content: (
       <span className="text-white font-black text-xl leading-none" style={{ fontFamily: "Georgia, serif" }}>
         f
@@ -26,31 +29,57 @@ const APPS = [
   {
     name: "Messages",
     bg: "#34C759",
+    scheme: "sms:",
+    fallback: null, // built-in, always available
     content: <span className="text-xl leading-none">💬</span>,
   },
   {
     name: "Instagram",
     bg: "linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
+    scheme: "instagram://",
+    fallback: "https://apps.apple.com/us/app/instagram/id389801252",
     content: <span className="text-xl leading-none">📷</span>,
   },
   {
     name: "WhatsApp",
     bg: "#25D366",
-    content: <span className="text-xl leading-none">📱</span>,
+    scheme: "whatsapp://",
+    fallback: "https://apps.apple.com/us/app/whatsapp-messenger/id310633997",
+    content: <span className="text-white font-black text-base leading-none">W</span>,
   },
   {
     name: "Mail",
     bg: "#007AFF",
+    scheme: "mailto:",
+    fallback: null,
     content: <span className="text-xl leading-none">✉️</span>,
   },
   {
     name: "X",
     bg: "#000000",
+    scheme: "twitter://",
+    fallback: "https://apps.apple.com/us/app/x/id333903271",
     content: (
       <span className="text-white font-black text-lg leading-none">𝕏</span>
     ),
   },
 ];
+
+function openApp(scheme: string, fallback: string | null) {
+  // Try the URL scheme; if the app isn't installed the browser/OS won't
+  // navigate, so after a short delay fall back to the App Store listing.
+  const start = Date.now();
+  window.location.href = scheme;
+
+  if (fallback) {
+    setTimeout(() => {
+      // If we're still here after 1 s the app wasn't installed
+      if (Date.now() - start < 1500) {
+        window.open(fallback, "_blank");
+      }
+    }, 1000);
+  }
+}
 
 export function CopyLinkSheet({ open, onClose }: Props) {
   return (
@@ -88,13 +117,17 @@ export function CopyLinkSheet({ open, onClose }: Props) {
               </button>
             </div>
             <p className="text-sm text-black/50 mb-5">
-              Open any app below and paste your link.
+              Tap an app to open it, then paste your link.
             </p>
 
             {/* App grid */}
             <div className="grid grid-cols-6 gap-2 mb-6">
               {APPS.map((app) => (
-                <div key={app.name} className="flex flex-col items-center gap-1.5">
+                <button
+                  key={app.name}
+                  onClick={() => openApp(app.scheme, app.fallback)}
+                  className="flex flex-col items-center gap-1.5 active:opacity-70 transition-opacity"
+                >
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm"
                     style={{ background: app.bg }}
@@ -107,11 +140,11 @@ export function CopyLinkSheet({ open, onClose }: Props) {
                   <span className="text-[9px] text-black/50 font-bold tracking-wide uppercase">
                     Paste to post
                   </span>
-                </div>
+                </button>
               ))}
             </div>
 
-            {/* Done button */}
+            {/* Done */}
             <button
               onClick={onClose}
               className="w-full py-3 rounded-2xl bg-black text-white text-sm font-bold
