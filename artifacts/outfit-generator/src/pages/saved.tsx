@@ -124,10 +124,12 @@ export default function SavedPage() {
     if (sortBy === "alpha") {
       list.sort((a, b) => a.name.localeCompare(b.name));
     } else {
-      // Newest first
-      list.sort((a, b) =>
-        (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
-      );
+      // Newest first — use createdAt when available, fall back to id
+      // (id is sequential so higher id = created later)
+      list.sort((a, b) => {
+        if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
+        return b.id - a.id;
+      });
     }
     return list;
   }, [outfits, sortBy]);
