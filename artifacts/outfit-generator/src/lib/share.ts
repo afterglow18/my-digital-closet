@@ -96,8 +96,12 @@ export async function shareContent(
   text: string,
   title = "My Digital Closet",
 ): Promise<void> {
+  // Only pass text if it adds something beyond the URL itself —
+  // passing the same value for both url and text causes iOS to show "2 Links".
+  const shareText = text && text !== url ? text : undefined;
+
   try {
-    await Share.share({ url, text, title, dialogTitle: title });
+    await Share.share({ url, text: shareText, title, dialogTitle: title });
     return;
   } catch {
     // Share cancelled or Capacitor not available on this platform
@@ -106,7 +110,7 @@ export async function shareContent(
   // Web Share API fallback (Chrome Android, Safari iOS via web)
   if (typeof navigator !== "undefined" && navigator.share) {
     try {
-      await navigator.share({ url, text, title });
+      await navigator.share({ url, text: shareText, title });
       return;
     } catch {
       // User dismissed
