@@ -427,34 +427,31 @@ export default function WardrobePage() {
                 )}
 
                 {isDisabledByDress ? (
-                  /* Bottoms row — dimmed placeholder when a dress covers both slots */
-                  {/* Bottoms area hidden — dress spans this space from above */}
+                  /* Bottoms area hidden — dress spans this space from above */
                   <div style={{ position: "absolute", top: carTop, left: carLeft, right: carRight, height: carH, zIndex: 10 }} />
-                ) : (
+                ) : items.length > 0 ? (
                   /* ClosetRow — clothing photos, guaranteed to start below button */
-                  items.length > 0 && (
-                    <div
-                      data-testid={`row-${key}`}
-                      style={{
-                        position: "absolute",
-                        top:    carTop,
-                        left:   carLeft,
-                        right:  carRight,
-                        height: carH,
-                        zIndex: 10,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <ClosetRow
-                        ref={rowRefs[key]}
-                        items={items}
-                        onCenteredItem={centredHandlers[key]}
-                        onItemTap={handleItemTap}
-                        maxPhotoH={getMaxPhotoH(rowIdx)}
-                      />
-                    </div>
-                  )
-                )}
+                  <div
+                    data-testid={`row-${key}`}
+                    style={{
+                      position: "absolute",
+                      top:    carTop,
+                      left:   carLeft,
+                      right:  carRight,
+                      height: carH,
+                      zIndex: 10,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <ClosetRow
+                      ref={rowRefs[key]}
+                      items={items}
+                      onCenteredItem={centredHandlers[key]}
+                      onItemTap={handleItemTap}
+                      maxPhotoH={getMaxPhotoH(rowIdx)}
+                    />
+                  </div>
+                ) : null}
               </React.Fragment>
             );
           });
