@@ -64,14 +64,14 @@ const APPS = [
     icon: <span className="text-white font-black text-sm leading-none">W</span>,
   },
   {
-    name: "Mail",
-    bg: "#007AFF",
+    name: "Gmail",
+    bg: "#EA4335",
     shareUrl: (text: string) =>
-      `mailto:?subject=${encodeURIComponent("Check out My Digital Closet")}&body=${encodeURIComponent(text)}`,
-    fallbackUrl: null,
+      `googlegmail://co?subject=${encodeURIComponent("Check out My Digital Closet")}&body=${encodeURIComponent(text)}`,
+    fallbackUrl: (_text: string) => "itms-apps://itunes.apple.com/app/id422689480",
     copyBeforeOpen: false,
-    useWindowOpen: true,
-    icon: <span className="text-base leading-none">✉️</span>,
+    useWindowOpen: false,
+    icon: <span className="text-base leading-none">📧</span>,
   },
   {
     name: "X",

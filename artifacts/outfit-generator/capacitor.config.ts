@@ -34,11 +34,12 @@ const config: CapacitorConfig = {
       // Without this list, UIApplication.canOpenURL returns false and the
       // share buttons for these apps silently do nothing.
       LSApplicationQueriesSchemes: [
-        "fb",           // Facebook
-        "instagram",    // Instagram
-        "tiktok",       // TikTok
-        "whatsapp",     // WhatsApp
-        "twitter",      // X (Twitter)
+        "fb",             // Facebook
+        "instagram",      // Instagram
+        "tiktok",         // TikTok
+        "whatsapp",       // WhatsApp
+        "twitter",        // X (Twitter)
+        "googlegmail",    // Gmail
       ],
     },
   },
