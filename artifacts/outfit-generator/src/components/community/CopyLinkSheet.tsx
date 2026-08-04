@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { App } from "@capacitor/app";
 
 interface Props {
   open: boolean;
@@ -113,9 +114,11 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setCopiedApp(app.name);
     setTimeout(() => setCopiedApp(null), 2500);
 
-    // window.open(_system) is the only method that reliably opens external URLs
-    // in this Capacitor build on iOS. Used for all apps.
+    // Fire both methods — different Capacitor builds respond to different approaches.
+    // window.open(_system) works for sms:/mailto:; App.openUrl works for custom schemes.
+    // Firing both ensures whichever the device supports will open the app.
     window.open(primary, "_system");
+    try { App.openUrl({ url: primary }); } catch {}
   }
 
   return (
