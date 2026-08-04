@@ -123,29 +123,40 @@ export default function CommunityPage() {
 
   // ── Infinite scroll sentinel ───────────────────────────────────────────────
   const sentinelRef   = useRef<HTMLDivElement>(null);
-  const firstCardRef  = useRef<HTMLDivElement>(null);
-  const [brickOffset, setBrickOffset] = useState(0);
-  useEffect(() => {
-    if (feedTab !== "outfits") return;
+  const firstCardRef      = useRef<HTMLDivElement>(null);
+  const firstItemCardRef  = useRef<HTMLDivElement>(null);
+  const [brickOffset,     setBrickOffset]     = useState(0);
+  const [itemBrickOffset, setItemBrickOffset] = useState(0);
+
+  const makeBrickEffect = (
+    tab: string,
+    ref: React.RefObject<HTMLDivElement>,
+    setter: (v: number) => void,
+    firstId: string | undefined,
+  ) => () => {
+    if (feedTab !== tab) return;
     let raf1: number, raf2: number;
     const measure = () => {
-      const el = firstCardRef.current;
+      const el = ref.current;
       if (!el) return;
       const h = el.offsetHeight;
       if (h > 0) {
-        setBrickOffset(h / 2);
+        setter(h / 2);
         const ro = new ResizeObserver(() => {
           const h2 = el.offsetHeight;
-          if (h2 > 0) setBrickOffset(h2 / 2);
+          if (h2 > 0) setter(h2 / 2);
         });
         ro.observe(el);
       }
     };
-    // Double rAF — waits for browser layout to complete before measuring
     raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(measure); });
     return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  };
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedTab, outfits[0]?.id]);
+  useEffect(makeBrickEffect("outfits", firstCardRef,     setBrickOffset,     outfits[0]?.id), [feedTab, outfits[0]?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(makeBrickEffect("items",   firstItemCardRef, setItemBrickOffset, items[0]?.id),   [feedTab, items[0]?.id]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -426,16 +437,30 @@ export default function CommunityPage() {
                   ))}
                 </div>
               </div>
+            ) : feedTab === "items" ? (
+              /* Items — brick / staggered 2-column layout */
+              <div className="flex gap-3">
+                <div className="flex-1 flex flex-col gap-3">
+                  {items.filter((_, i) => i % 2 === 0).map((item, i) => (
+                    <div key={item.id} ref={i === 0 ? firstItemCardRef : undefined}>
+                      <PublicItemCard item={item} />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 flex flex-col gap-3" style={{ marginTop: itemBrickOffset }}>
+                  {items.filter((_, i) => i % 2 !== 0).map((item) => (
+                    <PublicItemCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
             ) : (
-              /* Items / Following — standard 2-col grid */
+              /* Following — standard 2-col grid */
               <div className="grid grid-cols-2 gap-3">
-                {feedTab === "following"
-                  ? followFeed.map((entry) =>
-                      entry.type === "item"
-                        ? <PublicItemCard   key={entry.data.id} item={entry.data}   />
-                        : <PublicOutfitCard key={entry.data.id} outfit={entry.data} />
-                    )
-                  : items.map((item) => <PublicItemCard key={item.id} item={item} />)}
+                {followFeed.map((entry) =>
+                  entry.type === "item"
+                    ? <PublicItemCard   key={entry.data.id} item={entry.data}   />
+                    : <PublicOutfitCard key={entry.data.id} outfit={entry.data} />
+                )}
               </div>
             )}
 
