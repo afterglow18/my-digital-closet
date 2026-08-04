@@ -134,12 +134,34 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
       if (error) { logSupabaseError("useCommunityOutfits", error); throw new Error(error.message); }
       const posts = (data ?? []) as PublicOutfit[];
 
-      const profileMap = await fetchSafeProfiles(
-        sb,
-        [...new Set(posts.map((p) => p.user_id))],
+      const userIds = [...new Set(posts.map((p) => p.user_id))];
+      const allNames = [...new Set(posts.flatMap((p) => p.item_names ?? []))];
+
+      const [profileMap, itemsRes] = await Promise.all([
+        fetchSafeProfiles(sb, userIds),
+        allNames.length
+          ? sb.from("public_items")
+              .select("user_id, name, image_url")
+              .in("user_id", userIds)
+              .in("name", allNames)
+              .eq("status", "active")
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      // Build lookup: `${userId}:${name}` → image_url
+      const imgMap = new Map<string, string>(
+        ((itemsRes as { data: { user_id: string; name: string; image_url: string | null }[] }).data ?? [])
+          .filter((r) => r.image_url)
+          .map((r) => [`${r.user_id}:${r.name}`, r.image_url!]),
       );
 
-      return posts.map((outfit) => ({ ...outfit, profiles: profileMap[outfit.user_id] }));
+      return posts.map((outfit) => ({
+        ...outfit,
+        profiles: profileMap[outfit.user_id],
+        item_image_urls: (outfit.item_names ?? []).map(
+          (n) => imgMap.get(`${outfit.user_id}:${n}`) ?? null,
+        ),
+      }));
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>

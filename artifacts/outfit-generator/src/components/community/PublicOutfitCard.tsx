@@ -159,21 +159,31 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
       >
         {/* Preview — equally-spaced item blocks (up to 5, each takes 1/N width) */}
         <div className="h-36 w-full bg-primary/50 relative flex items-stretch gap-2 px-3 py-3">
-          {(items.length > 0 ? items.slice(0, 5) : [""]).map((name, i) => (
-            <div key={i}
-              className="flex-1 min-w-0 bg-white/60 rounded-xl border border-black/10
-                         flex flex-col items-center justify-center gap-1 px-1 py-2">
-              <Shirt className="w-4 h-4 text-black/20 flex-shrink-0" />
-              {name ? (
-                <p className="text-[8px] font-bold uppercase tracking-wide text-black/50
-                               w-full text-center truncate px-0.5 leading-tight">
-                  {name}
-                </p>
-              ) : (
-                <p className="text-[8px] text-black/25 text-center">empty</p>
-              )}
-            </div>
-          ))}
+          {(items.length > 0 ? items.slice(0, 5) : [""]).map((name, i) => {
+            const imgUrl = outfit.item_image_urls?.[i] ?? null;
+            return (
+              <div key={i}
+                className="flex-1 min-w-0 bg-white/60 rounded-xl border border-black/10
+                           flex flex-col items-center justify-center gap-1 overflow-hidden">
+                {imgUrl ? (
+                  <img src={imgUrl} alt={name}
+                    className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <Shirt className="w-4 h-4 text-black/20 flex-shrink-0" />
+                    {name ? (
+                      <p className="text-[8px] font-bold uppercase tracking-wide text-black/50
+                                     w-full text-center truncate px-0.5 leading-tight">
+                        {name}
+                      </p>
+                    ) : (
+                      <p className="text-[8px] text-black/25 text-center">empty</p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
           {items.length > 5 && (
             <div className="flex-shrink-0 w-8 flex items-center justify-center">
               <p className="text-[9px] font-bold text-black/30">+{items.length - 5}</p>
