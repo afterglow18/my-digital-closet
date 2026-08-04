@@ -7,15 +7,6 @@ import { Share } from "@capacitor/share";
 /** Direct App Store link — for in-app buttons and the landing page redirect. */
 export const APP_STORE_URL = "https://apps.apple.com/us/app/my-digital-closet/id6789233372";
 
-/**
- * Share landing page — what gets sent to Facebook, iMessage, WhatsApp, etc.
- * Lives at /share/index.html with full Open Graph meta tags so social platforms
- * generate a rich preview. iPhone/iPad visitors are auto-redirected to the
- * App Store after 800 ms; desktop visitors see a download landing page.
- */
-export const SHARE_PAGE_URL =
-  (import.meta.env.VITE_SHARE_PAGE_URL as string | undefined)?.trim() ||
-  "https://mydigitalcloset.replit.app/share/";
 
 /**
  * Value for the `content` attribute of the iOS Smart App Banner meta tag.
