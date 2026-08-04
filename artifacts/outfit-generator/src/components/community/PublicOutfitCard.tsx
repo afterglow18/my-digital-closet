@@ -182,8 +182,8 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             ...Array(Math.max(0, 5 - extraItems.length)).fill(null),
           ];
 
-          const BigSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
-            <div className="flex-1 rounded-2xl overflow-hidden bg-white/30">
+          const BigSlot = ({ slot, flex = 1 }: { slot: typeof raw[0] | null; flex?: number }) => (
+            <div className="rounded-2xl overflow-hidden bg-white/30" style={{ flex }}>
               {slot?.url
                 ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center">
@@ -192,6 +192,8 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               }
             </div>
           );
+
+          const isDress = topSlot?.cat === "dresses";
 
           const SmallSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
             <div className="flex-1 rounded-xl overflow-hidden bg-white/30">
@@ -208,11 +210,20 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             <div className="w-full relative overflow-hidden"
               style={{ background: "rgba(255,255,255,0.18)" }}>
               <div className="flex gap-1.5 p-2.5">
-                {/* 3 big fixed slots — top, bottom, shoes */}
+                {/* 3 big fixed slots — top (or dress spanning 2), bottom, shoes */}
                 <div className="flex-1 flex flex-col gap-1.5" style={{ aspectRatio: "1/1" }}>
-                  <BigSlot slot={topSlot} />
-                  <BigSlot slot={bottomSlot} />
-                  <BigSlot slot={shoesSlot} />
+                  {isDress ? (
+                    <>
+                      <BigSlot slot={topSlot} flex={2} />
+                      <BigSlot slot={shoesSlot} flex={1} />
+                    </>
+                  ) : (
+                    <>
+                      <BigSlot slot={topSlot} />
+                      <BigSlot slot={bottomSlot} />
+                      <BigSlot slot={shoesSlot} />
+                    </>
+                  )}
                 </div>
 
                 {/* 5 small extra slots */}
