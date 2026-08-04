@@ -29,6 +29,7 @@ import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { APP_STORE_URL } from "@/lib/share";
+import { CopyLinkSheet } from "@/components/community/CopyLinkSheet";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -430,25 +431,7 @@ export default function CommunityPage() {
         )}
       </AnimatePresence>
 
-      {/* Copy-link popup */}
-      {copied && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center px-8">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setCopied(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl px-6 py-5 w-full max-w-xs text-center">
-            <p className="text-base font-bold text-black mb-1">Link copied</p>
-            <p className="text-sm text-black/60 leading-snug mb-4">
-              Paste the copied link into Facebook, Messages, Mail, or any other app to share.
-            </p>
-            <button
-              onClick={() => setCopied(false)}
-              className="w-full py-2 rounded-xl bg-black text-white text-sm font-bold
-                         active:opacity-80 transition-opacity"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} />
 
       {/* Post-sign-in nudge */}
       <AnimatePresence>
