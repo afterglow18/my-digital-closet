@@ -104,8 +104,8 @@ export function CopyLinkSheet({ open, onClose }: Props) {
                   <span className="text-[10px] text-black/60 font-medium text-center leading-tight">
                     {app.name}
                   </span>
-                  <span className="text-[9px] text-black/35 font-medium">
-                    Paste link
+                  <span className="text-[9px] text-black/50 font-bold tracking-wide uppercase">
+                    Paste to post
                   </span>
                 </div>
               ))}
