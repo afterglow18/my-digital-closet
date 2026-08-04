@@ -28,7 +28,7 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
-import { shareContent } from "@/lib/share";
+import { shareContent, SHARE_TEXT } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -259,8 +259,8 @@ export default function CommunityPage() {
             <button
               onClick={() => {
                 setCopied(true);
-                setTimeout(() => setCopied(false), 2500);
-                setTimeout(() => shareContent(), 400);
+                setTimeout(() => setCopied(false), 6000);
+                shareContent();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
@@ -431,9 +431,12 @@ export default function CommunityPage() {
       </AnimatePresence>
 
       {copied && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black">
+        <button
+          onClick={() => navigator.clipboard.writeText(SHARE_TEXT).catch(() => {})}
+          className="fixed top-[38%] left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
+        >
           ✨ Link Copied! Paste to Post ✨
-        </div>
+        </button>
       )}
 
       {/* Post-sign-in nudge */}

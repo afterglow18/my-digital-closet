@@ -18,7 +18,7 @@ import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
-import { shareContent } from "@/lib/share";
+import { shareContent, SHARE_TEXT } from "@/lib/share";
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
@@ -95,8 +95,8 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
     e.stopPropagation();
     setShowMenu(false);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-    setTimeout(() => shareContent(), 400);
+    setTimeout(() => setCopied(false), 6000);
+    shareContent();
   };
 
   const handleFollow = async (e: React.MouseEvent) => {
@@ -137,9 +137,12 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
       )}
 
       {copied && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black">
+        <button
+          onClick={() => navigator.clipboard.writeText(SHARE_TEXT).catch(() => {})}
+          className="fixed top-[38%] left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
+        >
           ✨ Link Copied! Paste to Post ✨
-        </div>
+        </button>
       )}
 
       {/* ── Card body ── */}
