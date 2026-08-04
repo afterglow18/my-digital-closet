@@ -17,20 +17,6 @@ interface Props {
 
 const APPS = [
   {
-    name: "Facebook",
-    bg: "#1877F2",
-    // fb://share opens FB composer; fallback to web sharer if app not installed
-    shareUrl: (text: string) =>
-      `fb://share?link=${encodeURIComponent(text)}`,
-    fallbackUrl: (text: string) =>
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(text)}`,
-    icon: (
-      <span className="text-white font-black text-base leading-none" style={{ fontFamily: "Georgia, serif" }}>
-        f
-      </span>
-    ),
-  },
-  {
     name: "Messages",
     bg: "#34C759",
     shareUrl: (text: string) => `sms:?body=${encodeURIComponent(text)}`,
