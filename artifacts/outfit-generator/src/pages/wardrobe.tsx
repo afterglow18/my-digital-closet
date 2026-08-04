@@ -266,7 +266,7 @@ export default function WardrobePage() {
         // Fill the full available height. The image is always width-constrained
         // (fills 100vw, anchors top) so any gap below the rug shows #F0C030
         // yellow — matching the door colour — instead of the white page bg.
-        height: `calc(100dvh - ${NAV_H}px)`,
+        height: `calc(100dvh - var(--nav-h, ${NAV_H}px))`,
         overflow: "hidden",
         // Door-yellow background blends with yellow doors visible at sides/bottom
         background: "#F0C030",

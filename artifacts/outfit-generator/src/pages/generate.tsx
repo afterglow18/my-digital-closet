@@ -255,7 +255,7 @@ export default function GeneratePage() {
         width: "100%",
         // Fill the full available height; image fills width anchored top,
         // any gap below shows #F0C030 (door yellow) not white page bg.
-        height: `calc(100dvh - ${NAV_H}px)`,
+        height: `calc(100dvh - var(--nav-h, ${NAV_H}px))`,
         overflow: "hidden",
         background: "#F0C030",
       }}

@@ -47,7 +47,27 @@ interface AppLayoutProps {
 export const AboveNavSlotContext = createContext<(node: React.ReactNode) => void>(() => {});
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [location] = useLocation();
+  const [location]  = useLocation();
+  const navGroupRef = useRef<HTMLDivElement>(null);
+  const frameRef    = useRef<HTMLDivElement>(null);
+  const [navH, setNavH] = useState(90);
+
+  // Keep --nav-h CSS variable in sync with the actual rendered nav height so
+  // wardrobe / generate can use calc(100dvh - var(--nav-h)) instead of a
+  // hard-coded constant that drifts when safe-area insets change.
+  useEffect(() => {
+    const el = navGroupRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const h = el.offsetHeight;
+      if (h > 0) {
+        setNavH(h);
+        frameRef.current?.style.setProperty("--nav-h", `${h}px`);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const { data: stats } = useGetWardrobeStats();
   const [aboveNavSlot, setAboveNavSlot] = useState<React.ReactNode>(null);
 
@@ -79,13 +99,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-[100dvh] w-full bg-[#f8f9fa] flex justify-center lg:py-8 lg:px-4">
       {/* Phone Frame Constraint for Desktop */}
-      <div className="w-full max-w-md bg-background h-[100dvh] lg:min-h-[850px] lg:h-[850px] lg:border-[6px] lg:border-black lg:rounded-[3rem] lg:shadow-2xl relative overflow-hidden flex flex-col lg:overflow-y-auto">
+      <div ref={frameRef} className="w-full max-w-md bg-background h-[100dvh] lg:min-h-[850px] lg:h-[850px] lg:border-[6px] lg:border-black lg:rounded-[3rem] lg:shadow-2xl relative overflow-hidden flex flex-col lg:overflow-y-auto">
 
-        {/* Main Content Area — extra bottom padding when an above-nav bar is present */}
-        <main className={cn(
-          "flex-1 overflow-y-auto relative",
-          aboveNavSlot ? "pb-[130px]" : "pb-[90px]",
-        )}>
+        {/* Main Content Area — bottom padding matches actual nav group height */}
+        <main
+          className="flex-1 overflow-y-auto relative"
+          style={{ paddingBottom: navH }}
+        >
           <AboveNavSlotContext.Provider value={setAboveNavSlot}>
             {children}
           </AboveNavSlotContext.Provider>
@@ -95,7 +115,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           Above-nav bar + nav stacked in a single absolute column at the bottom.
           The bar (if any) renders above the nav, both inside the phone frame.
         */}
-        <div className="absolute bottom-0 left-0 right-0 z-[40] flex flex-col">
+        <div ref={navGroupRef} className="absolute bottom-0 left-0 right-0 z-[40] flex flex-col">
           {aboveNavSlot}
           <nav className="bg-white border-t-[3px] border-black p-3" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
             <ul className="flex items-center justify-around">
