@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users, Heart, X } from "lucide-react";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Users, Heart, X } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
@@ -268,8 +268,7 @@ export default function CommunityPage() {
                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                          active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              SHARE
+              ✈️ SHARE
             </button>
           </div>
         </div>
