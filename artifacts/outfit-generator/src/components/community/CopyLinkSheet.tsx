@@ -95,39 +95,38 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
   const getValue = (name: string) =>
     values[name] !== undefined ? values[name] : defaultText;
 
+  // App.openUrl resolves (never rejects) on iOS — check `completed` flag.
+  // Fall back to window.open(_system) which calls UIApplication.shared.open directly.
+  async function tryOpen(url: string): Promise<boolean> {
+    try {
+      const { completed } = await App.openUrl({ url });
+      if (completed) return true;
+    } catch {}
+    try {
+      window.open(url, "_system");
+      return true;
+    } catch {}
+    return false;
+  }
+
+  async function openWithFallback(primary: string, fallback: string | null) {
+    const ok = await tryOpen(primary);
+    if (!ok && fallback) await tryOpen(fallback);
+  }
+
   async function handleShare(app: (typeof APPS)[number], text: string) {
     const primary = app.shareUrl(text);
     const fallback = app.fallbackUrl ? app.fallbackUrl(text) : null;
 
     if (app.copyBeforeOpen) {
-      // Copy first, show confirmation, then open the app after a brief
-      // pause so the user actually sees "Copied! Paste to Post." before
-      // being switched to the other app.
       try { await navigator.clipboard.writeText(text); } catch {}
       setCopiedApp(app.name);
-
       setTimeout(async () => {
         setCopiedApp(null);
-        try {
-          await App.openUrl({ url: primary });
-        } catch {
-          if (fallback) {
-            try { await App.openUrl({ url: fallback }); } catch {
-              window.open(fallback, "_system");
-            }
-          }
-        }
+        await openWithFallback(primary, fallback);
       }, 1200);
     } else {
-      try {
-        await App.openUrl({ url: primary });
-      } catch {
-        if (fallback) {
-          try { await App.openUrl({ url: fallback }); } catch {
-            window.open(fallback, "_system");
-          }
-        }
-      }
+      await openWithFallback(primary, fallback);
     }
   }
 
