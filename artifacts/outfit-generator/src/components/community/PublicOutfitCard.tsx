@@ -192,8 +192,8 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             <div className="w-full relative overflow-hidden"
               style={{ background: "rgba(255,255,255,0.18)" }}>
               <div className="flex gap-1.5 p-2.5">
-                {/* Main outfit pieces — 2-col grid */}
-                <div className="flex-1 grid grid-cols-2 gap-1.5">
+                {/* Main outfit pieces — single column stack */}
+                <div className="flex-1 flex flex-col gap-1.5">
                   {mainItems.map((s, i) => (
                     <ItemBox key={i} {...s} round="rounded-2xl" />
                   ))}
