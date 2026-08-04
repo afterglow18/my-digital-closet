@@ -7,7 +7,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { App } from "@capacitor/app";
 
 interface Props {
   open: boolean;
@@ -116,13 +115,7 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setCopiedApp(app.name);
     setTimeout(() => setCopiedApp(null), 2500);
 
-    // TikTok, WhatsApp, X need App.openUrl — window.open hands them to Safari which errors.
-    // Everything else (fb://, sms:, instagram://, googlegmail://) works via window.open.
-    if (app.useAppOpen) {
-      try { await App.openUrl({ url: primary }); } catch {}
-    } else {
-      window.open(primary, "_system");
-    }
+    window.open(primary, "_system");
   }
 
   return (
