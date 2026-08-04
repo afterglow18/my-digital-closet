@@ -431,8 +431,8 @@ export default function CommunityPage() {
       </AnimatePresence>
 
       {copied && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] bg-black text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-xl whitespace-nowrap">
-          🔗 Link Copied! Paste to Post.
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black">
+          ✨ Link Copied! Paste to Post ✨
         </div>
       )}
 
