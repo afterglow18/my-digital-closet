@@ -173,7 +173,7 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
                                    active:opacity-80 transition-all min-w-[64px] text-center"
                         style={{ background: app.bg }}
                       >
-                        {copiedApp === app.name ? "Copied ✓" : "Share"}
+                        {copiedApp === app.name ? "Copied! Paste to Post." : "Share"}
                       </button>
                     </div>
                   </div>
