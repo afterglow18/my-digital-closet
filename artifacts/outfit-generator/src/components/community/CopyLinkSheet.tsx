@@ -95,38 +95,29 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
   const getValue = (name: string) =>
     values[name] !== undefined ? values[name] : defaultText;
 
-  // On iOS, App.openUrl always resolves (never throws) and `completed` is
-  // unreliable without LSApplicationQueriesSchemes entries. Instead we watch
-  // whether the page goes hidden — if the user switched to another app the
-  // URL opened; if the page stays visible after 1.5 s the app isn't installed.
-  async function openWithFallback(primary: string, fallback: string | null) {
-    let appOpened = false;
-    const onVisibilityChange = () => { if (document.hidden) appOpened = true; };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    try { await App.openUrl({ url: primary }); } catch {}
-
-    await new Promise<void>(resolve => setTimeout(resolve, 1500));
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-
-    if (!appOpened && fallback) {
-      try { await App.openUrl({ url: fallback }); } catch {}
-    }
-  }
-
   async function handleShare(app: (typeof APPS)[number], text: string) {
     const primary = app.shareUrl(text);
     const fallback = app.fallbackUrl ? app.fallbackUrl(text) : null;
 
+    const open = async (url: string) => {
+      try { await App.openUrl({ url }); } catch {}
+    };
+
     if (app.copyBeforeOpen) {
+      // Copy first, show "Copied! Paste to Post." for 1.2 s, then open the app.
       try { await navigator.clipboard.writeText(text); } catch {}
       setCopiedApp(app.name);
       setTimeout(async () => {
         setCopiedApp(null);
-        await openWithFallback(primary, fallback);
+        await open(primary);
+        // If the app isn't installed, open its App Store page after a short delay.
+        if (fallback) setTimeout(() => open(fallback), 800);
       }, 1200);
     } else {
-      await openWithFallback(primary, fallback);
+      // For apps that accept pre-filled text: open directly.
+      await open(primary);
+      // Fallback (e.g. X web intent) fires only if the app isn't installed.
+      if (fallback) setTimeout(() => open(fallback), 800);
     }
   }
 
