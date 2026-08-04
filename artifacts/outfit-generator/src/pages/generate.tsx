@@ -113,10 +113,13 @@ export default function GeneratePage() {
   const { data: tops    = [] } = useListClothing({ category: "tops"    }, { query: { queryKey: getListClothingQueryKey({ category: "tops"    }) } });
   const { data: bottoms = [] } = useListClothing({ category: "bottoms" }, { query: { queryKey: getListClothingQueryKey({ category: "bottoms" }) } });
   const { data: shoes   = [] } = useListClothing({ category: "shoes"   }, { query: { queryKey: getListClothingQueryKey({ category: "shoes"   }) } });
+  const { data: dresses = [] } = useListClothing({ category: "dresses" }, { query: { queryKey: getListClothingQueryKey({ category: "dresses" }) } });
 
-  useEffect(() => { rowDataRef.current = { tops, bottoms, shoes }; }, [tops, bottoms, shoes]);
+  // Dresses live in the tops row — a dress replaces both top + bottom slots
+  const topsWithDresses = [...tops, ...dresses];
+  useEffect(() => { rowDataRef.current = { tops: topsWithDresses, bottoms, shoes }; }, [tops, bottoms, shoes, dresses]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasItems = tops.length > 0 || bottoms.length > 0 || shoes.length > 0;
+  const hasItems = topsWithDresses.length > 0 || bottoms.length > 0 || shoes.length > 0;
 
   const setCentredTops    = useCallback((item: ClothingItem | null) =>
     setCentred(p => ({ ...p, tops:    item ?? undefined })), []);
@@ -312,9 +315,12 @@ export default function GeneratePage() {
         const rowTapBots = rowTapTops.map(t => t + tapH);
         const GAP_PX     = 2;
 
+        const isDress = centred.tops?.category === "dresses";
+
         const rowLayouts = LM.rows.map((lm, i) => {
+          // When a dress is selected, tops (i=0) spans both tops+bottoms areas
           const nextOverlayTop = i < LM.rows.length - 1
-            ? rowTapTops[i + 1]
+            ? (i === 0 && isDress ? rowTapTops[2] : rowTapTops[i + 1])
             : pY(ir, LM.barY);
           const carTop = i === 2
             ? pY(ir, lm.boxY) + GAP_PX
@@ -323,8 +329,9 @@ export default function GeneratePage() {
           return { carTop, carH };
         });
 
-        const minCarH   = Math.min(...rowLayouts.map(r => r.carH));
-        const maxPhotoH = Math.max(0, minCarH - 2);
+        const minCarH       = Math.min(...rowLayouts.map(r => r.carH));
+        const getMaxPhotoH  = (rowIdx: number) =>
+          isDress ? Math.max(0, rowLayouts[rowIdx].carH - 2) : Math.max(0, minCarH - 2);
         const carLeft   = pX(ir, LM.doorL);
         const carRight  = ir.left + pW(ir, 1 - LM.doorR);
 
@@ -333,12 +340,13 @@ export default function GeneratePage() {
             {/* ── Three clothing carousels ── */}
             {ROWS.map(({ key }, rowIdx) => {
               const lm         = LM.rows[rowIdx];
-              const items      = { tops, bottoms, shoes }[key];
+              const items      = ({ tops: topsWithDresses, bottoms, shoes } as Record<string, typeof tops>)[key];
               const { carTop, carH } = rowLayouts[rowIdx];
               const tapTop     = rowTapTops[rowIdx];
               const overlayH   = carTop - tapTop;
               const bgPosX     = -pW(ir, LM.doorL);
               const bgPosY     = -tapTop;
+              const isDisabledByDress = rowIdx === 1 && isDress;
 
               return (
                 <React.Fragment key={key}>
@@ -396,8 +404,33 @@ export default function GeneratePage() {
                     </span>
                   </div>
 
-                  {/* Clothing carousel */}
-                  {items.length > 0 ? (
+                  {/* Clothing carousel — or disabled placeholder when dress covers this row */}
+                  {isDisabledByDress ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: carTop, left: carLeft, right: carRight,
+                        height: carH, zIndex: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(0,0,0,0.08)",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <span style={{
+                        fontSize: Math.max(10, pW(ir, 0.045)),
+                        fontWeight: 700,
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                        color: "rgba(0,0,0,0.35)",
+                        textAlign: "center",
+                        padding: "0 8px",
+                      }}>
+                        Dress covers both slots
+                      </span>
+                    </div>
+                  ) : items.length > 0 ? (
                     <div
                       style={{
                         position: "absolute",
@@ -413,7 +446,7 @@ export default function GeneratePage() {
                         ref={rowRefs[key]}
                         items={items}
                         onCenteredItem={centredHandlers[key]}
-                        maxPhotoH={maxPhotoH}
+                        maxPhotoH={getMaxPhotoH(rowIdx)}
                         disableSwipe
                       />
                     </div>

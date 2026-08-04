@@ -180,7 +180,8 @@ export default function WardrobePage() {
   const { data: dresses     = [] } = useListClothing({ category: "dresses"     }, { query: { queryKey: getListClothingQueryKey({ category: "dresses"     }) } });
   const { data: outfits = [] } = useListOutfits();
 
-  const rowData: Record<RowKey, ClothingItem[]> = { tops, bottoms, shoes };
+  // Dresses live in the tops row — a dress replaces both top + bottom slots
+  const rowData: Record<RowKey, ClothingItem[]> = { tops: [...tops, ...dresses], bottoms, shoes };
   const totalItems = tops.length + bottoms.length + shoes.length + accessories.length + outerwear.length + dresses.length;
 
   const saveOutfit  = useSaveOutfit();
@@ -252,7 +253,11 @@ export default function WardrobePage() {
     );
   };
 
-  const canSave   = ROWS.every(({ key }) => !!centred[key]);
+  // When a dress is selected it covers both top + bottom — only need tops + shoes
+  const isDress = centred.tops?.category === "dresses";
+  const canSave = isDress
+    ? !!centred.tops && !!centred.shoes
+    : ROWS.every(({ key }) => !!centred[key]);
   const isFree    = tier === "free";
   const itemsLeft = isFree ? Math.max(0, FREE_ITEM_LIMIT - totalItems) : null;
   const ready     = ir.width > 0;
@@ -331,8 +336,10 @@ export default function WardrobePage() {
             // Compute carTop/carH for every row first so we can derive a
             // uniform maxPhotoH — the smallest available height across all rows.
             const rowLayouts = LM.rows.map((lm, i) => {
+              // When a dress is selected it spans both tops+bottoms:
+              // extend the tops (i=0) carousel all the way to the shoes rod.
               const nextOverlayTop = i < LM.rows.length - 1
-                ? rowTapTops[i + 1]
+                ? (i === 0 && isDress ? rowTapTops[2] : rowTapTops[i + 1])
                 : pY(ir, LM.barY);
               // Shoes (i===2): anchor photos to the rod bottom so the gap
               // matches tops/bottoms visually.  The z=20 overlay still covers
@@ -344,15 +351,20 @@ export default function WardrobePage() {
               return { carTop, carH };
             });
 
-            // All cards same height: constrained by the tightest row (tops/bottoms)
-            const minCarH    = Math.min(...rowLayouts.map(r => r.carH));
-            const maxPhotoH  = Math.max(0, minCarH - 2);
+            // maxPhotoH — when a dress is selected, each row uses its own height
+            // (the dress photo is tall; shoes keeps its usual constraint).
+            // Normally constrain all rows to the tightest one for a uniform look.
+            const minCarH   = Math.min(...rowLayouts.map(r => r.carH));
+            const getMaxPhotoH = (rowIdx: number) =>
+              isDress ? Math.max(0, rowLayouts[rowIdx].carH - 2) : Math.max(0, minCarH - 2);
 
             return ROWS.map(({ key, btnLabel }, rowIdx) => {
             const lm      = LM.rows[rowIdx];
             const items   = rowData[key];
             const isShoes = rowIdx === 2;
             const { carTop, carH } = rowLayouts[rowIdx];
+            // Bottoms row is disabled when a dress occupies both slots
+            const isDisabledByDress = rowIdx === 1 && isDress;
 
             // ── Layout constants ──────────────────────────────────────────────
             const carLeft  = pX(ir, LM.doorL);
@@ -393,30 +405,30 @@ export default function WardrobePage() {
                   }}
                 />
 
-                {/* "+ ADD" tap zone — z=22 keeps it above the overlay so it
-                    remains fully clickable.  Transparent: visual from background. */}
-                <button
-                  onClick={addHandlers[key]}
-                  aria-label={btnLabel}
-                  data-testid={`add-btn-${key}`}
-                  style={{
-                    position: "absolute",
-                    top:    tapTop,
-                    left:   pX(ir, LM.doorL),
-                    width:  pW(ir, LM.doorR - LM.doorL),
-                    height: tapH,
-                    zIndex: 22,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    borderRadius: 20,
-                  }}
-                />
+                {/* "+ ADD" tap zone — hidden/disabled when dress covers this row */}
+                {!isDisabledByDress && (
+                  <button
+                    onClick={addHandlers[key]}
+                    aria-label={btnLabel}
+                    data-testid={`add-btn-${key}`}
+                    style={{
+                      position: "absolute",
+                      top:    tapTop,
+                      left:   pX(ir, LM.doorL),
+                      width:  pW(ir, LM.doorR - LM.doorL),
+                      height: tapH,
+                      zIndex: 22,
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      borderRadius: 20,
+                    }}
+                  />
+                )}
 
-                {/* ClosetRow — clothing photos, guaranteed to start below button */}
-                {items.length > 0 && (
+                {isDisabledByDress ? (
+                  /* Bottoms row — dimmed placeholder when a dress covers both slots */
                   <div
-                    data-testid={`row-${key}`}
                     style={{
                       position: "absolute",
                       top:    carTop,
@@ -424,17 +436,49 @@ export default function WardrobePage() {
                       right:  carRight,
                       height: carH,
                       zIndex: 10,
-                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "rgba(0,0,0,0.08)",
+                      borderRadius: 12,
                     }}
                   >
-                    <ClosetRow
-                      ref={rowRefs[key]}
-                      items={items}
-                      onCenteredItem={centredHandlers[key]}
-                      onItemTap={handleItemTap}
-                      maxPhotoH={maxPhotoH}
-                    />
+                    <span style={{
+                      fontSize: Math.max(10, pW(ir, 0.045)),
+                      color: "rgba(0,0,0,0.35)",
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      textAlign: "center",
+                      padding: "0 8px",
+                    }}>
+                      Dress covers both slots
+                    </span>
                   </div>
+                ) : (
+                  /* ClosetRow — clothing photos, guaranteed to start below button */
+                  items.length > 0 && (
+                    <div
+                      data-testid={`row-${key}`}
+                      style={{
+                        position: "absolute",
+                        top:    carTop,
+                        left:   carLeft,
+                        right:  carRight,
+                        height: carH,
+                        zIndex: 10,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <ClosetRow
+                        ref={rowRefs[key]}
+                        items={items}
+                        onCenteredItem={centredHandlers[key]}
+                        onItemTap={handleItemTap}
+                        maxPhotoH={getMaxPhotoH(rowIdx)}
+                      />
+                    </div>
+                  )
                 )}
               </React.Fragment>
             );
