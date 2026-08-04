@@ -122,7 +122,19 @@ export default function CommunityPage() {
   }, []);
 
   // ── Infinite scroll sentinel ───────────────────────────────────────────────
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const sentinelRef   = useRef<HTMLDivElement>(null);
+  const firstCardRef  = useRef<HTMLDivElement>(null);
+  const [brickOffset, setBrickOffset] = useState(0);
+  useEffect(() => {
+    const el = firstCardRef.current;
+    if (!el) return;
+    const update = () => setBrickOffset(el.offsetHeight / 2);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outfits[0]?.id]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -387,18 +399,34 @@ export default function CommunityPage() {
           </div>
         ) : (
           <div className="px-4 pt-3 pb-4">
-            {/* Items = 2-col grid; Outfits/Following = full-width single column */}
-            <div className="grid grid-cols-2 gap-3">
-              {feedTab === "following"
-                ? followFeed.map((entry) =>
-                    entry.type === "item"
-                      ? <PublicItemCard   key={entry.data.id} item={entry.data}   />
-                      : <PublicOutfitCard key={entry.data.id} outfit={entry.data} />
-                  )
-                : feedTab === "items"
-                  ? items.map((item)     => <PublicItemCard   key={item.id}   item={item}     />)
-                  : outfits.map((outfit) => <PublicOutfitCard key={outfit.id} outfit={outfit} />)}
-            </div>
+            {feedTab === "outfits" ? (
+              /* Outfits — brick / staggered 2-column layout */
+              <div className="flex gap-3">
+                <div className="flex-1 flex flex-col gap-3">
+                  {outfits.filter((_, i) => i % 2 === 0).map((outfit, i) => (
+                    <div key={outfit.id} ref={i === 0 ? firstCardRef : undefined}>
+                      <PublicOutfitCard outfit={outfit} />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 flex flex-col gap-3" style={{ marginTop: brickOffset }}>
+                  {outfits.filter((_, i) => i % 2 !== 0).map((outfit) => (
+                    <PublicOutfitCard key={outfit.id} outfit={outfit} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Items / Following — standard 2-col grid */
+              <div className="grid grid-cols-2 gap-3">
+                {feedTab === "following"
+                  ? followFeed.map((entry) =>
+                      entry.type === "item"
+                        ? <PublicItemCard   key={entry.data.id} item={entry.data}   />
+                        : <PublicOutfitCard key={entry.data.id} outfit={entry.data} />
+                    )
+                  : items.map((item) => <PublicItemCard key={item.id} item={item} />)}
+              </div>
+            )}
 
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="flex justify-center py-4 mt-2">
