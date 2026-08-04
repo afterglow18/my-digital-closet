@@ -48,12 +48,30 @@ export default function ProfileMePage() {
   const [avatarErr,       setAvatarErr]       = useState<string | null>(null);
   const [cropFile,        setCropFile]        = useState<File | null>(null);
 
-  // Step 1: file picked → open crop sheet
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: file picked → pre-shrink to ≤1200px then open crop sheet
+  // (avoids canvas memory errors on 12MP phone photos in iOS WebView)
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    setCropFile(file);
     e.target.value = "";
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(); img.src = objectUrl; });
+      URL.revokeObjectURL(objectUrl);
+      const MAX = 1200;
+      const scale = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? file), "image/jpeg", 0.92));
+      setCropFile(new File([blob], "avatar.jpg", { type: "image/jpeg" }));
+    } catch {
+      // Fallback: skip pre-compress and pass original
+      setCropFile(file);
+    }
   };
 
   // Step 2: user confirmed crop → upload blob
