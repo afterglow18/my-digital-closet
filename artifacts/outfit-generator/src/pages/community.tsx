@@ -261,7 +261,6 @@ export default function CommunityPage() {
                 setCopied(true);
                 await new Promise(r => setTimeout(r, 1000));
                 await shareContent();
-                setCopied(false);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
@@ -433,7 +432,7 @@ export default function CommunityPage() {
 
       {copied && (
         <button
-          onClick={() => navigator.clipboard.writeText(SHARE_TEXT).catch(() => {})}
+          onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
           className="fixed bottom-[62%] left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
         >
           ✨ Link Copied! Paste to Post ✨

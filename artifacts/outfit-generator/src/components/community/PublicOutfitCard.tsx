@@ -97,7 +97,6 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
     setCopied(true);
     await new Promise(r => setTimeout(r, 1000));
     await shareContent();
-    setCopied(false);
   };
 
   const handleFollow = async (e: React.MouseEvent) => {
@@ -139,7 +138,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
 
       {copied && (
         <button
-          onClick={() => navigator.clipboard.writeText(SHARE_TEXT).catch(() => {})}
+          onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
           className="fixed bottom-[62%] left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
         >
           ✨ Link Copied! Paste to Post ✨
