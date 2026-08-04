@@ -46,6 +46,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   const [showAuth,     setShowAuth]     = useState(false);
   const [showPrivGate, setShowPrivGate] = useState(false);
   const [copied,       setCopied]       = useState(false);
+  const [burst,        setBurst]        = useState(false);
 
   const profile     = outfit.profiles;
   const privacyMode = profile?.privacy_mode ?? "public";
@@ -75,7 +76,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
     const next = toggleDiscoverFavorite(outfit.id, "outfit");
     setHearted(next);
     setHeartError(null);
-    if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); }
+    if (next) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 500); setBurst(true); }
 
     setHeartSyncing(true);
     const result = await syncLike(outfit.id, "outfit", next, user.id);
@@ -182,6 +183,34 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
           >
             <MoreHorizontal className="w-3.5 h-3.5 text-white" />
           </button>
+
+          {/* Avatar — bottom-left */}
+          {!isAnonymous && handle && (
+            <button
+              onClick={handleProfileTap}
+              className="absolute bottom-2 left-2 w-6 h-6 rounded-full bg-primary border-2 border-black
+                         flex items-center justify-center text-[9px] font-black uppercase shadow-sm"
+            >
+              {handle[0]}
+            </button>
+          )}
+
+          {/* Heart burst */}
+          <AnimatePresence>
+            {burst && [0, 1, 2].map((i) => (
+              <motion.span
+                key={i}
+                className="absolute pointer-events-none text-sm z-10 select-none"
+                style={{ bottom: "18%", right: `${14 + i * 12}px` }}
+                initial={{ y: 0, opacity: 1 }}
+                animate={{ y: -90, opacity: 0 }}
+                transition={{ duration: 0.7, delay: i * 0.1, ease: "easeOut" }}
+                onAnimationComplete={() => { if (i === 2) setBurst(false); }}
+              >
+                ❤️
+              </motion.span>
+            ))}
+          </AnimatePresence>
         </div>
 
         {/* Info + action buttons */}

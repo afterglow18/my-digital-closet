@@ -214,7 +214,7 @@ export default function CommunityPage() {
     <>
       <div
         className="flex flex-col min-h-full"
-        style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "#FDECEF" }}
+        style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "linear-gradient(to bottom, #f5b8c8 0%, #FDECEF 180px)" }}
       >
         {/* ── Scrollable header — Discover title (scrolls away) ── */}
         <div className="px-4 pb-3 flex items-center justify-between">
@@ -319,8 +319,8 @@ export default function CommunityPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search styles…"
-                  className="w-full pl-9 pr-4 py-2.5 border-2 border-black rounded-xl text-sm font-medium
-                             bg-white focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/25"
+                  className="w-full pl-9 pr-4 py-2.5 border-2 border-black/20 rounded-full text-sm font-medium
+                             bg-white/80 shadow-sm focus:outline-none focus:border-black/50 placeholder:text-black/25"
                 />
               </div>
             </div>
@@ -338,8 +338,8 @@ export default function CommunityPage() {
                     className={cn(
                       "flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-[11px] font-bold uppercase tracking-wide transition-all",
                       isActive
-                        ? "bg-black text-white border-black"
-                        : "bg-white border-black/20 text-black/50 hover:border-black/40",
+                        ? "bg-primary text-black border-black"
+                        : "bg-white/70 border-black/20 text-black/50 hover:border-black/40",
                     )}
                   >
                     {f.label}
