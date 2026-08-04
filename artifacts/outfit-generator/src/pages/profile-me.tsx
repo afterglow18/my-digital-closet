@@ -20,6 +20,7 @@ import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hook
 import { useFollowerCount, useFollowingCount } from "@/hooks/useFollows";
 import { getSupabase } from "@/lib/supabase";
 import { unpublishItem, unpublishOutfit, uploadAvatar } from "@/lib/sync";
+import { AvatarCropSheet } from "@/components/community/AvatarCropSheet";
 import { updateClothingItem, updateOutfit } from "@/lib/db";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
@@ -45,13 +46,23 @@ export default function ProfileMePage() {
   const avatarInputRef               = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarErr,       setAvatarErr]       = useState<string | null>(null);
+  const [cropFile,        setCropFile]        = useState<File | null>(null);
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: file picked → open crop sheet
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    setCropFile(file);
+    e.target.value = "";
+  };
+
+  // Step 2: user confirmed crop → upload blob
+  const handleCropConfirm = async (blob: Blob) => {
+    if (!user) return;
+    setCropFile(null);
     setAvatarUploading(true);
     setAvatarErr(null);
-    const url = await uploadAvatar(user.id, file);
+    const url = await uploadAvatar(user.id, blob);
     if (url) {
       await refetchProfile();
     } else {
@@ -59,8 +70,6 @@ export default function ProfileMePage() {
       setTimeout(() => setAvatarErr(null), 4000);
     }
     setAvatarUploading(false);
-    // Reset input so same file can be re-selected if needed
-    e.target.value = "";
   };
 
   // ── Display name + bio edit ───────────────────────────────────────────────
@@ -561,6 +570,15 @@ export default function ProfileMePage() {
 
         <div className="h-4" />
       </motion.div>
+
+      {/* Avatar crop sheet — shown after picking a photo */}
+      {cropFile && (
+        <AvatarCropSheet
+          file={cropFile}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
     </>
   );
 }
