@@ -13,7 +13,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Edit2, Check, X, Shirt, Globe, Loader2,
-  Lock, Eye, Share2, Camera,
+  Lock, Eye, Camera,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hooks/useCommunity";
@@ -426,12 +426,12 @@ export default function ProfileMePage() {
                         "My Digital Closet",
                       );
                     }}
-                    className="flex items-center gap-1.5 text-xs font-bold text-black/40
-                               hover:text-black transition-colors border border-black/15 rounded-full
-                               px-3 py-1.5 hover:border-black/40"
+                    className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
+                               text-xs font-bold uppercase tracking-wide bg-primary
+                               shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                               active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
-                    Share
+                    ✈️ SHARE
                   </button>
                 </div>
               )}
