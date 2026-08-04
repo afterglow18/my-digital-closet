@@ -96,7 +96,6 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
     e.stopPropagation();
     navigator.clipboard.writeText(APP_STORE_URL).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 3500);
     });
     setShowMenu(false);
   };

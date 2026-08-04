@@ -96,7 +96,6 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
     e.stopPropagation();
     navigator.clipboard.writeText(APP_STORE_URL).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 3500);
     });
     setShowMenu(false);
   };
