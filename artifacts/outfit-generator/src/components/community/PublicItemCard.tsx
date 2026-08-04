@@ -97,6 +97,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
     setCopied(true);
     await new Promise(r => setTimeout(r, 1000));
     await shareContent();
+    setCopied(false);
   };
 
   const handleFollow = async (e: React.MouseEvent) => {

@@ -261,6 +261,7 @@ export default function CommunityPage() {
                 setCopied(true);
                 await new Promise(r => setTimeout(r, 1000));
                 await shareContent();
+                setCopied(false);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
