@@ -95,25 +95,36 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     values[name] !== undefined ? values[name] : url;
 
   async function handleShare(app: (typeof APPS)[number], text: string) {
-    // For apps that can't accept pre-filled text (Facebook, Instagram),
-    // re-copy to clipboard so the user can paste after the app opens.
-    if (app.copyBeforeOpen) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopiedApp(app.name);
-        setTimeout(() => setCopiedApp(null), 2500);
-      } catch {}
-    }
-
     const primary = app.shareUrl(text);
     const fallback = app.fallbackUrl ? app.fallbackUrl(text) : null;
 
-    try {
-      await App.openUrl({ url: primary });
-    } catch {
-      if (fallback) {
-        try { await App.openUrl({ url: fallback }); } catch {
-          window.open(fallback, "_system");
+    if (app.copyBeforeOpen) {
+      // Copy first, show confirmation, then open the app after a brief
+      // pause so the user actually sees "Copied! Paste to Post." before
+      // being switched to the other app.
+      try { await navigator.clipboard.writeText(text); } catch {}
+      setCopiedApp(app.name);
+
+      setTimeout(async () => {
+        setCopiedApp(null);
+        try {
+          await App.openUrl({ url: primary });
+        } catch {
+          if (fallback) {
+            try { await App.openUrl({ url: fallback }); } catch {
+              window.open(fallback, "_system");
+            }
+          }
+        }
+      }, 1200);
+    } else {
+      try {
+        await App.openUrl({ url: primary });
+      } catch {
+        if (fallback) {
+          try { await App.openUrl({ url: fallback }); } catch {
+            window.open(fallback, "_system");
+          }
         }
       }
     }
