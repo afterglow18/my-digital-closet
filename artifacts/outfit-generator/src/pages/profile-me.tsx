@@ -13,7 +13,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Edit2, Check, X, Shirt, Globe, Loader2,
-  Lock, Eye, Camera,
+  Lock, Eye, Camera, Plane,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile, useMyPublishedItems, useMyPublishedOutfits } from "@/hooks/useCommunity";
@@ -445,7 +445,7 @@ export default function ProfileMePage() {
                                shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                                active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
                   >
-                    ✈️ SHARE
+                    <Plane className="w-3.5 h-3.5 fill-current" /> SHARE
                   </button>
                 </div>
               )}
