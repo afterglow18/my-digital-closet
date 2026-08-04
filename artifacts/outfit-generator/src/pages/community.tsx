@@ -28,7 +28,7 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
-import { shareContent, APP_STORE_URL } from "@/lib/share";
+import { shareContent, SHARE_PAGE_URL } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -259,8 +259,8 @@ export default function CommunityPage() {
               onClick={() => {
                 if (user) {
                   shareContent(
-                    APP_STORE_URL,
-                    `✨ Check this out on My Digital Closet!\n\n${APP_STORE_URL}`,
+                    SHARE_PAGE_URL,
+                    `✨ Check this out on My Digital Closet!\n\n${SHARE_PAGE_URL}`,
                     "My Digital Closet",
                   );
                 } else {

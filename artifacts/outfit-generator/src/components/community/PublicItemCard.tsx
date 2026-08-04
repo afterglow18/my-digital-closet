@@ -18,7 +18,7 @@ import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
-import { shareContent, APP_STORE_URL, buildItemShareText } from "@/lib/share";
+import { shareContent, SHARE_PAGE_URL, buildItemShareText } from "@/lib/share";
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
@@ -94,7 +94,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     shareContent(
-      APP_STORE_URL,
+      SHARE_PAGE_URL,
       buildItemShareText(item.name, privacyMode, handle || undefined),
       "My Digital Closet",
     );
@@ -102,7 +102,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(APP_STORE_URL).then(() => {
+    navigator.clipboard.writeText(SHARE_PAGE_URL).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
