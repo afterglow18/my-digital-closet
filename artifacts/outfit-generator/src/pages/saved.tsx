@@ -509,7 +509,7 @@ export default function SavedPage() {
           ))}
         </div>
       ) : sortedOutfits.length > 0 ? (
-        <div className="flex flex-col gap-6">
+        <div key={sortBy} className="flex flex-col gap-6">
           {sortedOutfits.map((outfit) => {
             // Group items by category for structured display
             const byCategory = (outfit.items ?? []).reduce<Partial<Record<SlotKey, ClothingItem>>>(
