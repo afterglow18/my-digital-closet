@@ -157,20 +157,18 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview */}
-        <div className="aspect-square w-full bg-primary/50 relative flex flex-col
-                        items-center justify-center gap-2 px-3">
-          <Shirt className="w-8 h-8 text-black/30" />
+        {/* Preview — full-width horizontal chip layout */}
+        <div className="h-36 w-full bg-primary/50 relative flex items-center gap-3 px-4">
+          <Shirt className="w-9 h-9 text-black/20 flex-shrink-0" />
           {items.length > 0 && (
-            <div className="flex flex-col gap-0.5 w-full">
-              {items.slice(0, 3).map((name, i) => (
-                <p key={i} className="text-[9px] font-bold uppercase tracking-wide text-black/50 truncate text-center">
+            <div className="flex-1 flex flex-wrap gap-1.5 content-center">
+              {items.map((name, i) => (
+                <span key={i}
+                  className="px-2.5 py-1 bg-white/70 rounded-full border border-black/10
+                             text-[10px] font-bold uppercase tracking-wide text-black/60">
                   {name}
-                </p>
+                </span>
               ))}
-              {items.length > 3 && (
-                <p className="text-[9px] text-black/30 text-center">+{items.length - 3} more</p>
-              )}
             </div>
           )}
 

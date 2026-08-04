@@ -387,8 +387,8 @@ export default function CommunityPage() {
           </div>
         ) : (
           <div className="px-4 pt-3 pb-4">
-            {/* Two-column equal-width grid */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Items = 2-col grid; Outfits/Following = full-width single column */}
+            <div className={feedTab === "outfits" ? "flex flex-col gap-3" : "grid grid-cols-2 gap-3"}>
               {feedTab === "following"
                 ? followFeed.map((entry) =>
                     entry.type === "item"
