@@ -91,12 +91,13 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
     }
   };
 
-  const handleCopyLink = (e: React.MouseEvent) => {
+  const handleCopyLink = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
     setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
-    setTimeout(() => shareContent(), 1000);
+    await new Promise(r => setTimeout(r, 1000));
+    await shareContent();
+    setCopied(false);
   };
 
   const handleFollow = async (e: React.MouseEvent) => {
@@ -139,7 +140,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
       {copied && (
         <button
           onClick={() => navigator.clipboard.writeText(SHARE_TEXT).catch(() => {})}
-          className="fixed top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
+          className="fixed bottom-[62%] left-1/2 -translate-x-1/2 z-[300] bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
         >
           ✨ Link Copied! Paste to Post ✨
         </button>
