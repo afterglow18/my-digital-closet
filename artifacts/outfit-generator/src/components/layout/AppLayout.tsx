@@ -1,9 +1,20 @@
-import React, { useState, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { Shirt, Sparkles, Bookmark, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGetWardrobeStats } from "@/lib/local-api";
 import { useUnreadNotifCount } from "@/hooks/useNotifications";
+import { getDiscoverFavorites } from "@/lib/discoverFavorites";
+
+function useDiscoverFavoritesCount() {
+  const [count, setCount] = useState(() => getDiscoverFavorites().length);
+  useEffect(() => {
+    const update = () => setCount(getDiscoverFavorites().length);
+    window.addEventListener("discoverFavoritesChanged", update);
+    return () => window.removeEventListener("discoverFavoritesChanged", update);
+  }, []);
+  return count;
+}
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -31,13 +42,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         .reduce((sum: number, c: { count: number }) => sum + c.count, 0)
     : undefined;
 
-  const unreadNotifCount = useUnreadNotifCount();
+  const unreadNotifCount      = useUnreadNotifCount();
+  const discoverFavoritesCount = useDiscoverFavoritesCount();
 
   const navItems = [
     { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black" },
     { href: "/generate", label: "Generate", icon: Sparkles },
     { href: "/saved", label: "Saved", icon: Bookmark },
-    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || undefined, badgeClass: "bg-red-500 text-white" },
+    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || discoverFavoritesCount || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-secondary text-black" },
   ];
 
   return (

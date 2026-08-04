@@ -49,11 +49,12 @@ export function toggleDiscoverFavorite(
   if (idx >= 0) {
     favs.splice(idx, 1);
     persist(favs);
-    return false;
+  } else {
+    favs.unshift({ postId, postType, savedAt: new Date().toISOString() });
+    persist(favs);
   }
-  favs.unshift({ postId, postType, savedAt: new Date().toISOString() });
-  persist(favs);
-  return true;
+  window.dispatchEvent(new CustomEvent("discoverFavoritesChanged"));
+  return idx < 0;
 }
 
 /**
