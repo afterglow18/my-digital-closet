@@ -118,21 +118,21 @@ export default function SavedPage() {
     return searchFn(searchQuery, allItems, outfits ?? []);
   }, [searchQuery, allItems, outfits]);
 
-  // Sorted outfits list
-  const sortedOutfits = useMemo(() => {
+  // Sorted outfits list — computed inline so sortBy state always triggers a fresh sort
+  const sortedOutfits = (() => {
     const list = [...(outfits ?? [])];
     if (sortBy === "alpha") {
       list.sort((a, b) => a.name.localeCompare(b.name));
     } else {
       // Newest first — use createdAt when available, fall back to id
-      // (id is sequential so higher id = created later)
+      // (id is a global auto-increment, so higher id = created later)
       list.sort((a, b) => {
         if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
         return b.id - a.id;
       });
     }
     return list;
-  }, [outfits, sortBy]);
+  })();
 
   // Remembers the outfit date before "Wearing Today" so Undo can restore it.
   const prevWornDatesRef = useRef<Map<number, string | null>>(new Map());
