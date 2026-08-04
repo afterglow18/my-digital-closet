@@ -138,7 +138,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         </div>
       )}
 
-      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} />
+      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} url={APP_STORE_URL} />
 
       {/* ── Card body ── */}
       <motion.div

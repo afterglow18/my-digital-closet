@@ -431,7 +431,7 @@ export default function CommunityPage() {
         )}
       </AnimatePresence>
 
-      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} />
+      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} url={APP_STORE_URL} />
 
       {/* Post-sign-in nudge */}
       <AnimatePresence>
