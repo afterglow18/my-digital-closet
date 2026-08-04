@@ -18,7 +18,7 @@ import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
-import { shareContent, APP_STORE_URL, buildItemShareText } from "@/lib/share";
+import { APP_STORE_URL } from "@/lib/share";
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
@@ -91,20 +91,11 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
     }
   };
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    shareContent(
-      APP_STORE_URL,
-      buildItemShareText(item.name, privacyMode, handle || undefined),
-      "My Digital Closet",
-    );
-  };
-
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(APP_STORE_URL).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 3500);
     });
     setShowMenu(false);
   };
@@ -148,9 +139,9 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
 
       {/* Copied toast */}
       {copied && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap
-                        bg-black text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
-          Link copied!
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full z-50 w-64 text-center
+                        bg-black text-white text-[11px] font-semibold px-3 py-2 rounded-xl shadow-lg leading-snug">
+          Link copied — paste it into Facebook, Messages, or anywhere you'd like to share it.
         </div>
       )}
 
@@ -235,13 +226,13 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             </button>
 
             <button
-              onClick={handleShare}
-              aria-label="Share"
+              onClick={handleCopyLink}
+              aria-label="Copy link"
               className="w-8 h-8 rounded-full bg-white border-2 border-black
                          flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
                          active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
             >
-              <span className="text-sm leading-none">✈️</span>
+              <span className="text-sm leading-none">🔗</span>
             </button>
           </div>
         </div>

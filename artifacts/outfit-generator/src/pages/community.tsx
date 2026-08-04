@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users, Heart, X } from "lucide-react";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Link, Users, Heart, X } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
@@ -28,7 +28,7 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
-import { shareContent, APP_STORE_URL } from "@/lib/share";
+import { APP_STORE_URL } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -57,6 +57,7 @@ export default function CommunityPage() {
   const [, navigate]        = useLocation();
   const [showAuth,    setShowAuth]    = useState(false);
   const [showNotifs,  setShowNotifs]  = useState(false);
+  const [copied,      setCopied]      = useState(false);
   const [showNudge,   setShowNudge]   = useState(false);
   const unreadCount = useUnreadNotifCount();
   const [heartNotifsEnabled] = useHeartNotifsEnabled();
@@ -257,23 +258,18 @@ export default function CommunityPage() {
             )}
             <button
               onClick={() => {
-                if (user) {
-                  shareContent(
-                    APP_STORE_URL,
-                    APP_STORE_URL,
-                    "My Digital Closet",
-                  );
-                } else {
-                  setShowAuth(true);
-                }
+                navigator.clipboard.writeText(APP_STORE_URL).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 3500);
+                });
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                          active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              Share
+              <Link className="w-3.5 h-3.5" />
+              Copy Link
             </button>
           </div>
         </div>
@@ -432,6 +428,24 @@ export default function CommunityPage() {
             onSuccess={() => setShowNudge(true)}
             defaultTab="signup"
           />
+        )}
+      </AnimatePresence>
+
+      {/* Copy link confirmation toast */}
+      <AnimatePresence>
+        {copied && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-24 left-4 right-4 z-50 bg-black text-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3"
+          >
+            <Link className="shrink-0 w-5 h-5 text-white/70" />
+            <p className="text-sm leading-snug">
+              Link copied — paste it into Facebook, Messages, or anywhere you'd like to share it.
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
 
