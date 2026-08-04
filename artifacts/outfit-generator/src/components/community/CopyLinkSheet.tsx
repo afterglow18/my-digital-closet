@@ -7,7 +7,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { App } from "@capacitor/app";
 
 interface Props {
   open: boolean;
@@ -114,29 +113,9 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setCopiedApp(app.name);
     setTimeout(() => setCopiedApp(null), 2500);
 
-    // Open immediately — iOS blocks any URL open inside a setTimeout.
-    if (app.useWindowOpen) {
-      // sms: must use window.open(_system) on iOS.
-      window.open(primary, "_system");
-    } else {
-      // App.openUrl for custom URL schemes (fb://, instagram://, whatsapp://, etc.)
-      // It resolves without throwing even on failure, so we can't use try/catch to
-      // detect failure. Fire primary; if there's a fallback (App Store or https web),
-      // use window.open for https URLs and App.openUrl for itms-apps:// URLs.
-      await App.openUrl({ url: primary });
-      if (fallback) {
-        // https:// fallbacks (X web intent) need window.open; itms-apps:// needs App.openUrl.
-        // Both fire after a short delay so primary gets a chance to open first.
-        // On a device with the app installed, the app is already open and the fallback is a no-op.
-        setTimeout(() => {
-          if (fallback.startsWith("https://")) {
-            window.open(fallback, "_system");
-          } else {
-            App.openUrl({ url: fallback }).catch(() => {});
-          }
-        }, 1500);
-      }
-    }
+    // window.open(_system) is the only method that reliably opens external URLs
+    // in this Capacitor build on iOS. Used for all apps.
+    window.open(primary, "_system");
   }
 
   return (
