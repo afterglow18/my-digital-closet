@@ -190,8 +190,9 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             ...Array(Math.max(0, 5 - extraItems.length)).fill(null),
           ];
 
-          const BigSlot = ({ slot, flex = 1 }: { slot: typeof raw[0] | null; flex?: number }) => (
-            <div className="rounded-2xl overflow-hidden bg-white/30" style={{ flex }}>
+          const BigSlot = ({ slot, dress = false }: { slot: typeof raw[0] | null; dress?: boolean }) => (
+            <div className="w-full rounded-2xl overflow-hidden bg-white/30"
+              style={{ aspectRatio: dress ? "1/2" : "1/1" }}>
               {slot?.url
                 ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center">
@@ -202,7 +203,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
           );
 
           const SmallSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
-            <div className="flex-1 rounded-xl overflow-hidden bg-white/30">
+            <div className="flex-1 w-full rounded-xl overflow-hidden bg-white/30">
               {slot?.url
                 ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center">
@@ -217,11 +218,11 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               style={{ background: "rgba(255,255,255,0.18)" }}>
               <div className="flex gap-1.5 p-2.5">
                 {/* 3 big fixed slots — top (or dress spanning 2), bottom, shoes */}
-                <div className="flex-1 flex flex-col gap-1.5" style={{ aspectRatio: "1/1" }}>
+                <div className="flex-1 flex flex-col gap-1.5">
                   {isDress ? (
                     <>
-                      <BigSlot slot={topSlot} flex={2} />
-                      <BigSlot slot={shoesSlot} flex={1} />
+                      <BigSlot slot={topSlot} dress />
+                      <BigSlot slot={shoesSlot} />
                     </>
                   ) : (
                     <>
@@ -232,8 +233,8 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                   )}
                 </div>
 
-                {/* 5 small extra slots */}
-                <div className="flex flex-col gap-1.5" style={{ width: "30%" }}>
+                {/* 5 small extra slots — stretch to match left column height */}
+                <div className="self-stretch flex flex-col gap-1.5" style={{ width: "30%" }}>
                   {extraSlots.map((slot, i) => (
                     <SmallSlot key={i} slot={slot} />
                   ))}
