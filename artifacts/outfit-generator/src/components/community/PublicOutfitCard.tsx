@@ -141,7 +141,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         <div className="fixed top-[25%] bottom-0 left-3 right-3 z-[299] bg-[#2c2c2e] rounded-t-3xl px-4 pt-5 pb-0 flex items-start justify-center">
           <button
             onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
-            className="bg-yellow-400 text-black px-5 py-3 rounded-full text-base font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
+            className="bg-yellow-400 text-black px-7 py-4 rounded-full text-lg font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
           >
             ✨ Link Copied! Paste to Post ✨
           </button>
