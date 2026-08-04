@@ -36,6 +36,7 @@ const APPS = [
     shareUrl: (text: string) => `sms:?body=${encodeURIComponent(text)}`,
     fallbackUrl: null,
     copyBeforeOpen: false,
+    useWindowOpen: true,
     icon: <span className="text-base leading-none">💬</span>,
   },
   {
@@ -69,6 +70,7 @@ const APPS = [
       `mailto:?subject=${encodeURIComponent("Check out My Digital Closet")}&body=${encodeURIComponent(text)}`,
     fallbackUrl: null,
     copyBeforeOpen: false,
+    useWindowOpen: true,
     icon: <span className="text-base leading-none">✉️</span>,
   },
   {
@@ -106,13 +108,17 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
     setCopiedApp(app.name);
     setTimeout(() => setCopiedApp(null), 2500);
 
-    // Open the URL immediately — iOS blocks App.openUrl inside a setTimeout
-    // because it requires a direct user-gesture context.
-    try {
-      await App.openUrl({ url: primary });
-    } catch {
-      if (fallback) {
-        try { await App.openUrl({ url: fallback }); } catch {}
+    // Open immediately — iOS blocks any URL open inside a setTimeout.
+    // sms: and mailto: use window.open(_system); everything else uses App.openUrl.
+    if (app.useWindowOpen) {
+      window.open(primary, "_system");
+    } else {
+      try {
+        await App.openUrl({ url: primary });
+      } catch {
+        if (fallback) {
+          try { await App.openUrl({ url: fallback }); } catch {}
+        }
       }
     }
   }
