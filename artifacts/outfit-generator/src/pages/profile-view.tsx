@@ -76,7 +76,7 @@ export default function ProfileViewPage() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 32 }}
       className="flex flex-col min-h-full"
-      style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
+      style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "#FDECEF" }}
     >
       {/* Back */}
       <div className="px-4 pb-2">
@@ -93,7 +93,7 @@ export default function ProfileViewPage() {
           {profile.avatar_url ? (
             <img src={profile.avatar_url} alt={profile.handle} className="w-full h-full object-cover" />
           ) : (
-            <span className="font-display font-black text-3xl uppercase">
+            <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: "2rem", lineHeight: 1 }}>
               {(profile.display_name ?? profile.handle)[0]}
             </span>
           )}
