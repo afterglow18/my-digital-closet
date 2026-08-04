@@ -96,20 +96,19 @@ export async function shareContent(
   text: string,
   title = "My Digital Closet",
 ): Promise<void> {
-  // Facebook (and some other apps) ignore the `url` field and show a blank post.
-  // Embedding the URL directly inside `text` ensures it always comes through.
-  // We intentionally omit the separate `url` field to avoid "2 Links" on iOS.
+  // Pass only the url field — no text, no title — so every destination
+  // (including Facebook) receives a clean, clickable link and nothing else.
   try {
-    await Share.share({ text, title, dialogTitle: title });
+    await Share.share({ url });
     return;
   } catch {
     // Share cancelled or Capacitor not available on this platform
   }
 
-  // Web Share API fallback (Chrome Android, Safari iOS via web)
+  // Web Share API fallback
   if (typeof navigator !== "undefined" && navigator.share) {
     try {
-      await navigator.share({ text, title });
+      await navigator.share({ url });
       return;
     } catch {
       // User dismissed
