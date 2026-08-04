@@ -157,44 +157,52 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — lookbook layout: 3 big top row + up to 5 small bottom row */}
-        <div className="w-full bg-primary/50 relative px-3 pt-3 pb-2">
-          {/* Top row — 3 big */}
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            {items.slice(0, 3).map((name, i) => {
-              const imgUrl = outfit.item_image_urls?.[i] ?? null;
-              return (
-                <div key={i} className="aspect-square rounded-lg border-2 border-black/10
-                                        overflow-hidden bg-white/60 flex items-center justify-center">
-                  {imgUrl
-                    ? <img src={imgUrl} alt={name} className="w-full h-full object-cover" />
-                    : <div className="flex flex-col items-center gap-0.5 px-1">
-                        <Shirt className="w-5 h-5 text-black/20" />
-                        <p className="text-[7px] font-bold uppercase text-black/40 truncate w-full text-center">{name}</p>
-                      </div>
-                  }
-                </div>
-              );
-            })}
-          </div>
+        {/* Preview — polished photo grid: 3 big + up to 5 small, photos only */}
+        {(() => {
+          const allWithUrls = items.map((name, i) => ({
+            name, url: outfit.item_image_urls?.[i] ?? null,
+          }));
+          const mainSlots  = allWithUrls.slice(0, 3).filter((s) => s.url);
+          const extraSlots = allWithUrls.slice(3, 8).filter((s) => s.url);
+          const hasAny     = mainSlots.length > 0 || extraSlots.length > 0;
 
-          {/* Bottom row — up to 5 small extras */}
-          {items.length > 3 && (
-            <div className="grid grid-cols-5 gap-1.5 pt-1 border-t border-black/10">
-              {items.slice(3, 8).map((name, i) => {
-                const imgUrl = outfit.item_image_urls?.[i + 3] ?? null;
-                return (
-                  <div key={i} className="aspect-square rounded border-2 border-black/10
-                                          overflow-hidden bg-white/60 flex items-center justify-center">
-                    {imgUrl
-                      ? <img src={imgUrl} alt={name} className="w-full h-full object-cover" />
-                      : <Shirt className="w-3 h-3 text-black/20" />
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          return (
+            <div className="w-full relative px-2.5 pt-2.5 pb-2"
+              style={{ background: "rgba(255,255,255,0.25)" }}>
+              {hasAny ? (
+                <>
+                  {/* Top row — up to 3 big */}
+                  {mainSlots.length > 0 && (
+                    <div className={`grid gap-1.5 mb-1.5`}
+                      style={{ gridTemplateColumns: `repeat(${mainSlots.length}, 1fr)` }}>
+                      {mainSlots.map(({ name, url }, i) => (
+                        <div key={i} className="aspect-square rounded-2xl overflow-hidden shadow-sm">
+                          <img src={url!} alt={name} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Bottom row — up to 5 small */}
+                  {extraSlots.length > 0 && (
+                    <div className="grid gap-1"
+                      style={{ gridTemplateColumns: `repeat(${extraSlots.length}, 1fr)` }}>
+                      {extraSlots.map(({ name, url }, i) => (
+                        <div key={i} className="aspect-square rounded-xl overflow-hidden shadow-sm">
+                          <img src={url!} alt={name} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* No photos yet — minimal placeholder */
+                <div className="h-24 flex items-center justify-center gap-2">
+                  <Shirt className="w-6 h-6 text-black/20" />
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-black/25">
+                    {items.length} pieces
+                  </p>
+                </div>
+              )}
 
           {/* More (⋯) button — top-right */}
           <button
@@ -234,7 +242,9 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               </motion.span>
             ))}
           </AnimatePresence>
-        </div>
+            </div>
+          );
+        })()}
 
         {/* Info + action buttons */}
         <div className="p-2.5 flex items-start gap-2">
