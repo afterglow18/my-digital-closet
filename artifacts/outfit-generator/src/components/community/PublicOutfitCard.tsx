@@ -157,18 +157,26 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — full-width horizontal chip layout */}
-        <div className="h-36 w-full bg-primary/50 relative flex items-center gap-3 px-4">
-          <Shirt className="w-9 h-9 text-black/20 flex-shrink-0" />
-          {items.length > 0 && (
-            <div className="flex-1 flex flex-wrap gap-1.5 content-center">
-              {items.map((name, i) => (
-                <span key={i}
-                  className="px-2.5 py-1 bg-white/70 rounded-full border border-black/10
-                             text-[10px] font-bold uppercase tracking-wide text-black/60">
+        {/* Preview — equally-spaced item blocks (up to 5, each takes 1/N width) */}
+        <div className="h-36 w-full bg-primary/50 relative flex items-stretch gap-2 px-3 py-3">
+          {(items.length > 0 ? items.slice(0, 5) : [""]).map((name, i) => (
+            <div key={i}
+              className="flex-1 min-w-0 bg-white/60 rounded-xl border border-black/10
+                         flex flex-col items-center justify-center gap-1 px-1 py-2">
+              <Shirt className="w-4 h-4 text-black/20 flex-shrink-0" />
+              {name ? (
+                <p className="text-[8px] font-bold uppercase tracking-wide text-black/50
+                               w-full text-center truncate px-0.5 leading-tight">
                   {name}
-                </span>
-              ))}
+                </p>
+              ) : (
+                <p className="text-[8px] text-black/25 text-center">empty</p>
+              )}
+            </div>
+          ))}
+          {items.length > 5 && (
+            <div className="flex-shrink-0 w-8 flex items-center justify-center">
+              <p className="text-[9px] font-bold text-black/30">+{items.length - 5}</p>
             </div>
           )}
 
