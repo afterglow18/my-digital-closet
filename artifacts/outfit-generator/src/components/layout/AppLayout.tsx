@@ -73,7 +73,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black" },
     { href: "/generate", label: "Generate", icon: Sparkles },
     { href: "/saved", label: "Saved", icon: Bookmark },
-    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-pink-400 text-white" },
+    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-black" : "bg-pink-400 text-black" },
   ];
 
   return (
