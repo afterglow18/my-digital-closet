@@ -53,7 +53,8 @@ function getOutfitThumb(outfit: Outfit): string | null {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function OutfitCalendar({ outfits }: Props) {
-  const [pickingDate, setPickingDate] = useState<string | null>(null);
+  const [pickingDate, setPickingDate]   = useState<string | null>(null);
+  const [previewDate, setPreviewDate]   = useState<string | null>(null);
 
   const { data: calEntries = [] } = useCalendarEntries();
   const setEntry    = useSetCalendarEntry();
@@ -159,7 +160,7 @@ export function OutfitCalendar({ outfits }: Props) {
                 return (
                   <button
                     key={dateStr}
-                    onClick={() => setPickingDate(dateStr)}
+                    onClick={() => entry ? setPreviewDate(dateStr) : setPickingDate(dateStr)}
                     className={`relative flex flex-col items-center rounded-lg border-2 pt-0.5 pb-1 transition-all aspect-[4/5]
                       active:scale-95
                       ${isToday
@@ -226,6 +227,102 @@ export function OutfitCalendar({ outfits }: Props) {
           Today
         </span>
       </div>
+
+      {/* ── Day preview card (tap a filled day) ── */}
+      <AnimatePresence>
+        {previewDate && (() => {
+          const entry = getEntryForDate(previewDate);
+          if (!entry) return null;
+          const { outfit, type } = entry;
+          const itemThumbs = (outfit.items ?? [])
+            .map((i) => ({ item: i, url: getImageUrl(i.imageObjectPath) }))
+            .filter((x) => x.url);
+          const dateLabel = new Date(previewDate + "T12:00:00").toLocaleDateString("en-US", {
+            weekday: "long", month: "long", day: "numeric",
+          });
+          return (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-40"
+                onClick={() => setPreviewDate(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                className="fixed inset-x-6 top-1/2 -translate-y-1/2 z-50 bg-white border-2 border-black
+                           rounded-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
+              >
+                {/* Card header */}
+                <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b-2 border-black">
+                  <div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border-2
+                      ${type === "worn" ? "bg-black text-white border-black" : "bg-white text-black border-black/40"}`}>
+                      {type === "worn" ? "✓ Worn" : "Planned"}
+                    </span>
+                    <p className="text-base font-bold mt-1.5 leading-tight">{dateLabel}</p>
+                    <p className="text-[11px] font-medium text-black/50 uppercase tracking-wide">{outfit.name}</p>
+                  </div>
+                  <button
+                    onClick={() => setPreviewDate(null)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-black/8 shrink-0 mt-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Item thumbnails */}
+                <div className="px-4 py-3">
+                  {itemThumbs.length > 0 ? (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {itemThumbs.map(({ item, url }) => (
+                        <div key={item.id} className="shrink-0 flex flex-col items-center gap-1">
+                          <div className="w-20 h-24 rounded-xl border-2 border-black overflow-hidden
+                                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <img src={url!} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                          <span className="text-[9px] font-bold text-black/40 uppercase max-w-[80px] truncate text-center">
+                            {item.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-24 rounded-xl border-2 border-dashed border-black/20 flex items-center
+                                    justify-center text-xs text-black/30 font-medium">
+                      No item photos
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2 px-4 pb-4">
+                  {type === "planned" && (
+                    <button
+                      onClick={() => { removeEntry.mutate({ date: previewDate }); setPreviewDate(null); }}
+                      className="flex-1 py-2 rounded-lg border-2 border-black/30 text-[11px] font-bold
+                                 uppercase tracking-wide text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setPreviewDate(null); setPickingDate(previewDate); }}
+                    className="flex-1 py-2 rounded-lg border-2 border-black bg-black text-white
+                               text-[11px] font-bold uppercase tracking-wide
+                               shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]
+                               active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
+                  >
+                    Change outfit
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ── Outfit picker bottom sheet ── */}
       <AnimatePresence>
