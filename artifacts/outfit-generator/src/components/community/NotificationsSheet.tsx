@@ -38,10 +38,8 @@ function timeAgo(iso: string): string {
 // ── Notification row ─────────────────────────────────────────────────────────
 
 function NotifRow({ n }: { n: AppNotification }) {
-  const label =
-    n.type === "heart_item"
-      ? `❤️ Your Look Got Some Love`
-      : `❤️ Your Look Got Some Love`;
+  const who   = n.liker_handle ? `@${n.liker_handle}` : "Someone";
+  const label = `❤️ ${who} loved your look`;
 
   return (
     <div
@@ -128,7 +126,7 @@ export function NotificationsSheet({ onClose }: NotificationsSheetProps) {
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5" />
             <h2 className="font-display font-black text-lg uppercase tracking-tight">
-              Notifications
+              Today's Hearts
             </h2>
           </div>
           <button
@@ -152,9 +150,9 @@ export function NotificationsSheet({ onClose }: NotificationsSheetProps) {
                               flex items-center justify-center text-2xl">
                 🔔
               </div>
-              <p className="text-sm font-bold text-black/40">No notifications yet</p>
+              <p className="text-sm font-bold text-black/40">No hearts today yet</p>
               <p className="text-xs text-black/30 text-center max-w-[200px] leading-snug">
-                You'll hear here when someone likes one of your posts.
+                When someone loves your look today, they'll show up here. Resets every midnight!
               </p>
             </div>
           ) : (

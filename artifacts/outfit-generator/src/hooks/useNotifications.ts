@@ -47,6 +47,9 @@ export interface AppNotification {
   post_image_url: string | null;
   read: boolean;
   created_at: string;
+  // Joined liker info (null if join unavailable or liker is anonymous)
+  liker_handle: string | null;
+  liker_privacy_mode: string | null;
 }
 
 export const notifQueryKey = (userId: string) => ["notifications", userId] as const;
@@ -88,14 +91,37 @@ export function useNotifications() {
     queryKey: key,
     queryFn: async (): Promise<AppNotification[]> => {
       if (!user || !isSupabaseConfigured()) return [];
+      // Only show today's notifications — reset at midnight
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+
       const { data, error } = await getSupabase()
         .from("notifications")
-        .select("*")
+        .select(`
+          *,
+          post_likes!like_id (
+            liker_id,
+            profiles!liker_id (
+              handle,
+              privacy_mode
+            )
+          )
+        `)
         .eq("user_id", user.id)
+        .gte("created_at", todayMidnight.toISOString())
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      return (data ?? []) as AppNotification[];
+
+      return ((data ?? []) as any[]).map((n) => {
+        const like    = n.post_likes;
+        const profile = like?.profiles;
+        return {
+          ...n,
+          liker_handle:       (profile?.privacy_mode === "public" ? profile?.handle : null) ?? null,
+          liker_privacy_mode: profile?.privacy_mode ?? null,
+        } as AppNotification;
+      });
     },
     enabled: Boolean(user) && isSupabaseConfigured(),
     staleTime: 1000 * 60,      // Realtime handles instant updates; poll as fallback
