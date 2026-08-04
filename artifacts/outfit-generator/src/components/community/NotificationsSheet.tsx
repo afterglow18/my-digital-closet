@@ -154,7 +154,7 @@ export function NotificationsSheet({ onClose }: NotificationsSheetProps) {
               </div>
               <p className="text-sm font-bold text-black/40">No hearts today yet</p>
               <p className="text-xs text-black/30 text-center max-w-[200px] leading-snug">
-                When someone loves your look today, they'll show up here. Resets every midnight!
+                When someone loves your look today, they'll show up here. Resets at midnight!
               </p>
             </div>
           ) : (
