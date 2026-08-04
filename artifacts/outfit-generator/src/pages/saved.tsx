@@ -30,6 +30,8 @@ import { hasSavedPref, getSharingPref, setSharingPref } from "@/lib/sharingPrefe
 import { useMyProfile } from "@/hooks/useCommunity";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Outfit } from "@/lib/db";
+import { OutfitCalendar } from "@/components/calendar/OutfitCalendar";
+import { CalendarDays, List } from "lucide-react";
 
 const SLOT_ORDER = ["tops", "bottoms", "shoes", "dresses", "outerwear", "accessories"] as const;
 type SlotKey = (typeof SLOT_ORDER)[number];
@@ -99,6 +101,7 @@ export default function SavedPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "worn-asc" | "worn-desc">("newest");
   const [filterVis, setFilterVis] = useState<"all" | "public" | "private">("all");
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
   const { data: allItems = [] } = useListClothing({});
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
@@ -364,6 +367,24 @@ export default function SavedPage() {
         <div className="flex items-center justify-between">
           <p className="font-medium text-muted-foreground text-sm">Hall of fame.</p>
 
+          {/* List / Calendar toggle */}
+          <div className="flex rounded-full border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-2.5 py-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide transition-colors
+                ${viewMode === "list" ? "bg-black text-white" : "bg-white text-black/50 hover:bg-black/5"}`}
+            >
+              <List className="w-3 h-3" /> List
+            </button>
+            <button
+              onClick={() => setViewMode("calendar")}
+              className={`px-2.5 py-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide transition-colors
+                ${viewMode === "calendar" ? "bg-black text-white" : "bg-white text-black/50 hover:bg-black/5"}`}
+            >
+              <CalendarDays className="w-3 h-3" /> Plan
+            </button>
+          </div>
+
           {/* Free tier outfit usage badge */}
           {isFree && outfitCount > 0 && (
             <button
@@ -382,6 +403,10 @@ export default function SavedPage() {
           )}
         </div>
       </header>
+
+      {viewMode === "calendar" ? (
+        <OutfitCalendar outfits={outfits ?? []} />
+      ) : (<>
 
       {/* ── Search bar ── */}
       <div className="relative mb-4">
@@ -906,6 +931,8 @@ export default function SavedPage() {
           </p>
         </div>
       ))}
+
+      </>)}
 
       {/* Upgrade sheet */}
       <AnimatePresence>

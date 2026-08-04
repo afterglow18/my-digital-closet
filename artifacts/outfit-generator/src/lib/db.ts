@@ -233,6 +233,33 @@ export function removeItemFromOutfit(outfitId: number, itemId: number): Outfit |
   return hydrateOutfit(stored[idx]);
 }
 
+// ── Calendar ───────────────────────────────────────────────────────────────────
+export interface CalendarEntry {
+  date: string;      // "YYYY-MM-DD"
+  outfitId: number;  // planned outfit; worn outfits come from outfit.lastWornDate
+}
+
+const CALENDAR_KEY = "mdc_calendar";
+
+export function getCalendarEntries(): CalendarEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(CALENDAR_KEY) ?? "[]") as CalendarEntry[];
+  } catch { return []; }
+}
+
+export function setCalendarEntry(date: string, outfitId: number): void {
+  const entries = getCalendarEntries().filter((e) => e.date !== date);
+  entries.push({ date, outfitId });
+  localStorage.setItem(CALENDAR_KEY, JSON.stringify(entries));
+}
+
+export function removeCalendarEntry(date: string): void {
+  localStorage.setItem(
+    CALENDAR_KEY,
+    JSON.stringify(getCalendarEntries().filter((e) => e.date !== date)),
+  );
+}
+
 // ── Outfit generator (local random pick per category) ─────────────────────────
 export function generateOutfitItems(excludeCategories: string[] = []): ClothingItem[] {
   const items = getAllClothingItems().filter(
