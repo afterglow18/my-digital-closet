@@ -157,47 +157,28 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — 2 tall portraits + accessory strip */}
+        {/* Preview — 2-column vertical stack */}
         {(() => {
-          const slots  = items.map((name, i) => ({ name, url: outfit.item_image_urls?.[i] ?? null }));
-          const main   = slots.slice(0, 2);
-          const extras = slots.slice(2, 7);
+          const slots = items.slice(0, 8).map((name, i) => ({
+            name, url: outfit.item_image_urls?.[i] ?? null,
+          }));
 
           return (
             <div className="w-full relative overflow-hidden"
               style={{ background: "rgba(255,255,255,0.18)" }}>
-
-              {/* Two tall portrait photos */}
-              <div className="flex gap-1.5 p-2.5 pb-1.5">
-                {main.map(({ name, url }, i) => (
-                  <div key={i} className="flex-1 rounded-2xl overflow-hidden"
-                    style={{ aspectRatio: "2/3" }}>
+              <div className="grid grid-cols-2 gap-1.5 p-2.5">
+                {slots.map(({ name, url }, i) => (
+                  <div key={i} className="aspect-square rounded-2xl overflow-hidden">
                     {url
                       ? <img src={url} alt={name} className="w-full h-full object-cover" />
                       : <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-white/40">
-                          <Shirt className="w-6 h-6 text-black/20" />
-                          <p className="text-[8px] font-bold uppercase text-black/35 text-center px-1 truncate w-full">{name}</p>
+                          <Shirt className="w-5 h-5 text-black/20" />
+                          <p className="text-[7px] font-bold uppercase text-black/35 text-center px-1 truncate w-full">{name}</p>
                         </div>
                     }
                   </div>
                 ))}
               </div>
-
-              {/* Accessory strip */}
-              {extras.length > 0 && (
-                <div className="flex gap-1.5 px-2.5 pb-2.5">
-                  {extras.map(({ name, url }, i) => (
-                    <div key={i} className="flex-1 aspect-square rounded-xl overflow-hidden">
-                      {url
-                        ? <img src={url} alt={name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center bg-white/40">
-                            <Shirt className="w-3.5 h-3.5 text-black/20" />
-                          </div>
-                      }
-                    </div>
-                  ))}
-                </div>
-              )}
 
           {/* More (⋯) button — top-right */}
           <button
