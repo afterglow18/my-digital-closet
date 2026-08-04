@@ -86,7 +86,7 @@ export async function uploadAvatar(uid: string, file: File | Blob): Promise<stri
     );
 
     const sb   = getSupabase();
-    const path = `avatars/${uid}.jpg`;
+    const path = `${uid}/avatar.jpg`;   // must be under uid/ to match bucket RLS policy
     const { error: upErr } = await sb.storage.from(ITEMS_BUCKET).upload(path, blob, {
       contentType: "image/jpeg",
       upsert: true,
@@ -347,7 +347,7 @@ export async function deleteAccountStorage(uid: string): Promise<void> {
     const { data: files } = await sb.storage.from(ITEMS_BUCKET).list(uid);
     const itemPaths = (files ?? []).map((f) => `${uid}/${f.name}`);
     // Also remove avatar
-    const allPaths = [...itemPaths, `avatars/${uid}.jpg`];
+    const allPaths = [...itemPaths, `${uid}/avatar.jpg`];
     if (allPaths.length) await sb.storage.from(ITEMS_BUCKET).remove(allPaths);
   } catch (e) {
     console.error("[sync] deleteAccountStorage error:", e);
