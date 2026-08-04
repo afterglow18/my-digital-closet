@@ -114,10 +114,15 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
         if (fallback) setTimeout(() => open(fallback), 800);
       }, 1200);
     } else {
-      // For apps that accept pre-filled text: open directly.
-      await open(primary);
-      // Fallback (e.g. X web intent) fires only if the app isn't installed.
-      if (fallback) setTimeout(() => open(fallback), 800);
+      // Copy to clipboard so the user has the text as a backup, and show
+      // a brief "✓ Copied" confirmation on the button before opening.
+      try { await navigator.clipboard.writeText(text); } catch {}
+      setCopiedApp(app.name);
+      setTimeout(async () => {
+        setCopiedApp(null);
+        await open(primary);
+        if (fallback) setTimeout(() => open(fallback), 800);
+      }, 800);
     }
   }
 
