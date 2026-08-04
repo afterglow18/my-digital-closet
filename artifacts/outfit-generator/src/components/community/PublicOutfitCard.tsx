@@ -210,15 +210,6 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               </motion.div>
             </button>
 
-            <button
-              onClick={handleCopyLink}
-              aria-label="Copy link"
-              className="w-8 h-8 rounded-full bg-white border-2 border-black
-                         flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
-                         active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
-            >
-              <span className="text-sm leading-none">✈️</span>
-            </button>
           </div>
         </div>
       </motion.div>
