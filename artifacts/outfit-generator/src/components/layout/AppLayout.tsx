@@ -6,14 +6,29 @@ import { useGetWardrobeStats } from "@/lib/local-api";
 import { useUnreadNotifCount } from "@/hooks/useNotifications";
 import { getDiscoverFavorites } from "@/lib/discoverFavorites";
 
+const BADGE_SEEN_KEY = "discover-badge-seen-count";
+
+function getSeenCount() {
+  return parseInt(localStorage.getItem(BADGE_SEEN_KEY) ?? "0", 10);
+}
+
 function useDiscoverFavoritesCount() {
-  const [count, setCount] = useState(() => getDiscoverFavorites().length);
+  const [count,    setCount]    = useState(() => getDiscoverFavorites().length);
+  const [seenCount, setSeenCount] = useState(() => getSeenCount());
+
   useEffect(() => {
     const update = () => setCount(getDiscoverFavorites().length);
     window.addEventListener("discoverFavoritesChanged", update);
     return () => window.removeEventListener("discoverFavoritesChanged", update);
   }, []);
-  return count;
+
+  const resetBadge = () => {
+    const current = getDiscoverFavorites().length;
+    localStorage.setItem(BADGE_SEEN_KEY, String(current));
+    setSeenCount(current);
+  };
+
+  return { badgeCount: Math.max(0, count - seenCount), resetBadge };
 }
 
 interface AppLayoutProps {
@@ -42,14 +57,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         .reduce((sum: number, c: { count: number }) => sum + c.count, 0)
     : undefined;
 
-  const unreadNotifCount      = useUnreadNotifCount();
-  const discoverFavoritesCount = useDiscoverFavoritesCount();
+  const unreadNotifCount                        = useUnreadNotifCount();
+  const { badgeCount: heartBadge, resetBadge }  = useDiscoverFavoritesCount();
 
   const navItems = [
-    { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black" },
-    { href: "/generate", label: "Generate", icon: Sparkles },
-    { href: "/saved", label: "Saved", icon: Bookmark },
-    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || discoverFavoritesCount || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-secondary text-black" },
+    { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black", onTap: undefined as (() => void) | undefined },
+    { href: "/generate", label: "Generate", icon: Sparkles, onTap: undefined as (() => void) | undefined },
+    { href: "/saved", label: "Saved", icon: Bookmark, onTap: undefined as (() => void) | undefined },
+    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-secondary text-black", onTap: resetBadge },
   ];
 
   return (
@@ -80,7 +95,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 const Icon = item.icon;
                 return (
                   <li key={item.href} className="relative">
-                    <Link href={item.href} className="flex flex-col items-center gap-1 group">
+                    <Link href={item.href} onClick={() => item.onTap?.()} className="flex flex-col items-center gap-1 group">
                       <div
                         className={cn(
                           "p-2.5 rounded-full border-2 transition-all duration-200 ease-spring relative",
