@@ -157,39 +157,56 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — 2-column vertical stack, sorted tops → bottoms → shoes → rest */}
+        {/* Preview — main 2-col stack (tops/bottoms/shoes) + side column of 5 accessories */}
         {(() => {
+          const ACC_CATS = new Set(["accessories", "bags", "jewellery", "hats", "jewelry"]);
           const CAT_ORDER: Record<string, number> = {
-            tops: 0, dresses: 0,
-            bottoms: 1,
-            shoes: 2,
-            outerwear: 3,
-            accessories: 4, bags: 4, jewellery: 4, hats: 4,
+            tops: 0, dresses: 0, bottoms: 1, shoes: 2, outerwear: 3,
           };
           const raw = items.map((name, i) => ({
             name,
-            url: outfit.item_image_urls?.[i] ?? null,
-            cat: outfit.item_categories?.[i] ?? null,
+            url:  outfit.item_image_urls?.[i]  ?? null,
+            cat:  outfit.item_categories?.[i]  ?? null,
           }));
-          const slots = [...raw]
+          const mainItems = raw
+            .filter((s) => !ACC_CATS.has(s.cat ?? ""))
             .sort((a, b) => (CAT_ORDER[a.cat ?? ""] ?? 5) - (CAT_ORDER[b.cat ?? ""] ?? 5))
-            .slice(0, 8);
+            .slice(0, 6);
+          const accItems = raw
+            .filter((s) => ACC_CATS.has(s.cat ?? ""))
+            .slice(0, 5);
+
+          const ItemBox = ({ name, url, round }: { name: string; url: string | null; round: string }) => (
+            <div className={`aspect-square ${round} overflow-hidden`}>
+              {url
+                ? <img src={url} alt={name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-white/40">
+                    <Shirt className="w-4 h-4 text-black/20" />
+                    <p className="text-[6px] font-bold uppercase text-black/30 text-center px-0.5 truncate w-full">{name}</p>
+                  </div>
+              }
+            </div>
+          );
 
           return (
             <div className="w-full relative overflow-hidden"
               style={{ background: "rgba(255,255,255,0.18)" }}>
-              <div className="grid grid-cols-2 gap-1.5 p-2.5">
-                {slots.map(({ name, url }, i) => (
-                  <div key={i} className="aspect-square rounded-2xl overflow-hidden">
-                    {url
-                      ? <img src={url} alt={name} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-white/40">
-                          <Shirt className="w-5 h-5 text-black/20" />
-                          <p className="text-[7px] font-bold uppercase text-black/35 text-center px-1 truncate w-full">{name}</p>
-                        </div>
-                    }
+              <div className="flex gap-1.5 p-2.5">
+                {/* Main outfit pieces — 2-col grid */}
+                <div className="flex-1 grid grid-cols-2 gap-1.5">
+                  {mainItems.map((s, i) => (
+                    <ItemBox key={i} {...s} round="rounded-2xl" />
+                  ))}
+                </div>
+
+                {/* Accessory side column — up to 5 stacked */}
+                {accItems.length > 0 && (
+                  <div className="flex flex-col gap-1.5" style={{ width: "28%" }}>
+                    {accItems.map((s, i) => (
+                      <ItemBox key={i} {...s} round="rounded-xl" />
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
 
           {/* More (⋯) button — top-right */}
