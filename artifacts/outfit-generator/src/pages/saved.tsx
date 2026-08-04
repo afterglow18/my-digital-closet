@@ -97,6 +97,7 @@ export default function SavedPage() {
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<"date" | "alpha">("date");
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
   const { data: allItems = [] } = useListClothing({});
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
@@ -116,6 +117,20 @@ export default function SavedPage() {
     if (!searchQuery.trim()) return null;
     return searchFn(searchQuery, allItems, outfits ?? []);
   }, [searchQuery, allItems, outfits]);
+
+  // Sorted outfits list
+  const sortedOutfits = useMemo(() => {
+    const list = [...(outfits ?? [])];
+    if (sortBy === "alpha") {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Newest first
+      list.sort((a, b) =>
+        (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+      );
+    }
+    return list;
+  }, [outfits, sortBy]);
 
   // Remembers the outfit date before "Wearing Today" so Undo can restore it.
   const prevWornDatesRef = useRef<Map<number, string | null>>(new Map());
@@ -355,6 +370,26 @@ export default function SavedPage() {
         )}
       </div>
 
+      {/* ── Sort toggle (hidden during search) ── */}
+      {!searchQuery && (
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-[10px] font-bold uppercase text-black/40 tracking-wide">Sort</span>
+          <div className="flex rounded-full border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            {(["date", "alpha"] as const).map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setSortBy(opt)}
+                className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                  sortBy === opt ? "bg-black text-white" : "bg-white text-black/50 hover:bg-black/5"
+                }`}
+              >
+                {opt === "date" ? "Newest" : "A–Z"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Search results ── */}
       {searchResults && (
         <div className="flex flex-col gap-6">
@@ -471,9 +506,9 @@ export default function SavedPage() {
             <div key={i} className="h-52 bg-muted animate-pulse border-2 border-black rounded-xl" />
           ))}
         </div>
-      ) : outfits && outfits.length > 0 ? (
+      ) : sortedOutfits.length > 0 ? (
         <div className="flex flex-col gap-6">
-          {outfits.map((outfit) => {
+          {sortedOutfits.map((outfit) => {
             // Group items by category for structured display
             const byCategory = (outfit.items ?? []).reduce<Partial<Record<SlotKey, ClothingItem>>>(
               (acc, item) => {
