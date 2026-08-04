@@ -97,7 +97,7 @@ export default function SavedPage() {
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<"date" | "alpha">("date");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "worn-asc" | "worn-desc">("newest");
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
   const { data: allItems = [] } = useListClothing({});
   const [wornTodayIds, setWornTodayIds] = useState<Set<number>>(new Set());
@@ -121,15 +121,42 @@ export default function SavedPage() {
   // Sorted outfits list — computed inline so sortBy state always triggers a fresh sort
   const sortedOutfits = (() => {
     const list = [...(outfits ?? [])];
-    if (sortBy === "alpha") {
-      list.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      // Newest first — use createdAt when available, fall back to id
-      // (id is a global auto-increment, so higher id = created later)
-      list.sort((a, b) => {
-        if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
-        return b.id - a.id;
-      });
+    switch (sortBy) {
+      case "az":
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "za":
+        list.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "oldest":
+        list.sort((a, b) => {
+          if (a.createdAt && b.createdAt) return a.createdAt.localeCompare(b.createdAt);
+          return a.id - b.id;
+        });
+        break;
+      case "worn-asc":
+        // Oldest worn first; never-worn outfits go to the end
+        list.sort((a, b) => {
+          if (!a.lastWornDate && !b.lastWornDate) return 0;
+          if (!a.lastWornDate) return 1;
+          if (!b.lastWornDate) return -1;
+          return a.lastWornDate.localeCompare(b.lastWornDate);
+        });
+        break;
+      case "worn-desc":
+        // Most recently worn first; never-worn outfits go to the end
+        list.sort((a, b) => {
+          if (!a.lastWornDate && !b.lastWornDate) return 0;
+          if (!a.lastWornDate) return 1;
+          if (!b.lastWornDate) return -1;
+          return b.lastWornDate.localeCompare(a.lastWornDate);
+        });
+        break;
+      default: // "newest"
+        list.sort((a, b) => {
+          if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
+          return b.id - a.id;
+        });
     }
     return list;
   })();
@@ -372,22 +399,27 @@ export default function SavedPage() {
         )}
       </div>
 
-      {/* ── Sort toggle (hidden during search) ── */}
+      {/* ── Sort dropdown (hidden during search) ── */}
       {!searchQuery && (
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-[10px] font-bold uppercase text-black/40 tracking-wide">Sort</span>
-          <div className="flex rounded-full border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            {(["date", "alpha"] as const).map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setSortBy(opt)}
-                className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                  sortBy === opt ? "bg-black text-white" : "bg-white text-black/50 hover:bg-black/5"
-                }`}
-              >
-                {opt === "date" ? "Newest" : "A–Z"}
-              </button>
-            ))}
+          <span className="text-[10px] font-bold uppercase text-black/40 tracking-wide shrink-0">Sort</span>
+          <div className="relative flex-1">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-full appearance-none bg-white border-2 border-black rounded-lg
+                         px-3 py-1.5 pr-7 text-[11px] font-bold uppercase tracking-wide text-black
+                         shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                         focus:outline-none focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+              <option value="worn-desc">Last worn: newest first</option>
+              <option value="worn-asc">Last worn: oldest first</option>
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-black/50">▾</span>
           </div>
         </div>
       )}
