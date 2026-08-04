@@ -220,7 +220,7 @@ export default function ProfileMePage() {
                   <button
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={avatarUploading}
-                    className="w-16 h-16 rounded-full border-4 border-black bg-primary flex items-center justify-center
+                    className="w-20 h-20 rounded-full border-4 border-black bg-primary flex items-center justify-center
                                shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden relative"
                   >
                     {profile?.avatar_url ? (
