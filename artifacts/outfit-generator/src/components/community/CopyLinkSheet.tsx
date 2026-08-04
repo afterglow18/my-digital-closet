@@ -95,23 +95,23 @@ export function CopyLinkSheet({ open, onClose, url }: Props) {
   const getValue = (name: string) =>
     values[name] !== undefined ? values[name] : defaultText;
 
-  // App.openUrl resolves (never rejects) on iOS — check `completed` flag.
-  // Fall back to window.open(_system) which calls UIApplication.shared.open directly.
-  async function tryOpen(url: string): Promise<boolean> {
-    try {
-      const { completed } = await App.openUrl({ url });
-      if (completed) return true;
-    } catch {}
-    try {
-      window.open(url, "_system");
-      return true;
-    } catch {}
-    return false;
-  }
-
+  // On iOS, App.openUrl always resolves (never throws) and `completed` is
+  // unreliable without LSApplicationQueriesSchemes entries. Instead we watch
+  // whether the page goes hidden — if the user switched to another app the
+  // URL opened; if the page stays visible after 1.5 s the app isn't installed.
   async function openWithFallback(primary: string, fallback: string | null) {
-    const ok = await tryOpen(primary);
-    if (!ok && fallback) await tryOpen(fallback);
+    let appOpened = false;
+    const onVisibilityChange = () => { if (document.hidden) appOpened = true; };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    try { await App.openUrl({ url: primary }); } catch {}
+
+    await new Promise<void>(resolve => setTimeout(resolve, 1500));
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+
+    if (!appOpened && fallback) {
+      try { await App.openUrl({ url: fallback }); } catch {}
+    }
   }
 
   async function handleShare(app: (typeof APPS)[number], text: string) {
