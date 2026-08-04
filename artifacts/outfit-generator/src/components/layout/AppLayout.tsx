@@ -64,7 +64,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/", label: "Wardrobe", icon: Shirt, badge: wardrobeCount, badgeClass: "bg-secondary text-black", onTap: undefined as (() => void) | undefined },
     { href: "/generate", label: "Generate", icon: Sparkles, onTap: undefined as (() => void) | undefined },
     { href: "/saved", label: "Saved", icon: Bookmark, onTap: undefined as (() => void) | undefined },
-    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-secondary text-black", onTap: resetBadge },
+    { href: "/community", label: "Discover", icon: Globe, badge: unreadNotifCount || heartBadge || undefined, badgeClass: unreadNotifCount ? "bg-red-500 text-white" : "bg-pink-400 text-white", onTap: resetBadge },
   ];
 
   return (
