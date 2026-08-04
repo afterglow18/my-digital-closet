@@ -165,20 +165,27 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             cat: (outfit.item_categories?.[i] ?? "").toLowerCase(),
           }));
 
-          const pick = (cats: string[]) => {
-            const found = raw.find((s) => cats.includes(s.cat));
-            return found ?? null;
-          };
+          // Find each category
+          const dressItem  = raw.find((s) => s.cat === "dresses") ?? null;
+          const topItem    = raw.find((s) => s.cat === "tops")    ?? null;
+          const bottomItem = raw.find((s) => s.cat === "bottoms") ?? null;
+          const shoesSlot  = raw.find((s) => s.cat === "shoes")   ?? null;
 
-          const topSlot    = pick(["tops", "dresses"]);
-          const bottomSlot = pick(["bottoms"]);
-          const shoesSlot  = pick(["shoes"]);
+          // Dress takes both top+bottom slots; displaced item gets kicked to extras
+          const isDress   = !!dressItem;
+          const topSlot   = isDress ? dressItem : topItem;
+          const bottomSlot = isDress ? null      : bottomItem;
+          const kickedOut  = isDress ? (topItem ?? bottomItem) : null;
 
-          const usedNames  = new Set([topSlot?.name, bottomSlot?.name, shoesSlot?.name].filter(Boolean));
-          const extraItems = raw.filter((s) => !usedNames.has(s.name));
-          // pad to 5 slots
+          const usedNames = new Set(
+            [topSlot?.name, bottomSlot?.name, shoesSlot?.name].filter(Boolean),
+          );
+          const extraItems = [
+            ...(kickedOut ? [kickedOut] : []),
+            ...raw.filter((s) => !usedNames.has(s.name) && s.name !== kickedOut?.name),
+          ].slice(0, 5);
           const extraSlots: (typeof raw[0] | null)[] = [
-            ...extraItems.slice(0, 5),
+            ...extraItems,
             ...Array(Math.max(0, 5 - extraItems.length)).fill(null),
           ];
 
