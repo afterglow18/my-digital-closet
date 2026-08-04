@@ -142,25 +142,28 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
         fetchSafeProfiles(sb, userIds),
         userIds.length
           ? sb.from("public_items")
-              .select("user_id, name, image_url")
+              .select("user_id, name, image_url, category")
               .in("user_id", userIds)
               .eq("status", "active")
           : Promise.resolve({ data: [] as { user_id: string; name: string; image_url: string | null }[] }),
       ]);
 
-      // Build lookup with lowercase keys to handle case mismatches between outfit item_names and public_items.name
+      type ItemRow = { user_id: string; name: string; image_url: string | null; category: string | null };
+      const itemRows = ((itemsRes as { data: ItemRow[] }).data ?? []);
+
+      // Lowercase-keyed lookups for image and category
       const imgMap = new Map<string, string>(
-        ((itemsRes as { data: { user_id: string; name: string; image_url: string | null }[] }).data ?? [])
-          .filter((r) => r.image_url)
-          .map((r) => [`${r.user_id}:${r.name.toLowerCase()}`, r.image_url!]),
+        itemRows.filter((r) => r.image_url).map((r) => [`${r.user_id}:${r.name.toLowerCase()}`, r.image_url!]),
+      );
+      const catMap = new Map<string, string>(
+        itemRows.filter((r) => r.category).map((r) => [`${r.user_id}:${r.name.toLowerCase()}`, r.category!]),
       );
 
       return posts.map((outfit) => ({
         ...outfit,
-        profiles: profileMap[outfit.user_id],
-        item_image_urls: (outfit.item_names ?? []).map(
-          (n) => imgMap.get(`${outfit.user_id}:${n.toLowerCase()}`) ?? null,
-        ),
+        profiles:        profileMap[outfit.user_id],
+        item_image_urls: (outfit.item_names ?? []).map((n) => imgMap.get(`${outfit.user_id}:${n.toLowerCase()}`) ?? null),
+        item_categories: (outfit.item_names ?? []).map((n) => catMap.get(`${outfit.user_id}:${n.toLowerCase()}`) ?? null),
       }));
     },
     initialPageParam: null as string | null,

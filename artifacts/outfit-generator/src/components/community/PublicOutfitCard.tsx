@@ -157,11 +157,23 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         className="group flex flex-col bg-primary rounded-2xl border-2 border-black overflow-hidden
                    shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
       >
-        {/* Preview — 2-column vertical stack */}
+        {/* Preview — 2-column vertical stack, sorted tops → bottoms → shoes → rest */}
         {(() => {
-          const slots = items.slice(0, 8).map((name, i) => ({
-            name, url: outfit.item_image_urls?.[i] ?? null,
+          const CAT_ORDER: Record<string, number> = {
+            tops: 0, dresses: 0,
+            bottoms: 1,
+            shoes: 2,
+            outerwear: 3,
+            accessories: 4, bags: 4, jewellery: 4, hats: 4,
+          };
+          const raw = items.map((name, i) => ({
+            name,
+            url: outfit.item_image_urls?.[i] ?? null,
+            cat: outfit.item_categories?.[i] ?? null,
           }));
+          const slots = [...raw]
+            .sort((a, b) => (CAT_ORDER[a.cat ?? ""] ?? 5) - (CAT_ORDER[b.cat ?? ""] ?? 5))
+            .slice(0, 8);
 
           return (
             <div className="w-full relative overflow-hidden"
