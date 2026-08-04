@@ -406,30 +406,8 @@ export default function GeneratePage() {
 
                   {/* Clothing carousel — or disabled placeholder when dress covers this row */}
                   {isDisabledByDress ? (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: carTop, left: carLeft, right: carRight,
-                        height: carH, zIndex: 10,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(0,0,0,0.08)",
-                        borderRadius: 12,
-                      }}
-                    >
-                      <span style={{
-                        fontSize: Math.max(10, pW(ir, 0.045)),
-                        fontWeight: 700,
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase",
-                        color: "rgba(0,0,0,0.35)",
-                        textAlign: "center",
-                        padding: "0 8px",
-                      }}>
-                        Dress covers both slots
-                      </span>
-                    </div>
+                    /* Bottoms area hidden — dress spans this space from above */
+                    <div style={{ position: "absolute", top: carTop, left: carLeft, right: carRight, height: carH, zIndex: 10 }} />
                   ) : items.length > 0 ? (
                     <div
                       style={{

@@ -428,33 +428,8 @@ export default function WardrobePage() {
 
                 {isDisabledByDress ? (
                   /* Bottoms row — dimmed placeholder when a dress covers both slots */
-                  <div
-                    style={{
-                      position: "absolute",
-                      top:    carTop,
-                      left:   carLeft,
-                      right:  carRight,
-                      height: carH,
-                      zIndex: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(0,0,0,0.08)",
-                      borderRadius: 12,
-                    }}
-                  >
-                    <span style={{
-                      fontSize: Math.max(10, pW(ir, 0.045)),
-                      color: "rgba(0,0,0,0.35)",
-                      fontWeight: 700,
-                      letterSpacing: "0.05em",
-                      textTransform: "uppercase",
-                      textAlign: "center",
-                      padding: "0 8px",
-                    }}>
-                      Dress covers both slots
-                    </span>
-                  </div>
+                  {/* Bottoms area hidden — dress spans this space from above */}
+                  <div style={{ position: "absolute", top: carTop, left: carLeft, right: carRight, height: carH, zIndex: 10 }} />
                 ) : (
                   /* ClosetRow — clothing photos, guaranteed to start below button */
                   items.length > 0 && (
