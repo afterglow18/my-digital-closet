@@ -28,8 +28,7 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import { NotificationsSheet } from "@/components/community/NotificationsSheet";
 import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
-import { APP_STORE_URL } from "@/lib/share";
-import { CopyLinkSheet } from "@/components/community/CopyLinkSheet";
+import { shareContent } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -259,9 +258,9 @@ export default function CommunityPage() {
             )}
             <button
               onClick={() => {
-                navigator.clipboard.writeText(APP_STORE_URL).then(() => {
-                  setCopied(true);
-                });
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2500);
+                setTimeout(() => shareContent(), 400);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                          text-xs font-bold uppercase tracking-wide bg-primary
@@ -431,7 +430,11 @@ export default function CommunityPage() {
         )}
       </AnimatePresence>
 
-      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} url={APP_STORE_URL} />
+      {copied && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] bg-black text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-xl whitespace-nowrap">
+          🔗 Link Copied! Paste to Post.
+        </div>
+      )}
 
       {/* Post-sign-in nudge */}
       <AnimatePresence>

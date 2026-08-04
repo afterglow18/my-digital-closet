@@ -18,8 +18,7 @@ import { isBlocked, blockUser } from "@/lib/blockedUsers";
 import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
-import { APP_STORE_URL } from "@/lib/share";
-import { CopyLinkSheet } from "@/components/community/CopyLinkSheet";
+import { shareContent } from "@/lib/share";
 import { changePrivacyMode } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
@@ -94,10 +93,10 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(APP_STORE_URL).then(() => {
-      setCopied(true);
-    });
     setShowMenu(false);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => shareContent(), 400);
   };
 
   const handleFollow = async (e: React.MouseEvent) => {
@@ -137,7 +136,11 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
         </div>
       )}
 
-      <CopyLinkSheet open={copied} onClose={() => setCopied(false)} url={APP_STORE_URL} />
+      {copied && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] bg-black text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-xl whitespace-nowrap">
+          🔗 Link Copied! Paste to Post.
+        </div>
+      )}
 
       {/* ── Card body ── */}
       <motion.div

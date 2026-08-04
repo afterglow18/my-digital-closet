@@ -91,32 +91,27 @@ export function buildOutfitShareText(
  *
  * Swallows "cancelled" errors silently — the user tapped away.
  */
+/** Pre-built share message — copied to clipboard before the native sheet opens. */
+export const SHARE_TEXT = `✨ Love This App!\nCheck Out My Digital Closet:\n${APP_STORE_URL}`;
+
 export async function shareContent(
-  url: string,
-  text: string,
+  url: string = APP_STORE_URL,
+  _text: string = SHARE_TEXT,
   title = "My Digital Closet",
 ): Promise<void> {
-  // Pass only the url field — no text, no title — so every destination
-  // (including Facebook) receives a clean, clickable link and nothing else.
+  // Copy text to clipboard so users can paste into Facebook, Instagram, etc.
+  try { await navigator.clipboard.writeText(SHARE_TEXT); } catch {}
+
+  // Open the native iOS share sheet.
   try {
-    await Share.share({ url });
+    await Share.share({ text: SHARE_TEXT, dialogTitle: title });
     return;
   } catch {
-    // Share cancelled or Capacitor not available on this platform
+    // Cancelled or not available
   }
 
   // Web Share API fallback
   if (typeof navigator !== "undefined" && navigator.share) {
-    try {
-      await navigator.share({ url });
-      return;
-    } catch {
-      // User dismissed
-    }
+    try { await navigator.share({ url }); return; } catch {}
   }
-
-  // Last resort: copy to clipboard
-  try {
-    await navigator.clipboard.writeText(url);
-  } catch {}
 }
