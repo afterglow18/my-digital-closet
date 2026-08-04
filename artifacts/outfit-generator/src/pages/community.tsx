@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Link, Users, Heart, X } from "lucide-react";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Share2, Users, Heart, X } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
@@ -260,7 +260,6 @@ export default function CommunityPage() {
               onClick={() => {
                 navigator.clipboard.writeText(APP_STORE_URL).then(() => {
                   setCopied(true);
-                  setTimeout(() => setCopied(false), 3500);
                 });
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
@@ -268,8 +267,8 @@ export default function CommunityPage() {
                          shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                          active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
             >
-              <Link className="w-3.5 h-3.5" />
-              Copy Link
+              <Share2 className="w-3.5 h-3.5" />
+              SHARE
             </button>
           </div>
         </div>
@@ -431,23 +430,25 @@ export default function CommunityPage() {
         )}
       </AnimatePresence>
 
-      {/* Copy link confirmation toast */}
-      <AnimatePresence>
-        {copied && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-24 left-4 right-4 z-50 bg-black text-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3"
-          >
-            <Link className="shrink-0 w-5 h-5 text-white/70" />
-            <p className="text-sm leading-snug">
-              Link copied — paste it into Facebook, Messages, or anywhere you'd like to share it.
+      {/* Copy-link popup */}
+      {copied && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCopied(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl px-6 py-5 w-full max-w-xs text-center">
+            <p className="text-base font-bold text-black mb-1">Link copied</p>
+            <p className="text-sm text-black/60 leading-snug mb-4">
+              Paste the copied link into Facebook, Messages, Mail, or any other app to share.
             </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <button
+              onClick={() => setCopied(false)}
+              className="w-full py-2 rounded-xl bg-black text-white text-sm font-bold
+                         active:opacity-80 transition-opacity"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Post-sign-in nudge */}
       <AnimatePresence>

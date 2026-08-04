@@ -137,11 +137,23 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
         </div>
       )}
 
-      {/* Copied toast */}
+      {/* Copy-link popup */}
       {copied && (
-        <div className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full z-50 w-64 text-center
-                        bg-black text-white text-[11px] font-semibold px-3 py-2 rounded-xl shadow-lg leading-snug">
-          Link copied — paste it into Facebook, Messages, or anywhere you'd like to share it.
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-8" onClick={e => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative bg-white rounded-2xl shadow-2xl px-6 py-5 w-full max-w-xs text-center">
+            <p className="text-base font-bold text-black mb-1">Link copied</p>
+            <p className="text-sm text-black/60 leading-snug mb-4">
+              Paste the copied link into Facebook, Messages, Mail, or any other app to share.
+            </p>
+            <button
+              onClick={() => setCopied(false)}
+              className="w-full py-2 rounded-xl bg-black text-white text-sm font-bold
+                         active:opacity-80 transition-opacity"
+            >
+              OK
+            </button>
+          </div>
         </div>
       )}
 
@@ -232,7 +244,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                          flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
                          active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
             >
-              <span className="text-sm leading-none">🔗</span>
+              <span className="text-sm leading-none">✈️</span>
             </button>
           </div>
         </div>
