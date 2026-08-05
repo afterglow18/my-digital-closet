@@ -221,17 +221,6 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             </button>
           )}
 
-          {/* Avatar — bottom-left */}
-          {!isAnonymous && handle && (
-            <button
-              onClick={handleProfileTap}
-              className="absolute bottom-2 left-2 w-6 h-6 rounded-full bg-primary border-2 border-black
-                         flex items-center justify-center shadow-sm"
-              style={{ fontFamily: "'Dancing Script', cursive", fontSize: "0.85rem", lineHeight: 1 }}
-            >
-              {handle[0]}
-            </button>
-          )}
 
           {/* Heart burst */}
           <AnimatePresence>
@@ -269,8 +258,19 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             )}
           </div>
 
-          {/* Heart + Share stacked */}
-          <div className="flex flex-col gap-1.5 flex-shrink-0">
+          {/* Avatar + Heart stacked */}
+          <div className="flex flex-col gap-1.5 flex-shrink-0 items-center">
+            {!isAnonymous && handle && (
+              <button
+                onClick={handleProfileTap}
+                className="w-8 h-8 rounded-full bg-primary border-2 border-black
+                           flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+                style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1rem", lineHeight: 1 }}
+              >
+                {handle[0]}
+              </button>
+            )}
             <button
               onClick={handleHeart}
               disabled={heartSyncing}
@@ -287,7 +287,6 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                 <Heart className={cn("w-3.5 h-3.5 transition-colors", hearted ? "fill-red-500 text-red-500" : "text-black/40")} />
               </motion.div>
             </button>
-
           </div>
         </div>
       </motion.div>
