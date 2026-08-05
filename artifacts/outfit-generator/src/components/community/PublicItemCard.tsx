@@ -217,7 +217,7 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
               className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm
                          flex items-center justify-center active:scale-90 transition-transform"
             >
-              <MoreHorizontal className="w-3.5 h-3.5 text-white" />
+              <span className="text-sm leading-none">✨</span>
             </button>
           )}
 
