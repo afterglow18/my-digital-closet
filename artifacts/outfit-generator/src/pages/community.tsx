@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Users, Heart, X, Plane } from "lucide-react";
+import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Users, Heart, X, Plane, Plus, Check } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
@@ -30,9 +30,12 @@ import { PublicItemCard } from "@/components/community/PublicItemCard";
 import { PublicOutfitCard } from "@/components/community/PublicOutfitCard";
 import { shareContent, SHARE_TEXT } from "@/lib/share";
 import { CLOTHING_CATEGORIES } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { cn, getImageUrl } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { useUnreadNotifCount, useHeartNotifsEnabled } from "@/hooks/useNotifications";
+import { useListOutfits, useRenameOutfit, getListOutfitsQueryKey } from "@/lib/local-api";
+import { publishOutfit, unpublishOutfit } from "@/lib/sync";
+import { useQueryClient } from "@tanstack/react-query";
 
 type FeedTab = "items" | "outfits" | "following";
 
@@ -55,10 +58,16 @@ function getScrollContainer(): HTMLElement | null {
 export default function CommunityPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate]        = useLocation();
-  const [showAuth,    setShowAuth]    = useState(false);
-  const [showNotifs,  setShowNotifs]  = useState(false);
-  const [copied,      setCopied]      = useState(false);
-  const [showNudge,   setShowNudge]   = useState(false);
+  const [showAuth,         setShowAuth]         = useState(false);
+  const [showNotifs,       setShowNotifs]       = useState(false);
+  const [copied,           setCopied]           = useState(false);
+  const [showNudge,        setShowNudge]        = useState(false);
+  const [showLookbookPicker, setShowLookbookPicker] = useState(false);
+  const [togglingId,       setTogglingId]       = useState<number | null>(null);
+
+  const queryClient  = useQueryClient();
+  const renameOutfit = useRenameOutfit();
+  const { data: localOutfits = [] } = useListOutfits();
   const unreadCount = useUnreadNotifCount();
   const [heartNotifsEnabled] = useHeartNotifsEnabled();
   const setAboveNav = useContext(AboveNavSlotContext);
@@ -181,6 +190,7 @@ export default function CommunityPage() {
 
   // ── Above-nav bar ──────────────────────────────────────────────────────────
   useEffect(() => {
+    // Only show the bar for unauthenticated users — signed-in users share via the in-feed + tile
     setAboveNav(
       !user ? (
         <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
@@ -198,31 +208,7 @@ export default function CommunityPage() {
             Add Items
           </button>
         </div>
-      ) : (
-        <div className="bg-white/95 border-t border-black/10 px-4 py-2 flex items-center gap-2">
-          <p className="flex-1 text-[11px] font-bold text-black/40 uppercase tracking-wide">
-            Ready to share?
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-xl
-                       bg-primary text-[11px] font-bold uppercase tracking-wide
-                       shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-          >
-            <Shirt className="w-3 h-3" /> Items
-          </button>
-          <button
-            onClick={() => navigate("/saved")}
-            className="flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-xl
-                       bg-white text-[11px] font-bold uppercase tracking-wide
-                       shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-          >
-            <Globe className="w-3 h-3" /> Outfits
-          </button>
-        </div>
-      ),
+      ) : null,
     );
     return () => setAboveNav(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -432,6 +418,22 @@ export default function CommunityPage() {
                   ))}
                 </div>
                 <div className="flex-1 flex flex-col gap-3" style={{ marginTop: brickOffset }}>
+                  {/* Add Outfit tile — only for signed-in users */}
+                  {user && (
+                    <button
+                      onClick={() => setShowLookbookPicker(true)}
+                      className="w-full rounded-2xl border-2 border-dashed border-black/30
+                                 flex flex-col items-center justify-center gap-1.5 py-6
+                                 active:bg-black/5 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full border-2 border-black/30 flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-black/40" />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-black/35">
+                        Add Outfit
+                      </span>
+                    </button>
+                  )}
                   {outfits.filter((_, i) => i % 2 !== 0).map((outfit) => (
                     <PublicOutfitCard key={outfit.id} outfit={outfit} />
                   ))}
@@ -492,6 +494,149 @@ export default function CommunityPage() {
             onSuccess={() => setShowNudge(true)}
             defaultTab="signup"
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Lookbook Picker sheet ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showLookbookPicker && user && (
+          <motion.div
+            key="lookbook-picker"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end"
+            style={{ background: "rgba(0,0,0,0.55)" }}
+            onPointerDown={(e) => { if (e.target === e.currentTarget) setShowLookbookPicker(false); }}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 36 }}
+              className="w-full bg-[#fdf6f0] rounded-t-3xl border-t-2 border-black overflow-hidden"
+              style={{ maxHeight: "82vh" }}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-black/20" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-black/10">
+                <div>
+                  <p className="font-display font-bold text-lg uppercase tracking-tight leading-none">Your Lookbook</p>
+                  <p className="text-[11px] text-black/40 mt-0.5">Tap the globe to share to Discover</p>
+                </div>
+                <button
+                  onClick={() => setShowLookbookPicker(false)}
+                  className="w-8 h-8 rounded-full bg-black/8 flex items-center justify-center active:bg-black/15 transition-colors"
+                >
+                  <X className="w-4 h-4 text-black/60" />
+                </button>
+              </div>
+
+              {/* Outfit list */}
+              <div className="overflow-y-auto" style={{ maxHeight: "calc(82vh - 100px)" }}>
+                {localOutfits.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-2">
+                    <Shirt className="w-8 h-8 text-black/20" />
+                    <p className="text-sm font-bold text-black/30 uppercase tracking-wide">No saved outfits yet</p>
+                    <button
+                      onClick={() => { setShowLookbookPicker(false); navigate("/saved"); }}
+                      className="mt-2 text-xs font-bold underline text-black/40"
+                    >
+                      Go to Lookbook →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col divide-y divide-black/8">
+                    {localOutfits.map((outfit) => {
+                      const isPublic  = outfit.visibility === "public";
+                      const isToggling = togglingId === outfit.id;
+
+                      // Build a mini 4-slot preview
+                      const slots = (outfit.items ?? []).slice(0, 4);
+
+                      const handleToggle = async () => {
+                        if (isToggling) return;
+                        setTogglingId(outfit.id);
+                        try {
+                          if (isPublic) {
+                            await unpublishOutfit(outfit.id, user.id);
+                            renameOutfit.mutate({ id: outfit.id, data: { visibility: "private" } });
+                          } else {
+                            await publishOutfit({ ...outfit, visibility: "public" }, user.id);
+                            renameOutfit.mutate({ id: outfit.id, data: { visibility: "public" } });
+                            queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
+                          }
+                          queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+                        } finally {
+                          setTogglingId(null);
+                        }
+                      };
+
+                      return (
+                        <div key={outfit.id} className="flex items-center gap-3 px-4 py-3">
+                          {/* Mini photo strip */}
+                          <div className="flex gap-1 shrink-0">
+                            {slots.length > 0 ? slots.map((item, i) => (
+                              <div
+                                key={i}
+                                className="w-12 h-14 rounded-lg border border-black/15 overflow-hidden bg-[#FDECEF]"
+                              >
+                                {item.imageObjectPath ? (
+                                  <img
+                                    src={getImageUrl(item.imageObjectPath) ?? undefined}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Shirt className="w-4 h-4 text-black/20" />
+                                  </div>
+                                )}
+                              </div>
+                            )) : (
+                              <div className="w-12 h-14 rounded-lg border border-black/15 bg-black/5 flex items-center justify-center">
+                                <Shirt className="w-4 h-4 text-black/20" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm truncate">{outfit.name || "Untitled"}</p>
+                            <p className="text-xs text-black/40">{outfit.items?.length ?? 0} piece{outfit.items?.length !== 1 ? "s" : ""}</p>
+                          </div>
+
+                          {/* Globe toggle */}
+                          <button
+                            onClick={handleToggle}
+                            disabled={isToggling}
+                            className={cn(
+                              "shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all active:scale-90",
+                              isPublic
+                                ? "bg-primary border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                                : "bg-white border-black/25",
+                            )}
+                          >
+                            {isToggling ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-black/50" />
+                            ) : isPublic ? (
+                              <Globe className="w-4 h-4 text-black" />
+                            ) : (
+                              <Globe className="w-4 h-4 text-black/30" />
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
