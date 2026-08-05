@@ -185,6 +185,11 @@ export default function WardrobePage() {
   const { data: accessories = [] } = useListClothing({ category: "accessories" }, { query: { queryKey: getListClothingQueryKey({ category: "accessories" }) } });
   const { data: outerwear   = [] } = useListClothing({ category: "outerwear"   }, { query: { queryKey: getListClothingQueryKey({ category: "outerwear"   }) } });
   const { data: dresses     = [] } = useListClothing({ category: "dresses"     }, { query: { queryKey: getListClothingQueryKey({ category: "dresses"     }) } });
+
+  // Always-fresh ref so the share-picker onClick can read current visibility
+  // even though the above-nav useEffect only runs once (empty dep array).
+  const allItemsRef = useRef<ClothingItem[]>([]);
+  allItemsRef.current = [...tops, ...dresses, ...bottoms, ...shoes, ...accessories, ...outerwear];
   const { data: outfits = [] } = useListOutfits();
 
   // Dresses live in the tops row — a dress replaces both top + bottom slots
@@ -217,7 +222,9 @@ export default function WardrobePage() {
         </p>
         <button
           onClick={() => {
-            const allNow = [...tops, ...dresses, ...bottoms, ...shoes, ...accessories, ...outerwear];
+            // Read from the always-current ref so visibility reflects any
+            // changes made via the detail sheet since the component mounted.
+            const allNow = allItemsRef.current;
             setPendingPublicIds(new Set(allNow.filter(i => (i as any).visibility === "public").map(i => i.id)));
             setShowSharePicker(true);
           }}
