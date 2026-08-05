@@ -241,16 +241,19 @@ export async function syncItemEdit(item: ClothingItem, uid: string): Promise<voi
 export async function publishOutfit(outfit: Outfit, uid: string): Promise<void> {
   if (!outfit.visibility || outfit.visibility === "private") return;
   try {
-    const itemNames = (outfit.items ?? []).map((i) => i.name).filter(Boolean);
+    const outfitItems = outfit.items ?? [];
+    const itemNames      = outfitItems.map((i) => i.name).filter(Boolean);
+    const itemCategories = outfitItems.map((i) => i.category ?? null);
     const { error } = await getSupabase().from("public_outfits").upsert(
       {
-        user_id:     uid,
-        local_id:    outfit.id,
-        name:        outfit.name ?? null,
-        description: outfit.notes ?? null,
-        item_names:  itemNames,
-        image_url:   null, // V1: no outfit cover image
-        status:      "active",
+        user_id:          uid,
+        local_id:         outfit.id,
+        name:             outfit.name ?? null,
+        description:      outfit.notes ?? null,
+        item_names:       itemNames,
+        item_categories:  itemCategories,
+        image_url:        null, // V1: no outfit cover image
+        status:           "active",
       },
       { onConflict: "user_id,local_id" },
     );

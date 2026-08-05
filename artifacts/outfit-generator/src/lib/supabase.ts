@@ -108,9 +108,9 @@ export interface PublicOutfit {
   name: string | null;
   description: string | null;
   image_url: string | null;
-  item_names:        string[]        | null; // denormalized item names for display
+  item_names:        string[]          | null; // denormalized item names for display
+  item_categories?:  (string | null)[] | null; // stored at publish time; resolved from public_items as fallback
   item_image_urls?:  (string | null)[] | null; // resolved client-side from public_items
-  item_categories?:  (string | null)[] | null; // resolved client-side from public_items
   status: "active" | "pending_review" | "removed";
   created_at: string;
   updated_at: string;

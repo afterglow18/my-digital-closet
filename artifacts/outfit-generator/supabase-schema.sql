@@ -237,7 +237,8 @@ CREATE TABLE IF NOT EXISTS public_outfits (
   name        text,
   description text,
   image_url   text,
-  item_names  text[],                        -- denormalized item name list for display
+  item_names       text[],                   -- denormalized item name list for display
+  item_categories  text[],                   -- parallel array of categories (tops/bottoms/shoes/…)
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, local_id)                 -- upsert key used by sync.ts

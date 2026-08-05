@@ -163,7 +163,12 @@ export function useCommunityOutfits(filters: FeedFilters = {}) {
         ...outfit,
         profiles:        profileMap[outfit.user_id],
         item_image_urls: (outfit.item_names ?? []).map((n) => imgMap.get(`${outfit.user_id}:${n.toLowerCase()}`) ?? null),
-        item_categories: (outfit.item_names ?? []).map((n) => catMap.get(`${outfit.user_id}:${n.toLowerCase()}`) ?? null),
+        // Prefer the stored item_categories column (set at publish time from local item data).
+        // Fall back to catMap lookup from public_items for older records that pre-date the column.
+        item_categories: (outfit.item_names ?? []).map((n, i) => {
+          const stored = (outfit as any).item_categories?.[i];
+          return stored ?? catMap.get(`${outfit.user_id}:${n.toLowerCase()}`) ?? null;
+        }),
       }));
     },
     initialPageParam: null as string | null,
