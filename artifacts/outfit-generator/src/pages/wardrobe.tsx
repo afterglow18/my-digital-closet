@@ -213,34 +213,7 @@ export default function WardrobePage() {
     });
   }, [tops.length, bottoms.length, shoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Above-nav community bar ───────────────────────────────────────────────────
-  useEffect(() => {
-    setAboveNav(
-      <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
-        <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
-          Share your style
-        </p>
-        <button
-          onClick={() => {
-            // Read from the always-current ref so visibility reflects any
-            // changes made via the detail sheet since the component mounted.
-            const allNow = allItemsRef.current;
-            setPendingPublicIds(new Set(allNow.filter(i => (i as any).visibility === "public").map(i => i.id)));
-            setShowSharePicker(true);
-          }}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
-                     rounded-xl bg-white text-xs font-bold uppercase tracking-wide
-                     shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          Share
-        </button>
-      </div>,
-    );
-    return () => setAboveNav(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Above-nav bar removed — sharing is now handled via Discover page banner
 
   const setCentredTops    = useCallback((item: ClothingItem | null) =>
     setCentred(p => ({ ...p, tops:    item ?? undefined })), []);
