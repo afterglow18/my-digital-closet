@@ -213,7 +213,27 @@ export default function WardrobePage() {
     });
   }, [tops.length, bottoms.length, shoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Above-nav bar removed — sharing is now handled via Discover page banner
+  // ── Above-nav community promo bar ─────────────────────────────────────────
+  useEffect(() => {
+    setAboveNav(
+      <div className="bg-primary border-t-2 border-black px-4 py-2 flex items-center gap-3">
+        <p className="flex-1 font-display font-bold text-xs uppercase tracking-tight leading-none">
+          ✨ New — explore the community!
+        </p>
+        <button
+          onClick={() => navigate("/community")}
+          className="flex-shrink-0 px-3 py-1.5 border-2 border-black rounded-lg bg-white
+                     text-xs font-bold uppercase tracking-wide
+                     shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+        >
+          Discover →
+        </button>
+      </div>,
+    );
+    return () => setAboveNav(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setCentredTops    = useCallback((item: ClothingItem | null) =>
     setCentred(p => ({ ...p, tops:    item ?? undefined })), []);
