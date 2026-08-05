@@ -534,7 +534,7 @@ export default function GeneratePage() {
                 top:    pY(ir, LM.barY),
                 left:   0,
                 right:  0,
-                height: pH(ir, LM.barBot - LM.barY),
+                bottom: 0,
                 zIndex: 18,
                 pointerEvents: "none",
                 background: [
@@ -553,7 +553,7 @@ export default function GeneratePage() {
                 top:    pY(ir, LM.barY),
                 left:   0,
                 right:  0,
-                height: pH(ir, LM.barBot - LM.barY),
+                bottom: 0,
                 zIndex: 22,
                 display: "flex",
                 alignItems: "center",
