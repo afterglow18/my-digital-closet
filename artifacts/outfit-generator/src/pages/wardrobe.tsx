@@ -129,11 +129,13 @@ function useImageRect(containerRef: RefObject<HTMLDivElement>): ImgRect {
       const iR = IMG_W / IMG_H;
       const cR = cW / cH;
       let rW: number, rH: number, rL: number, rT: number;
-      if (cR > iR) {
-        // Container wider than image: fill height, center horizontally
-        rH = cH; rW = cH * iR; rT = 0; rL = (cW - rW) / 2;
+      const fillHW = cH * iR; // image width if we scale to fill container height
+      if (fillHW >= cW) {
+        // Fill height — image wider than container (portrait phone, normal case).
+        // Tiny horizontal crop hidden by overflow:hidden; no bottom gap.
+        rH = cH; rW = fillHW; rT = 0; rL = (cW - fillHW) / 2;
       } else {
-        // Container taller than image: fill width, anchor top
+        // Fill width — container is wider than tall (landscape / desktop).
         rW = cW; rH = cW / iR; rL = 0; rT = 0;
       }
       setRect({ top: rT, left: rL, width: rW, height: rH, containerH: cH });
