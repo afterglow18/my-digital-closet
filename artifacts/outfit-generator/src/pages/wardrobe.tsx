@@ -30,11 +30,11 @@ import {
   useSaveOutfit, useListOutfits, getListOutfitsQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { X, Globe, Check, Loader2 } from "lucide-react";
+import { X, Globe, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { getImageUrl } from "@/lib/utils";
-import { publishItem } from "@/lib/sync";
+import { publishItem, unpublishItem } from "@/lib/sync";
 import { useUpdateClothingItem } from "@/lib/local-api";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClosetRow, ClosetRowHandle } from "@/components/ClosetRow";
@@ -174,9 +174,9 @@ export default function WardrobePage() {
   const [saveName,        setSaveName]        = useState("");
   const [savedToast,      setSavedToast]      = useState<string | null>(null);
   const [showAuth,        setShowAuth]        = useState(false);
-  const [showSharePicker, setShowSharePicker] = useState(false);
-  const [selectedIds,     setSelectedIds]     = useState<Set<number>>(new Set());
-  const [isPublishing,    setIsPublishing]    = useState(false);
+  const [showSharePicker,  setShowSharePicker]  = useState(false);
+  const [pendingPublicIds, setPendingPublicIds] = useState<Set<number>>(new Set());
+  const [isPublishing,     setIsPublishing]     = useState(false);
   const updateItem = useUpdateClothingItem();
 
   const { data: tops        = [] } = useListClothing({ category: "tops"        }, { query: { queryKey: getListClothingQueryKey({ category: "tops"        }) } });
@@ -216,7 +216,11 @@ export default function WardrobePage() {
           Share your style
         </p>
         <button
-          onClick={() => { setSelectedIds(new Set()); setShowSharePicker(true); }}
+          onClick={() => {
+            const allNow = [...tops, ...dresses, ...bottoms, ...shoes, ...accessories, ...outerwear];
+            setPendingPublicIds(new Set(allNow.filter(i => (i as any).visibility === "public").map(i => i.id)));
+            setShowSharePicker(true);
+          }}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
                      rounded-xl bg-white text-xs font-bold uppercase tracking-wide
                      shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
@@ -684,28 +688,41 @@ export default function WardrobePage() {
         {showSharePicker && (() => {
           const allItems = [...tops, ...dresses, ...bottoms, ...shoes, ...accessories, ...outerwear];
 
-          const toggleId = (id: number) => setSelectedIds(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-          });
+          // Original public set (from DB state when picker opened)
+          const originalPublicIds = new Set(allItems.filter(i => (i as any).visibility === "public").map(i => i.id));
 
-          const handleShare = async () => {
-            if (!user || selectedIds.size === 0) return;
+          const toggleGlobe = (id: number) => {
+            setPendingPublicIds(prev => {
+              const next = new Set(prev);
+              next.has(id) ? next.delete(id) : next.add(id);
+              return next;
+            });
+          };
+
+          // Count of actual changes relative to DB state
+          const toPublish   = allItems.filter(it => pendingPublicIds.has(it.id) && !originalPublicIds.has(it.id));
+          const toUnpublish = allItems.filter(it => !pendingPublicIds.has(it.id) && originalPublicIds.has(it.id));
+          const hasChanges  = toPublish.length > 0 || toUnpublish.length > 0;
+
+          const handleApply = async () => {
+            if (!user || !hasChanges) return;
             setIsPublishing(true);
             try {
-              await Promise.all(
-                allItems
-                  .filter(it => selectedIds.has(it.id))
-                  .map(async it => {
-                    const updated = { ...it, visibility: "public" as const };
-                    updateItem.mutate({ id: it.id, data: { visibility: "public" } });
-                    await publishItem(updated, user.id);
-                  }),
-              );
+              await Promise.all([
+                ...toPublish.map(async it => {
+                  updateItem.mutate({ id: it.id, data: { visibility: "public" } });
+                  await publishItem({ ...it, visibility: "public" as const }, user.id);
+                }),
+                ...toUnpublish.map(async it => {
+                  updateItem.mutate({ id: it.id, data: { visibility: "private" } });
+                  await unpublishItem(it.id, user.id);
+                }),
+              ]);
               setShowSharePicker(false);
-              setSelectedIds(new Set());
-              setSavedToast(`${selectedIds.size} item${selectedIds.size > 1 ? "s" : ""} shared!`);
+              const parts: string[] = [];
+              if (toPublish.length   > 0) parts.push(`${toPublish.length} shared`);
+              if (toUnpublish.length > 0) parts.push(`${toUnpublish.length} unshared`);
+              setSavedToast(parts.join(" · ") + "!");
               setTimeout(() => setSavedToast(null), 2800);
             } finally {
               setIsPublishing(false);
@@ -735,9 +752,7 @@ export default function WardrobePage() {
                   <div>
                     <h2 className="font-display font-bold text-base uppercase tracking-tight">Share to Community</h2>
                     <p className="text-[11px] text-black/40 mt-0.5">
-                      {user
-                        ? selectedIds.size === 0 ? "Tap photos to select" : `${selectedIds.size} selected`
-                        : "Sign in to share your style"}
+                      {user ? "Tap the globe to make items public or private" : "Sign in to share your style"}
                     </p>
                   </div>
                   <button onClick={() => setShowSharePicker(false)}
@@ -750,39 +765,25 @@ export default function WardrobePage() {
                 <div className="overflow-y-auto flex-1 p-0.5 grid grid-cols-3 gap-0.5"
                   style={{ opacity: user ? 1 : 0.45, pointerEvents: user ? "auto" : "none", background: "#FFC0CB" }}>
                   {allItems.map(item => {
-                    const isSelected = selectedIds.has(item.id);
-                    const isPublic   = (item as any).visibility === "public";
-                    const imgSrc     = item.imageObjectPath ? getImageUrl(item.imageObjectPath) : null;
-                    const bg    = "#FFC0CB";
-                    const emoji = "👕";
+                    const isPublic = pendingPublicIds.has(item.id);
+                    const imgSrc   = item.imageObjectPath ? getImageUrl(item.imageObjectPath) : null;
                     return (
-                      <button
-                        key={item.id}
-                        onClick={() => toggleId(item.id)}
-                        className="relative aspect-square overflow-hidden"
-                        style={{
-                          background: imgSrc ? undefined : bg,
-                          outline: isSelected ? "3px solid #C49B2A" : "none",
-                          outlineOffset: "-3px",
-                        }}
-                      >
+                      <div key={item.id} className="relative aspect-square overflow-hidden"
+                        style={{ background: imgSrc ? undefined : "#FFC0CB" }}>
                         {imgSrc
                           ? <img src={imgSrc} alt={item.name} className="w-full h-full object-cover" />
-                          : <span className="text-3xl absolute inset-0 flex items-center justify-center">{emoji}</span>
+                          : <span className="text-3xl absolute inset-0 flex items-center justify-center">👕</span>
                         }
-                        {/* Selected checkmark */}
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-primary border-2 border-black flex items-center justify-center">
-                            <Check className="w-3.5 h-3.5 text-black" strokeWidth={3} />
-                          </div>
-                        )}
-                        {/* Already public badge */}
-                        {!isSelected && isPublic && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                            <Globe className="w-2.5 h-2.5 text-white" />
-                          </div>
-                        )}
-                      </button>
+                        {/* Globe toggle — green = public, grey = private */}
+                        <button
+                          onClick={() => toggleGlobe(item.id)}
+                          aria-label={isPublic ? "Remove from community" : "Share to community"}
+                          className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-md transition-colors"
+                          style={{ background: isPublic ? "#22c55e" : "rgba(0,0,0,0.35)" }}
+                        >
+                          <Globe className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -814,21 +815,28 @@ export default function WardrobePage() {
                   </div>
                 )}
 
-                {/* Share button (signed-in) */}
+                {/* Apply button (signed-in) */}
                 {user && (
                   <div className="px-4 py-4 border-t border-black/10 bg-white">
                     <button
-                      disabled={selectedIds.size === 0 || isPublishing}
-                      onClick={handleShare}
+                      disabled={!hasChanges || isPublishing}
+                      onClick={handleApply}
                       className="w-full py-3 border-2 border-black rounded-xl bg-primary font-bold uppercase tracking-wide text-sm
                                  shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
                                  transition-all disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2"
                     >
-                      {isPublishing
-                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Sharing…</>
-                        : selectedIds.size === 0
-                          ? "Select items to share"
-                          : `Share ${selectedIds.size} Item${selectedIds.size > 1 ? "s" : ""}`}
+                      {isPublishing ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                      ) : !hasChanges ? (
+                        "Tap a globe to change visibility"
+                      ) : (
+                        (() => {
+                          const parts: string[] = [];
+                          if (toPublish.length   > 0) parts.push(`Share ${toPublish.length}`);
+                          if (toUnpublish.length > 0) parts.push(`Unshare ${toUnpublish.length}`);
+                          return parts.join(" · ");
+                        })()
+                      )}
                     </button>
                   </div>
                 )}
