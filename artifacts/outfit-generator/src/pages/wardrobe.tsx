@@ -827,15 +827,8 @@ export default function WardrobePage() {
                     >
                       {isPublishing ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
-                      ) : !hasChanges ? (
-                        "Tap a globe to change visibility"
                       ) : (
-                        (() => {
-                          const parts: string[] = [];
-                          if (toPublish.length   > 0) parts.push(`Share ${toPublish.length}`);
-                          if (toUnpublish.length > 0) parts.push(`Unshare ${toUnpublish.length}`);
-                          return parts.join(" · ");
-                        })()
+                        "Done"
                       )}
                     </button>
                   </div>
