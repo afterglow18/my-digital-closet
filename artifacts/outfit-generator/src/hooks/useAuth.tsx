@@ -38,6 +38,7 @@ export interface AuthContextValue {
   /** Native Apple Sign-In (Capacitor only). No-op on web. */
   signInWithApple: () => Promise<{ error: string | null; isNewUser?: boolean; userId?: string }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ const AuthContext = createContext<AuthContextValue>({
   signUp: async () => ({ error: "AuthProvider not mounted" }),
   signInWithApple: async () => ({ error: "AuthProvider not mounted" }),
   signOut: async () => {},
+  resetPassword: async () => ({ error: "AuthProvider not mounted" }),
 });
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -106,6 +108,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { listener.subscription.unsubscribe(); };
   }, []);
 
+  // ── Reset password ─────────────────────────────────────────────────────────
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ error: string | null }> => {
+      try {
+        const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+        const { error } = await getSupabase().auth.resetPasswordForEmail(email, { redirectTo });
+        return { error: error?.message ?? null };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : "Reset failed" };
+      }
+    },
+    [],
+  );
+
   // ── Sign in ────────────────────────────────────────────────────────────────
   const signIn = useCallback(
     async (email: string, password: string): Promise<{ error: string | null }> => {
@@ -139,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
             data: {
               handle: handle.toLowerCase().trim() || undefined,
               display_name: displayName?.trim() || null,
@@ -215,7 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signIn, signUp, signInWithApple, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, signIn, signUp, signInWithApple, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

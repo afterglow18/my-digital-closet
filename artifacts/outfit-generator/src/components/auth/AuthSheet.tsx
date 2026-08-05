@@ -21,7 +21,7 @@ import { changePrivacyMode } from "@/lib/sync";
 import { cn } from "@/lib/utils";
 
 type PrivacyMode = "private" | "anonymous" | "public";
-type ViewState = "entry" | "email-signup" | "privacy-pick" | "email-signin" | "check-email";
+type ViewState = "entry" | "email-signup" | "privacy-pick" | "email-signin" | "check-email" | "forgot-password" | "reset-sent";
 
 interface AuthSheetProps {
   onClose: () => void;
@@ -79,7 +79,7 @@ const TITLES: Record<ViewState, string> = {
 };
 
 export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthSheetProps) {
-  const { signIn, signUp, signInWithApple } = useAuth();
+  const { signIn, signUp, signInWithApple, resetPassword } = useAuth();
   const isNative = Capacitor.isNativePlatform();
 
   const initialView: ViewState = defaultTab === "signin" ? "email-signin" : "entry";
@@ -442,6 +442,14 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
                 Sign In
               </button>
 
+              <button
+                type="button"
+                onClick={() => { setError(null); setView("forgot-password"); }}
+                className="text-center text-xs text-black/40 underline hover:text-black/60 transition-colors w-full"
+              >
+                Forgot password?
+              </button>
+
               <p className="text-center text-sm text-black/40">
                 Don't have an account?{" "}
                 <button
@@ -453,6 +461,72 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
                 </button>
               </p>
             </form>
+          )}
+
+          {/* ══ FORGOT PASSWORD ════════════════════════════════════════════════ */}
+          {view === "forgot-password" && (() => {
+            const handleReset = async (e: React.FormEvent) => {
+              e.preventDefault();
+              setError(null);
+              setIsLoading(true);
+              const { error: err } = await resetPassword(email.trim());
+              setIsLoading(false);
+              if (err) { setError(err); return; }
+              setView("reset-sent");
+            };
+            return (
+              <form onSubmit={handleReset} className="flex flex-col gap-3">
+                <p className="text-sm text-black/50 leading-snug">
+                  Enter your email and we'll send a reset link.
+                </p>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  autoFocus
+                  className="w-full border-2 border-black rounded-lg px-3 py-2.5 text-sm font-medium
+                             focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-black/30"
+                />
+                {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full btn-brutalist py-3 rounded-xl flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                >
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Send Reset Link
+                </button>
+                <button type="button" onClick={() => { setError(null); setView("email-signin"); }}
+                  className="text-center text-xs text-black/40 underline">
+                  Back to sign in
+                </button>
+              </form>
+            );
+          })()}
+
+          {/* ══ RESET SENT ═════════════════════════════════════════════════════ */}
+          {view === "reset-sent" && (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <div className="w-16 h-16 rounded-full border-2 border-black bg-primary flex items-center justify-center
+                              shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-2xl">
+                ✉️
+              </div>
+              <h3 className="font-display font-bold text-lg uppercase">Check your inbox</h3>
+              <p className="text-sm text-black/60 leading-snug max-w-xs">
+                We sent a password reset link to <strong>{email}</strong>. Tap it to choose a new password.
+              </p>
+              <button
+                onClick={() => { setError(null); setView("email-signin"); }}
+                className="mt-1 px-5 py-2.5 border-2 border-black rounded-xl text-sm font-bold
+                           shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                Go to Sign In →
+              </button>
+            </div>
           )}
 
           {/* ══ CHECK EMAIL ════════════════════════════════════════════════════ */}
