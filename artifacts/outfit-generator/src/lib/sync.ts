@@ -247,23 +247,27 @@ async function ensureItemInPublicItems(item: ClothingItem, uid: string): Promise
     if (item.imageObjectPath) {
       imageUrl = await uploadItemImage(uid, item.id, item.imageObjectPath);
     }
-    const { error } = await sb.from("public_items").upsert(
-      {
-        user_id:    uid,
-        local_id:   item.id,
-        name:       item.name,
-        category:   item.category,
-        color:      item.color    ?? null,
-        brand:      item.brand    ?? null,
-        size:       item.size     ?? null,
-        season:     item.season   ?? null,
-        occasion:   item.occasion ?? null,
-        image_url:  imageUrl,
-        visibility: "public",
-        status:     "active",
-      },
-      { onConflict: "user_id,local_id" },
-    );
+
+    // Base payload — always written on INSERT or UPDATE
+    const payload: Record<string, unknown> = {
+      user_id:    uid,
+      local_id:   item.id,
+      name:       item.name,
+      category:   item.category,
+      color:      item.color    ?? null,
+      brand:      item.brand    ?? null,
+      size:       item.size     ?? null,
+      season:     item.season   ?? null,
+      occasion:   item.occasion ?? null,
+      visibility: "public",
+      status:     "active",
+    };
+    // Only write image_url when we actually have a URL — this prevents a
+    // failed blob read (e.g. web after page refresh) from overwriting a
+    // previously-uploaded URL that already exists in public_items.
+    if (imageUrl !== null) payload.image_url = imageUrl;
+
+    const { error } = await sb.from("public_items").upsert(payload, { onConflict: "user_id,local_id" });
     if (error) console.error("[sync] ensureItemInPublicItems failed:", error.message);
   } catch (e) {
     console.error("[sync] ensureItemInPublicItems error:", e);
