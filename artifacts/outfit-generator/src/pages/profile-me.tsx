@@ -28,6 +28,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getListClothingQueryKey, getListOutfitsQueryKey } from "@/lib/local-api";
 import type { PublicItem, PublicOutfit } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { shareContent, SHARE_TEXT } from "@/lib/share";
 
 type ContentTab = "items" | "outfits";
 
@@ -41,6 +42,8 @@ export default function ProfileMePage() {
   const { data: pubOutfits, isLoading: outfitsLoading, refetch: refetchOutfits } = useMyPublishedOutfits(user?.id);
   const { data: followerCount  = 0 } = useFollowerCount(user?.id);
   const { data: followingCount = 0 } = useFollowingCount(user?.id);
+
+  const [copied, setCopied] = useState(false);
 
   // ── Avatar upload ─────────────────────────────────────────────────────────
   const avatarInputRef               = useRef<HTMLInputElement>(null);
@@ -460,12 +463,9 @@ export default function ProfileMePage() {
                   </button>
                   <button
                     onClick={async () => {
-                      const { shareContent, profileShareUrl } = await import("@/lib/share");
-                      shareContent(
-                        profileShareUrl(profile.handle),
-                        `Check out @${profile.handle}'s public closet on My Digital Closet.`,
-                        "My Digital Closet",
-                      );
+                      setCopied(true);
+                      await shareContent();
+                      setCopied(false);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
                                text-xs font-bold uppercase tracking-wide bg-primary
@@ -596,6 +596,28 @@ export default function ProfileMePage() {
           onConfirm={handleCropConfirm}
           onCancel={() => setCropFile(null)}
         />
+      )}
+
+      {/* Grey/yellow copy drawer — same pattern as Discover */}
+      {copied && profile?.handle && (
+        <div
+          className="fixed top-[25%] bottom-0 left-3 right-3 z-[299] bg-[#2c2c2e] rounded-t-3xl
+                     px-4 pt-5 pb-0 flex items-start justify-center"
+          onClick={() => setCopied(false)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(SHARE_TEXT).catch(() => {});
+              setCopied(false);
+            }}
+            className="bg-yellow-400 text-black px-7 py-4 rounded-full text-lg font-black
+                       shadow-xl whitespace-nowrap border-2 border-black
+                       active:scale-95 transition-transform"
+          >
+            ✨ Link Copied! Paste to Share ✨
+          </button>
+        </div>
       )}
     </>
   );

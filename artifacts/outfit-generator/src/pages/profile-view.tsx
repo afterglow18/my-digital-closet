@@ -6,10 +6,9 @@
 import React, { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, Shirt, Globe, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Shirt, Globe, Loader2, Lock, Plane } from "lucide-react";
 import { FollowButton } from "@/components/community/FollowButton";
-import { ShareButton } from "@/components/community/ShareButton";
-import { profileShareUrl } from "@/lib/share";
+import { shareContent, SHARE_TEXT } from "@/lib/share";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicProfile, usePublicProfileItems, usePublicProfileOutfits } from "@/hooks/useCommunity";
 import { useFollowerCount } from "@/hooks/useFollows";
@@ -22,7 +21,8 @@ type Tab = "items" | "outfits";
 export default function ProfileViewPage() {
   const { handle }   = useParams<{ handle: string }>();
   const [, navigate] = useLocation();
-  const [tab, setTab] = useState<Tab>("items");
+  const [tab, setTab]     = useState<Tab>("items");
+  const [copied, setCopied] = useState(false);
 
   const { user } = useAuth();
   const { data: profile, isLoading: profileLoading, error: profileError } = usePublicProfile(handle);
@@ -118,12 +118,20 @@ export default function ProfileViewPage() {
             {profile.id !== user?.id && (
               <FollowButton profileId={profile.id} handle={profile.handle} />
             )}
-            <ShareButton
-              url={profileShareUrl(profile.handle)}
-              text={`Check out @${profile.handle}'s public closet on My Digital Closet.`}
-              title="My Digital Closet"
-              variant="icon"
-            />
+            <button
+              onClick={async () => {
+                setCopied(true);
+                await shareContent();
+                setCopied(false);
+              }}
+              aria-label="Share app"
+              className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-full
+                         text-xs font-bold uppercase tracking-wide bg-primary
+                         shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                         active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all"
+            >
+              <Plane className="w-3.5 h-3.5 fill-current" /> SHARE
+            </button>
           </div>
         </div>
       </div>
@@ -175,5 +183,27 @@ export default function ProfileViewPage() {
         )}
       </div>
     </motion.div>
+
+    {/* Grey/yellow copy drawer — same pattern as Discover */}
+    {copied && (
+      <div
+        className="fixed top-[25%] bottom-0 left-3 right-3 z-[299] bg-[#2c2c2e] rounded-t-3xl
+                   px-4 pt-5 pb-0 flex items-start justify-center"
+        onClick={() => setCopied(false)}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(SHARE_TEXT).catch(() => {});
+            setCopied(false);
+          }}
+          className="bg-yellow-400 text-black px-7 py-4 rounded-full text-lg font-black
+                     shadow-xl whitespace-nowrap border-2 border-black
+                     active:scale-95 transition-transform"
+        >
+          ✨ Link Copied! Paste to Post ✨
+        </button>
+      </div>
+    )}
   );
 }
