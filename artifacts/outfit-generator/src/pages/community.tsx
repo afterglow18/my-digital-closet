@@ -236,10 +236,12 @@ export default function CommunityPage() {
     <>
       <div
         className="flex flex-col min-h-full"
-        style={{ paddingTop: "max(16px, env(safe-area-inset-top))", background: "linear-gradient(to bottom, #f5b8c8 0%, #FDECEF 180px)" }}
+        style={{ background: "#FDECEF" }}
       >
-        {/* ── Scrollable header — Discover title (scrolls away) ── */}
-        <div className="px-4 pb-3 flex items-center justify-between">
+        {/* ── Sticky header — title + tabs + search + chips ── */}
+        <div className="sticky top-0 z-20 bg-[#FDECEF] shadow-[0px_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="px-4 pb-3 flex items-center justify-between"
+          style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}>
           <div className="flex items-center gap-2">
             <button
               onClick={() => user ? setShowAccountMenu(true) : setShowAuth(true)}
@@ -306,8 +308,8 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        {/* ── Sticky controls — tabs + search + chips ── */}
-        <div className="sticky top-0 z-20 bg-[#FDECEF] shadow-[0px_2px_8px_rgba(0,0,0,0.06)]">
+        {/* ── Tabs + search + chips ── */}
+        <div>
           {/* Tabs */}
           <div className="px-4 pt-1 pb-2">
             <div className="grid grid-cols-3 gap-1 bg-black/5 rounded-xl p-1">
@@ -381,6 +383,7 @@ export default function CommunityPage() {
             </div>
           )}
         </div>
+        </div>{/* end sticky header */}
 
         {/* ── Feed ── */}
         {isLoading ? (

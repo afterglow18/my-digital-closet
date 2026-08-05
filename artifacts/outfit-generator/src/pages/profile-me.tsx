@@ -527,15 +527,13 @@ export default function ProfileMePage() {
                     <button
                       onClick={() => handleUnpublishItem(item.local_id)}
                       disabled={unpublishingIds.has(item.local_id)}
-                      className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full
-                                 bg-white/90 border border-black/20 text-[9px] font-bold uppercase
-                                 hover:bg-red-50 hover:border-red-400 hover:text-red-700 transition-all
-                                 disabled:opacity-50"
+                      aria-label="Unpublish"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                                 bg-black/40 backdrop-blur-sm transition-colors active:scale-90"
                     >
                       {unpublishingIds.has(item.local_id)
-                        ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                        : <Lock className="w-2.5 h-2.5" />}
-                      Unpublish
+                        ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                        : <Globe className="w-3.5 h-3.5 text-green-400" />}
                     </button>
                   </div>
                 ))}
@@ -569,15 +567,13 @@ export default function ProfileMePage() {
                     <button
                       onClick={() => handleUnpublishOutfit(outfit.local_id)}
                       disabled={unpublishingIds.has(outfit.local_id)}
-                      className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full
-                                 bg-white/90 border border-black/20 text-[9px] font-bold uppercase
-                                 hover:bg-red-50 hover:border-red-400 hover:text-red-700 transition-all
-                                 disabled:opacity-50"
+                      aria-label="Unpublish"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                                 bg-black/40 backdrop-blur-sm transition-colors active:scale-90"
                     >
                       {unpublishingIds.has(outfit.local_id)
-                        ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                        : <Lock className="w-2.5 h-2.5" />}
-                      Unpublish
+                        ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                        : <Globe className="w-3.5 h-3.5 text-green-400" />}
                     </button>
                   </div>
                 ))}

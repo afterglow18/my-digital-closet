@@ -362,7 +362,9 @@ export default function SavedPage() {
   };
 
   return (
-    <div className="min-h-full flex flex-col pt-8 px-4 pb-8 bg-secondary/10 relative">
+    <div className="min-h-full flex flex-col px-4 pb-8 bg-secondary/10 relative">
+      {/* ── Sticky header — stays pinned while outfit list scrolls ── */}
+      <div className="sticky top-0 z-20 bg-secondary/10 -mx-4 px-4 pt-8 pb-1">
       <header className="mb-6">
         <h1 className="text-4xl font-display font-bold uppercase tracking-tighter mb-1">Lookbook</h1>
         <div className="flex items-center justify-between">
@@ -405,11 +407,8 @@ export default function SavedPage() {
         </div>
       </header>
 
-      {viewMode === "calendar" ? (
-        <OutfitCalendar outfits={outfits ?? []} />
-      ) : (<>
-
-      {/* ── Search bar ── */}
+      {/* ── Search / Sort / Show — only in list mode ── */}
+      {viewMode !== "calendar" && (<>
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40 pointer-events-none" />
         <input
@@ -476,6 +475,13 @@ export default function SavedPage() {
           </div>
         </div>
       )}
+      </>)}
+      </div>{/* end sticky header */}
+
+      {/* ── Scrollable content ── */}
+      {viewMode === "calendar" ? (
+        <OutfitCalendar outfits={outfits ?? []} />
+      ) : (<>
 
       {/* ── Search results ── */}
       {searchResults && (
