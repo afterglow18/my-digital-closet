@@ -56,9 +56,10 @@ function getScrollContainer(): HTMLElement | null {
 }
 
 export default function CommunityPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, signOut, isLoading: authLoading } = useAuth();
   const [, navigate]        = useLocation();
   const [showAuth,         setShowAuth]         = useState(false);
+  const [showAccountMenu,  setShowAccountMenu]  = useState(false);
   const [showNotifs,       setShowNotifs]       = useState(false);
   const [copied,           setCopied]           = useState(false);
   const [showNudge,        setShowNudge]        = useState(false);
@@ -240,8 +241,8 @@ export default function CommunityPage() {
         <div className="px-4 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => user ? navigate("/profile/me") : setShowAuth(true)}
-              aria-label={user ? "My profile" : "Sign in"}
+              onClick={() => user ? setShowAccountMenu(true) : setShowAuth(true)}
+              aria-label={user ? "Account" : "Sign in"}
               className="active:scale-90 transition-transform"
             >
               <Globe className="w-6 h-6" />
@@ -513,6 +514,58 @@ export default function CommunityPage() {
             defaultTab="signup"
           />
         )}
+      </AnimatePresence>
+
+      {/* ── Account mini-sheet (signed-in users) ── */}
+      <AnimatePresence>
+        {showAccountMenu && user && (
+          <motion.div
+            key="account-menu-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-end"
+            style={{ background: "rgba(0,0,0,0.45)" }}
+            onPointerDown={e => { if (e.target === e.currentTarget) setShowAccountMenu(false); }}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="w-full bg-white rounded-t-2xl px-5 pt-5 pb-10 flex flex-col gap-4"
+            >
+              {/* Handle + email */}
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary border-2 border-black flex items-center justify-center font-display font-bold text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  {(user.email ?? "?")[0].toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm leading-tight">{user.email}</span>
+                  <span className="text-xs text-black/40 mt-0.5">Signed in</span>
+                </div>
+              </div>
+
+              <div className="h-px bg-black/10" />
+
+              {/* Sign out */}
+              <button
+                onClick={async () => {
+                  setShowAccountMenu(false);
+                  await signOut();
+                }}
+                className="w-full py-3 border-2 border-black rounded-xl bg-white font-bold text-sm uppercase
+                           tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                Sign Out
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
       </AnimatePresence>
 
       {/* ── Lookbook Picker sheet ────────────────────────────────────────── */}
