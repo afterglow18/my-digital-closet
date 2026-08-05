@@ -99,7 +99,7 @@ export default function SavedPage() {
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "worn-asc" | "worn-desc">("newest");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "worn-asc" | "worn-desc" | "worn-most" | "worn-least">("newest");
   const [filterVis, setFilterVis] = useState<"all" | "public" | "private">("all");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
@@ -155,6 +155,14 @@ export default function SavedPage() {
           if (!b.lastWornDate) return -1;
           return b.lastWornDate.localeCompare(a.lastWornDate);
         });
+        break;
+      case "worn-most":
+        // Most worn (highest timesWorn) first; never-worn go to end
+        list.sort((a, b) => (b.timesWorn ?? 0) - (a.timesWorn ?? 0));
+        break;
+      case "worn-least":
+        // Least worn (lowest timesWorn) first; never-worn go to end
+        list.sort((a, b) => (a.timesWorn ?? 0) - (b.timesWorn ?? 0));
         break;
       default: // "newest"
         list.sort((a, b) => {
@@ -450,6 +458,8 @@ export default function SavedPage() {
               <option value="za">Z → A</option>
               <option value="worn-desc">Most Recently Worn</option>
               <option value="worn-asc">Least Recently Worn</option>
+              <option value="worn-most">Most Worn</option>
+              <option value="worn-least">Least Worn</option>
             </select>
             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-black/50">▾</span>
           </div>
