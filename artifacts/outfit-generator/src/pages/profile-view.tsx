@@ -182,28 +182,27 @@ export default function ProfileViewPage() {
           )
         )}
       </div>
-    </motion.div>
-
-    {/* Grey/yellow copy drawer — same pattern as Discover */}
-    {copied && (
-      <div
-        className="fixed top-[25%] bottom-0 left-3 right-3 z-[299] bg-[#2c2c2e] rounded-t-3xl
-                   px-4 pt-5 pb-0 flex items-start justify-center"
-        onClick={() => setCopied(false)}
-      >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(SHARE_TEXT).catch(() => {});
-            setCopied(false);
-          }}
-          className="bg-yellow-400 text-black px-7 py-4 rounded-full text-lg font-black
-                     shadow-xl whitespace-nowrap border-2 border-black
-                     active:scale-95 transition-transform"
+      {/* Grey/yellow copy drawer */}
+      {copied && (
+        <div
+          className="fixed top-[25%] bottom-0 left-3 right-3 z-[299] bg-[#2c2c2e] rounded-t-3xl
+                     px-4 pt-5 pb-0 flex items-start justify-center"
+          onClick={() => setCopied(false)}
         >
-          ✨ Link Copied! Paste to Post ✨
-        </button>
-      </div>
-    )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(SHARE_TEXT).catch(() => {});
+              setCopied(false);
+            }}
+            className="bg-yellow-400 text-black px-7 py-4 rounded-full text-lg font-black
+                       shadow-xl whitespace-nowrap border-2 border-black
+                       active:scale-95 transition-transform"
+          >
+            ✨ Link Copied! Paste to Post ✨
+          </button>
+        </div>
+      )}
+    </motion.div>
   );
 }
