@@ -119,7 +119,15 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
     // handle is left blank — the trigger generates one from the email prefix
     const { error: err } = await signUp(email.trim(), password, "", undefined, selectedMode);
     setIsLoading(false);
-    if (err) { setError(err); return; }
+    if (err) {
+      // Already registered — try signing in with the same credentials instead
+      if (err.toLowerCase().includes("already registered") || err.toLowerCase().includes("already exists")) {
+        const { error: signInErr } = await signIn(email.trim(), password);
+        if (!signInErr) { onSuccess?.(); onClose(); return; }
+      }
+      setError(err);
+      return;
+    }
     setSignedUpEmail(email.trim());
     setView("check-email");
   };
@@ -130,7 +138,16 @@ export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthShe
     setIsLoading(true);
     const { error: err } = await signIn(email.trim(), password);
     setIsLoading(false);
-    if (err) { setError(err); return; }
+    if (err) {
+      // Email not confirmed — show the check-email screen so they know what to do
+      if (err.toLowerCase().includes("email not confirmed") || err.toLowerCase().includes("not confirmed")) {
+        setSignedUpEmail(email.trim());
+        setView("check-email");
+        return;
+      }
+      setError(err);
+      return;
+    }
     onSuccess?.();
     onClose();
   };

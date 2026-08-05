@@ -59,6 +59,7 @@ export default function CommunityPage() {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const [, navigate]        = useLocation();
   const [showAuth,         setShowAuth]         = useState(false);
+  const [authTab,          setAuthTab]          = useState<"signin" | "signup">("signup");
   const [showAccountMenu,  setShowAccountMenu]  = useState(false);
   const [showNotifs,       setShowNotifs]       = useState(false);
   const [copied,           setCopied]           = useState(false);
@@ -209,7 +210,7 @@ export default function CommunityPage() {
     const label  = isOutfitsTab ? "Share your Fits" : "Share your Style";
     const btnTxt = isOutfitsTab ? "+ ADD"               : "+ ADD";
     const openPicker = () => {
-      if (!user) { setShowAuth(true); return; }
+      if (!user) { setAuthTab("signup"); setShowAuth(true); return; }
       if (isOutfitsTab) setShowLookbookPicker(true);
       else {
         setPendingPublicItemIds(new Set(allLocalItems.filter(i => (i as any).visibility === "public").map(i => i.id)));
@@ -265,7 +266,7 @@ export default function CommunityPage() {
           style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => user ? setShowAccountMenu(true) : setShowAuth(true)}
+              onClick={() => user ? setShowAccountMenu(true) : (setAuthTab("signin"), setShowAuth(true))}
               aria-label={user ? "Account" : "Sign in"}
               className="active:scale-90 transition-transform"
             >
@@ -281,7 +282,7 @@ export default function CommunityPage() {
                 className="w-9 h-9 flex items-center justify-center border-2 border-black
                            rounded-full bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                            active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
-                           overflow-hidden text-sm font-bold leading-none"
+                           overflow-hidden text-base font-display leading-none"
                 aria-label="My profile"
               >
                 {myProfile?.avatar_url ? (
@@ -540,7 +541,7 @@ export default function CommunityPage() {
           <AuthSheet
             onClose={() => setShowAuth(false)}
             onSuccess={() => setShowNudge(true)}
-            defaultTab="signup"
+            defaultTab={authTab}
           />
         )}
       </AnimatePresence>
