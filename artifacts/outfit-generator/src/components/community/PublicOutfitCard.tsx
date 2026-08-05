@@ -48,6 +48,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   const [copied,         setCopied]         = useState(false);
   const [burst,          setBurst]          = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [hidden,         setHidden]         = useState(false);
 
   const profile     = outfit.profiles;
   const privacyMode = profile?.privacy_mode ?? "public";
@@ -64,6 +65,7 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
   );
 
   if (blocked) return null;
+  if (hidden)  return null;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -248,22 +250,24 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
               onClick={async (e) => {
                 e.stopPropagation();
                 if (!user || isUnpublishing) return;
+                setHidden(true); // optimistic — card vanishes immediately
                 setIsUnpublishing(true);
                 try {
                   await unpublishOutfit(outfit.local_id, user.id);
                   queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
                   queryClient.invalidateQueries({ queryKey: ["community", "my-outfits"] });
-                } finally {
+                } catch {
+                  setHidden(false); // restore if it failed
                   setIsUnpublishing(false);
                 }
               }}
               aria-label="Make private"
-              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary/90 border-2 border-black
-                         flex items-center justify-center active:scale-90 transition-transform shadow-sm"
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm
+                         flex items-center justify-center active:scale-90 transition-all"
             >
               {isUnpublishing
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
-                : <Globe className="w-3.5 h-3.5 text-black" />
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white/50" />
+                : <Globe className="w-3.5 h-3.5 text-green-400" />
               }
             </button>
           ) : (
