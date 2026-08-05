@@ -216,7 +216,7 @@ export default function WardrobePage() {
   // ── Above-nav community promo bar ─────────────────────────────────────────
   useEffect(() => {
     setAboveNav(
-      <div className="bg-primary border-t-2 border-black px-4 py-2 flex items-center gap-3">
+      <div className="bg-primary border-t-2 border-black px-4 py-1 flex items-center gap-3">
         <p
           className="flex-1 leading-none"
           style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.1rem" }}
