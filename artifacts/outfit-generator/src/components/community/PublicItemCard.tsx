@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from "react";
-import { Heart, MoreHorizontal, Flag, Ban, Send, Link, UserCheck, UserPlus, User } from "lucide-react";
+import { Heart, MoreHorizontal, Flag, Ban, Send, Link, UserCheck, UserPlus, User, Globe, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import type { PublicItem, SafeProfile } from "@/lib/supabase";
@@ -19,7 +19,7 @@ import { ReportSheet } from "@/components/community/ReportSheet";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
 import { shareContent, SHARE_TEXT } from "@/lib/share";
-import { changePrivacyMode } from "@/lib/sync";
+import { changePrivacyMode, unpublishItem } from "@/lib/sync";
 import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
 import { useFollowState } from "@/hooks/useFollows";
@@ -41,13 +41,14 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
   const [heartSyncing,  setHeartSyncing]     = useState(false);
   const [heartError,    setHeartError]       = useState<string | null>(null);
   const [blocked,       setBlocked]          = useState(() => isBlocked(item.user_id));
-  const [showMenu,      setShowMenu]         = useState(false);
-  const [showReport,    setShowReport]       = useState(false);
-  const [showAuth,      setShowAuth]         = useState(false);
-  const [showPrivGate,  setShowPrivGate]     = useState(false);
-  const [imgLoaded,     setImgLoaded]        = useState(false);
-  const [burst,         setBurst]           = useState(false);
-  const [copied,        setCopied]           = useState(false);
+  const [showMenu,       setShowMenu]         = useState(false);
+  const [showReport,     setShowReport]       = useState(false);
+  const [showAuth,       setShowAuth]         = useState(false);
+  const [showPrivGate,   setShowPrivGate]     = useState(false);
+  const [imgLoaded,      setImgLoaded]        = useState(false);
+  const [burst,          setBurst]            = useState(false);
+  const [copied,         setCopied]           = useState(false);
+  const [isUnpublishing, setIsUnpublishing]   = useState(false);
 
   const profile     = item.profiles;
   const privacyMode = profile?.privacy_mode ?? "public";
@@ -190,6 +191,32 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
           >
             <MoreHorizontal className="w-3.5 h-3.5 text-white" />
           </button>
+
+          {/* Globe — top-left, only on own items */}
+          {isOwn && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!user || isUnpublishing) return;
+                setIsUnpublishing(true);
+                try {
+                  await unpublishItem(item.local_id, user.id);
+                  queryClient.invalidateQueries({ queryKey: ["community", "items"] });
+                  queryClient.invalidateQueries({ queryKey: ["community", "my-items"] });
+                } finally {
+                  setIsUnpublishing(false);
+                }
+              }}
+              aria-label="Make private"
+              className="absolute top-2 left-2 w-7 h-7 rounded-full bg-primary/90 border-2 border-black
+                         flex items-center justify-center active:scale-90 transition-transform shadow-sm"
+            >
+              {isUnpublishing
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                : <Globe className="w-3.5 h-3.5 text-black" />
+              }
+            </button>
+          )}
 
           {/* Avatar — bottom-left */}
           {!isAnonymous && handle && (
