@@ -748,7 +748,7 @@ export default function WardrobePage() {
 
                 {/* Camera-roll grid */}
                 <div className="overflow-y-auto flex-1 p-0.5 grid grid-cols-3 gap-0.5"
-                  style={{ opacity: user ? 1 : 0.45, pointerEvents: user ? "auto" : "none" }}>
+                  style={{ opacity: user ? 1 : 0.45, pointerEvents: user ? "auto" : "none", background: "#FFC0CB" }}>
                   {allItems.map(item => {
                     const isSelected = selectedIds.has(item.id);
                     const isPublic   = (item as any).visibility === "public";
