@@ -182,18 +182,8 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
             </div>
           )}
 
-          {/* More (⋯) button — top-right */}
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowMenu(true); }}
-            aria-label="More actions"
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm
-                       flex items-center justify-center active:scale-90 transition-transform"
-          >
-            <MoreHorizontal className="w-3.5 h-3.5 text-white" />
-          </button>
-
-          {/* Globe — top-left, only on own items */}
-          {isOwn && (
+          {/* Top-right: globe for own items, ⋯ for others */}
+          {isOwn ? (
             <button
               onClick={async (e) => {
                 e.stopPropagation();
@@ -208,13 +198,22 @@ export function PublicItemCard({ item, onClick, className }: PublicItemCardProps
                 }
               }}
               aria-label="Make private"
-              className="absolute top-2 left-2 w-7 h-7 rounded-full bg-primary/90 border-2 border-black
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary/90 border-2 border-black
                          flex items-center justify-center active:scale-90 transition-transform shadow-sm"
             >
               {isUnpublishing
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                 : <Globe className="w-3.5 h-3.5 text-black" />
               }
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMenu(true); }}
+              aria-label="More actions"
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm
+                         flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <MoreHorizontal className="w-3.5 h-3.5 text-white" />
             </button>
           )}
 
