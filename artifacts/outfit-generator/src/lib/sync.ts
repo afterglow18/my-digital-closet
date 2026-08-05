@@ -235,29 +235,73 @@ export async function syncItemEdit(item: ClothingItem, uid: string): Promise<voi
 // ── Outfit sync ───────────────────────────────────────────────────────────────
 
 /**
+ * Ensure a clothing item exists in public_items (with its image) so it can be
+ * referenced by community outfit cards. Called implicitly when an outfit is
+ * published — the item's *local* visibility flag is intentionally ignored here
+ * because the owner has already chosen to share the outfit publicly.
+ */
+async function ensureItemInPublicItems(item: ClothingItem, uid: string): Promise<void> {
+  try {
+    const sb = getSupabase();
+    let imageUrl: string | null = null;
+    if (item.imageObjectPath) {
+      imageUrl = await uploadItemImage(uid, item.id, item.imageObjectPath);
+    }
+    const { error } = await sb.from("public_items").upsert(
+      {
+        user_id:    uid,
+        local_id:   item.id,
+        name:       item.name,
+        category:   item.category,
+        color:      item.color    ?? null,
+        brand:      item.brand    ?? null,
+        size:       item.size     ?? null,
+        season:     item.season   ?? null,
+        occasion:   item.occasion ?? null,
+        image_url:  imageUrl,
+        visibility: "public",
+        status:     "active",
+      },
+      { onConflict: "user_id,local_id" },
+    );
+    if (error) console.error("[sync] ensureItemInPublicItems failed:", error.message);
+  } catch (e) {
+    console.error("[sync] ensureItemInPublicItems error:", e);
+  }
+}
+
+/**
  * Publish (or re-publish) a saved outfit. V1: no outfit image.
- * Item names are denormalized into item_names[] for display.
+ * Item names and categories are denormalized for display. Each item is also
+ * upserted into public_items so the community feed can resolve their images.
  */
 export async function publishOutfit(outfit: Outfit, uid: string): Promise<void> {
   if (!outfit.visibility || outfit.visibility === "private") return;
   try {
-    const outfitItems = outfit.items ?? [];
+    const outfitItems    = outfit.items ?? [];
     const itemNames      = outfitItems.map((i) => i.name).filter(Boolean);
     const itemCategories = outfitItems.map((i) => i.category ?? null);
-    const { error } = await getSupabase().from("public_outfits").upsert(
-      {
-        user_id:          uid,
-        local_id:         outfit.id,
-        name:             outfit.name ?? null,
-        description:      outfit.notes ?? null,
-        item_names:       itemNames,
-        item_categories:  itemCategories,
-        image_url:        null, // V1: no outfit cover image
-        status:           "active",
-      },
-      { onConflict: "user_id,local_id" },
-    );
-    if (error) console.error("[sync] publishOutfit failed:", error.message);
+
+    // Publish the outfit record and ensure every item has a public_items row
+    // (with image) in parallel so the community feed can show photos.
+    await Promise.all([
+      getSupabase().from("public_outfits").upsert(
+        {
+          user_id:          uid,
+          local_id:         outfit.id,
+          name:             outfit.name ?? null,
+          description:      outfit.notes ?? null,
+          item_names:       itemNames,
+          item_categories:  itemCategories,
+          image_url:        null, // V1: no outfit cover image
+          status:           "active",
+        },
+        { onConflict: "user_id,local_id" },
+      ).then(({ error }) => {
+        if (error) console.error("[sync] publishOutfit failed:", error.message);
+      }),
+      ...outfitItems.map((item) => ensureItemInPublicItems(item, uid)),
+    ]);
   } catch (e) {
     console.error("[sync] publishOutfit error:", e);
   }
