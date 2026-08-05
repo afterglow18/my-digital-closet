@@ -201,7 +201,7 @@ export default function WardrobePage() {
     setAboveNav(
       <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
         <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
-          Discover the Community
+          Share your style
         </p>
         <button
           onClick={() => navigate("/community")}
@@ -211,7 +211,7 @@ export default function WardrobePage() {
                      active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
         >
           <Globe className="w-3.5 h-3.5" />
-          Browse
+          Add Items
         </button>
       </div>,
     );
