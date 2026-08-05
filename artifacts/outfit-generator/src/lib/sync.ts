@@ -21,18 +21,32 @@ const ITEMS_BUCKET = "public-items";
 // ── Image upload ──────────────────────────────────────────────────────────────
 
 async function readLocalImageBlob(filename: string): Promise<Blob | null> {
-  if (!Capacitor.isNativePlatform()) return null;
+  if (Capacitor.isNativePlatform()) {
+    // Native iOS: read from Capacitor Filesystem (Documents dir)
+    try {
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      const { data } = await Filesystem.readFile({
+        path: `wardrobe-images/${filename}`,
+        directory: Directory.Documents,
+      });
+      const base64    = data as string;
+      const byteChars = atob(base64);
+      const bytes     = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      return new Blob([bytes], { type: "image/jpeg" });
+    } catch {
+      return null;
+    }
+  }
+
+  // Web: images are cached as in-memory blob URLs by imageStorage.ts.
+  // Fetch the blob URL to get a Blob we can upload.
   try {
-    const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { data } = await Filesystem.readFile({
-      path: `wardrobe-images/${filename}`,
-      directory: Directory.Documents,
-    });
-    const base64   = data as string;
-    const byteChars = atob(base64);
-    const bytes    = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
-    return new Blob([bytes], { type: "image/jpeg" });
+    const { getCachedImageUrl } = await import("./imageStorage");
+    const blobUrl = getCachedImageUrl(filename);
+    if (!blobUrl) return null;
+    const res = await fetch(blobUrl);
+    return res.ok ? await res.blob() : null;
   } catch {
     return null;
   }
