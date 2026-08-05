@@ -332,7 +332,7 @@ export default function CommunityPage() {
         </div>
 
         {/* ── Tabs + search + chips ── */}
-        <div>
+        <div className="bg-[#FDECEF]">
           {/* Tabs */}
           <div className="px-4 pt-1 pb-2">
             <div className="grid grid-cols-3 gap-1 bg-black/5 rounded-xl p-1">
