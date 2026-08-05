@@ -708,22 +708,35 @@ export default function WardrobePage() {
             if (!user || !hasChanges) return;
             setIsPublishing(true);
             try {
-              await Promise.all([
-                ...toPublish.map(async it => {
-                  updateItem.mutate({ id: it.id, data: { visibility: "public" } });
-                  await publishItem({ ...it, visibility: "public" as const }, user.id);
-                }),
-                ...toUnpublish.map(async it => {
+              // Unshares are fire-and-forget — always update locally
+              await Promise.all(
+                toUnpublish.map(async it => {
                   updateItem.mutate({ id: it.id, data: { visibility: "private" } });
                   await unpublishItem(it.id, user.id);
                 }),
-              ]);
+              );
+
+              // Publishes — only mark public locally when the remote call succeeds
+              const publishResults = await Promise.all(
+                toPublish.map(async it => {
+                  const result = await publishItem({ ...it, visibility: "public" as const }, user.id);
+                  if (result.ok) {
+                    updateItem.mutate({ id: it.id, data: { visibility: "public" } });
+                  }
+                  return result.ok;
+                }),
+              );
+
+              const succeeded = publishResults.filter(Boolean).length;
+              const failed    = publishResults.length - succeeded;
+
               setShowSharePicker(false);
               const parts: string[] = [];
-              if (toPublish.length   > 0) parts.push(`${toPublish.length} shared`);
+              if (succeeded          > 0) parts.push(`${succeeded} shared`);
               if (toUnpublish.length > 0) parts.push(`${toUnpublish.length} unshared`);
-              setSavedToast(parts.join(" · ") + "!");
-              setTimeout(() => setSavedToast(null), 2800);
+              if (failed             > 0) parts.push(`${failed} failed — tap Share to retry`);
+              setSavedToast(parts.join(" · ") + (failed === 0 ? "!" : ""));
+              setTimeout(() => setSavedToast(null), failed > 0 ? 4500 : 2800);
             } finally {
               setIsPublishing(false);
             }
