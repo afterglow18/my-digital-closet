@@ -753,16 +753,8 @@ export default function WardrobePage() {
                     const isSelected = selectedIds.has(item.id);
                     const isPublic   = (item as any).visibility === "public";
                     const imgSrc     = item.imageObjectPath ? getImageUrl(item.imageObjectPath) : null;
-                    const catStyle: Record<string, { bg: string; emoji: string }> = {
-                      tops:        { bg: "#FFC0CB", emoji: "👕" },
-                      bottoms:     { bg: "#FFC0CB", emoji: "🩳" },
-                      shorts:      { bg: "#FFC0CB", emoji: "🩳" },
-                      shoes:       { bg: "#EDE9FE", emoji: "👟" },
-                      accessories: { bg: "#FEF9C3", emoji: "👜" },
-                      outerwear:   { bg: "#D1FAE5", emoji: "🧥" },
-                      dresses:     { bg: "#FCE7F3", emoji: "👗" },
-                    };
-                    const { bg, emoji } = catStyle[item.category] ?? { bg: "#F3F4F6", emoji: "👕" };
+                    const bg    = "#FFC0CB";
+                    const emoji = "👕";
                     return (
                       <button
                         key={item.id}
