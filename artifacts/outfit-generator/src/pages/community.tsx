@@ -33,8 +33,8 @@ import { CLOTHING_CATEGORIES } from "@/lib/db";
 import { cn, getImageUrl } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { useUnreadNotifCount, useHeartNotifsEnabled } from "@/hooks/useNotifications";
-import { useListOutfits, useRenameOutfit, getListOutfitsQueryKey } from "@/lib/local-api";
-import { publishOutfit, unpublishOutfit } from "@/lib/sync";
+import { useListOutfits, useRenameOutfit, getListOutfitsQueryKey, useListClothing, useUpdateClothingItem, type ClothingItem } from "@/lib/local-api";
+import { publishOutfit, unpublishOutfit, publishItem, unpublishItem } from "@/lib/sync";
 import { useQueryClient } from "@tanstack/react-query";
 
 type FeedTab = "items" | "outfits" | "following";
@@ -64,11 +64,24 @@ export default function CommunityPage() {
   const [copied,           setCopied]           = useState(false);
   const [showNudge,        setShowNudge]        = useState(false);
   const [showLookbookPicker, setShowLookbookPicker] = useState(false);
-  const [togglingId,       setTogglingId]       = useState<number | null>(null);
+  const [showItemPicker,     setShowItemPicker]     = useState(false);
+  const [pendingPublicItemIds, setPendingPublicItemIds] = useState<Set<number>>(new Set());
+  const [isPublishingItems,  setIsPublishingItems]  = useState(false);
+  const [togglingId,         setTogglingId]         = useState<number | null>(null);
 
   const queryClient  = useQueryClient();
   const renameOutfit = useRenameOutfit();
+  const updateItem   = useUpdateClothingItem();
   const { data: localOutfits = [] } = useListOutfits();
+
+  // All local clothing items — merged across categories for the item picker
+  const { data: _tops    = [] } = useListClothing({ category: "tops" });
+  const { data: _bottoms = [] } = useListClothing({ category: "bottoms" });
+  const { data: _shoes   = [] } = useListClothing({ category: "shoes" });
+  const { data: _acc     = [] } = useListClothing({ category: "accessories" });
+  const { data: _outer   = [] } = useListClothing({ category: "outerwear" });
+  const { data: _dresses = [] } = useListClothing({ category: "dresses" });
+  const allLocalItems: ClothingItem[] = [..._tops, ..._dresses, ..._bottoms, ..._shoes, ..._acc, ..._outer];
   const { data: myProfile } = useMyProfile(user?.id);
   const unreadCount = useUnreadNotifCount();
   const [heartNotifsEnabled] = useHeartNotifsEnabled();
@@ -190,31 +203,39 @@ export default function CommunityPage() {
     requestAnimationFrame(() => { getScrollContainer()?.scrollTo({ top: 0 }); });
   }, []);
 
-  // ── Above-nav bar ──────────────────────────────────────────────────────────
+  // ── Above-nav bar — changes label/action based on active feed tab ──────────
   useEffect(() => {
-    // Only show the bar for unauthenticated users — signed-in users share via the in-feed + tile
+    const isOutfitsTab = feedTab === "outfits";
+    const label  = isOutfitsTab ? "Share your Fits" : "Share your Style";
+    const btnTxt = isOutfitsTab ? "+ ADD"               : "+ ADD";
+    const openPicker = () => {
+      if (!user) { setShowAuth(true); return; }
+      if (isOutfitsTab) setShowLookbookPicker(true);
+      else {
+        setPendingPublicItemIds(new Set(allLocalItems.filter(i => (i as any).visibility === "public").map(i => i.id)));
+        setShowItemPicker(true);
+      }
+    };
     setAboveNav(
-      !user ? (
-        <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
-          <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
-            Share your style
-          </p>
-          <button
-            onClick={() => setShowAuth(true)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
-                       rounded-xl bg-white text-xs font-bold uppercase tracking-wide
-                       shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            Add Items
-          </button>
-        </div>
-      ) : null,
+      <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
+        <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
+          {label}
+        </p>
+        <button
+          onClick={openPicker}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
+                     rounded-xl bg-white text-xs font-bold uppercase tracking-wide
+                     shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          {btnTxt}
+        </button>
+      </div>,
     );
     return () => setAboveNav(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, feedTab, allLocalItems.length]);
 
   // Migrate localStorage follows + blocks to Supabase once on sign-in
   useEffect(() => {
@@ -574,6 +595,112 @@ export default function CommunityPage() {
       </AnimatePresence>
 
       <AnimatePresence>
+      </AnimatePresence>
+
+      {/* ── Item Picker sheet ────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showItemPicker && user && (() => {
+          const originalPublicIds = new Set(allLocalItems.filter(i => (i as any).visibility === "public").map(i => i.id));
+          const toPublish   = allLocalItems.filter(it => pendingPublicItemIds.has(it.id) && !originalPublicIds.has(it.id));
+          const toUnpublish = allLocalItems.filter(it => !pendingPublicItemIds.has(it.id) && originalPublicIds.has(it.id));
+          const hasChanges  = toPublish.length > 0 || toUnpublish.length > 0;
+
+          const handleApply = async () => {
+            if (!hasChanges) { setShowItemPicker(false); return; }
+            setIsPublishingItems(true);
+            try {
+              await Promise.all(toUnpublish.map(async it => {
+                updateItem.mutate({ id: it.id, data: { visibility: "private" } });
+                await unpublishItem(it.id, user.id);
+              }));
+              await Promise.all(toPublish.map(async it => {
+                const result = await publishItem({ ...it, visibility: "public" as const }, user.id);
+                if (result.ok) updateItem.mutate({ id: it.id, data: { visibility: "public" } });
+              }));
+              queryClient.invalidateQueries({ queryKey: ["community", "items"] });
+            } finally {
+              setIsPublishingItems(false);
+              setShowItemPicker(false);
+            }
+          };
+
+          return (
+            <motion.div
+              key="item-picker"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+              onPointerDown={e => { if (e.target === e.currentTarget) setShowItemPicker(false); }}
+            >
+              <motion.div
+                initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 380, damping: 36 }}
+                className="w-full bg-white rounded-t-3xl border-t-2 border-black overflow-hidden"
+                style={{ maxHeight: "82vh", display: "flex", flexDirection: "column" }}
+              >
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-black/20" />
+                </div>
+                <div className="flex items-center justify-between px-5 py-3 border-b border-black/10">
+                  <div>
+                    <p className="font-display font-bold text-lg uppercase tracking-tight leading-none">Your Wardrobe</p>
+                    <p className="text-[11px] text-black/40 mt-0.5">Tap the globe to share to Discover</p>
+                  </div>
+                  <button onClick={() => setShowItemPicker(false)}
+                    className="w-8 h-8 rounded-full bg-black/8 flex items-center justify-center active:bg-black/15">
+                    <X className="w-4 h-4 text-black/60" />
+                  </button>
+                </div>
+
+                {/* Camera-roll grid */}
+                <div className="overflow-y-auto flex-1 p-0.5 grid grid-cols-3 gap-0.5" style={{ background: "#FDECEF" }}>
+                  {allLocalItems.length === 0 ? (
+                    <div className="col-span-3 flex flex-col items-center justify-center py-16 gap-2">
+                      <Shirt className="w-8 h-8 text-black/20" />
+                      <p className="text-sm font-bold text-black/30 uppercase tracking-wide">No items yet</p>
+                    </div>
+                  ) : allLocalItems.map(item => {
+                    const isPublic = pendingPublicItemIds.has(item.id);
+                    const imgSrc   = item.imageObjectPath ? getImageUrl(item.imageObjectPath) : null;
+                    return (
+                      <div key={item.id} className="relative aspect-square overflow-hidden">
+                        {imgSrc
+                          ? <img src={imgSrc} alt={item.name} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center bg-primary/30">
+                              <Shirt className="w-6 h-6 text-black/30" />
+                            </div>
+                        }
+                        <button
+                          onClick={() => setPendingPublicItemIds(prev => {
+                            const next = new Set(prev);
+                            next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                            return next;
+                          })}
+                          className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-md transition-colors"
+                          style={{ background: isPublic ? "#22c55e" : "rgba(0,0,0,0.35)" }}
+                        >
+                          <Globe className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="px-4 py-4 border-t border-black/10 bg-white">
+                  <button
+                    disabled={!hasChanges || isPublishingItems}
+                    onClick={handleApply}
+                    className="w-full py-3 border-2 border-black rounded-xl bg-primary font-bold uppercase tracking-wide text-sm
+                               shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                               transition-all disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2"
+                  >
+                    {isPublishingItems ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : "Done"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Lookbook Picker sheet ────────────────────────────────────────── */}
