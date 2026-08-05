@@ -223,7 +223,7 @@ export default function WardrobePage() {
                      active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
         >
           <Globe className="w-3.5 h-3.5" />
-          Add Items
+          Share
         </button>
       </div>,
     );
