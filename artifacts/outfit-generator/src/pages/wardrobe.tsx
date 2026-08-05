@@ -21,15 +21,16 @@
 
 import React, {
   useEffect, useRef, useState,
-  useCallback, RefObject,
+  useCallback, RefObject, useContext,
 } from "react";
 import { useLocation } from "wouter";
+import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import {
   useListClothing, getListClothingQueryKey,
   useSaveOutfit, useListOutfits, getListOutfitsQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { X } from "lucide-react";
+import { X, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClosetRow, ClosetRowHandle } from "@/components/ClosetRow";
 import { QuickAddSheet } from "@/components/clothing/QuickAddSheet";
@@ -127,17 +128,9 @@ function useImageRect(containerRef: RefObject<HTMLDivElement>): ImgRect {
       if (!c) return;
       const cW = c.clientWidth, cH = c.clientHeight;
       const iR = IMG_W / IMG_H;
-      const cR = cW / cH;
       let rW: number, rH: number, rL: number, rT: number;
-      const fillHW = cH * iR; // image width if we scale to fill container height
-      if (fillHW >= cW) {
-        // Fill height — image wider than container (portrait phone, normal case).
-        // Tiny horizontal crop hidden by overflow:hidden; no bottom gap.
-        rH = cH; rW = fillHW; rT = 0; rL = (cW - fillHW) / 2;
-      } else {
-        // Fill width — container is wider than tall (landscape / desktop).
-        rW = cW; rH = cW / iR; rL = 0; rT = 0;
-      }
+      // Always fill width — image scales to container width; doors stay centred.
+      rW = cW; rH = cW / iR; rL = 0; rT = 0;
       setRect({ top: rT, left: rL, width: rW, height: rH, containerH: cH });
     };
     compute();
@@ -203,6 +196,29 @@ export default function WardrobePage() {
     });
   }, [tops.length, bottoms.length, shoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Above-nav community discovery bar ────────────────────────────────────────
+  useEffect(() => {
+    setAboveNav(
+      <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
+        <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
+          Discover the Community
+        </p>
+        <button
+          onClick={() => navigate("/community")}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
+                     rounded-xl bg-white text-xs font-bold uppercase tracking-wide
+                     shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          Browse
+        </button>
+      </div>,
+    );
+    return () => setAboveNav(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const setCentredTops    = useCallback((item: ClothingItem | null) =>
     setCentred(p => ({ ...p, tops:    item ?? undefined })), []);
   const setCentredBottoms = useCallback((item: ClothingItem | null) =>
@@ -229,7 +245,8 @@ export default function WardrobePage() {
     if (canSaveOutfit(outfits.length)) setIsSaveOpen(true); else setUpgradeReason("outfits");
   }, [canSaveOutfit, outfits.length]);
 
-  const [, navigate] = useLocation();
+  const [, navigate]  = useLocation();
+  const setAboveNav   = useContext(AboveNavSlotContext);
 
   const handleMannequinClick = useCallback(() => {
     navigate("/settings");
