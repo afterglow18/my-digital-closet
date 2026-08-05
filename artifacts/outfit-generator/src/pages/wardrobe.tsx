@@ -278,7 +278,7 @@ export default function WardrobePage() {
         queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
         const name = saveName.trim();
         setIsSaveOpen(false); setSaveName("");
-        setSavedToast(name);
+        setSavedToast(`"${name}" saved!`);
         setTimeout(() => setSavedToast(null), 2500);
       }},
     );
@@ -647,7 +647,7 @@ export default function WardrobePage() {
               gap: 7,
             }}
           >
-            <span>💛</span> "{savedToast}" saved!
+            <span>💛</span> {savedToast}
           </motion.div>
         )}
       </AnimatePresence>
