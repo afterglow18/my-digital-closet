@@ -15,6 +15,7 @@ import SettingsPage from './pages/settings';
 import AdminPage from './pages/admin';
 import PublicItemPage from './pages/public-item';
 import PublicOutfitPage from './pages/public-outfit';
+import AuthVerifiedPage from './pages/auth-verified';
 import SplashScreen from './components/SplashScreen';
 import { App as CapApp } from '@capacitor/app';
 import { queryClient } from '@/lib/queryClient';
@@ -89,6 +90,7 @@ export default function App() {
               <Route path="/profile/:handle" component={ProfileViewPage} />
               <Route path="/settings"       component={SettingsPage} />
               <Route path="/auth/callback" component={AuthCallback} />
+              <Route path="/auth/verified" component={AuthVerifiedPage} />
               <Route path="/admin"           component={AdminPage} />
               <Route path="/item/:id"        component={PublicItemPage} />
               <Route path="/outfit/:id"      component={PublicOutfitPage} />

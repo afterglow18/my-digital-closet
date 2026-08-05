@@ -18,6 +18,7 @@ import React, {
 } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { Capacitor } from "@capacitor/core";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = useCallback(
     async (email: string): Promise<{ error: string | null }> => {
       try {
-        const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+        const redirectTo = "https://mydigitalcloset.replit.app/outfit-generator/auth/verified";
         const { error } = await getSupabase().auth.resetPasswordForEmail(email, { redirectTo });
         return { error: error?.message ?? null };
       } catch (e) {
@@ -155,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+            emailRedirectTo: "https://mydigitalcloset.replit.app/outfit-generator/auth/verified",
             data: {
               handle: handle.toLowerCase().trim() || undefined,
               display_name: displayName?.trim() || null,
