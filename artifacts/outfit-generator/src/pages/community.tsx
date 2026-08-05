@@ -20,7 +20,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Search, UserCircle, Loader2, RefreshCw, Shirt, Globe, Users, Heart, X, Plane, Plus, Check } from "lucide-react";
 import { AboveNavSlotContext } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityItems, useCommunityOutfits, useFollowingFeed } from "@/hooks/useCommunity";
+import { useCommunityItems, useCommunityOutfits, useFollowingFeed, useMyProfile } from "@/hooks/useCommunity";
 import { getFollowCount } from "@/lib/localFollows";
 import { migrateLocalFollowsToSupabase } from "@/hooks/useFollows";
 import { migrateLocalBlocksToSupabase } from "@/lib/blockedUsers";
@@ -69,6 +69,7 @@ export default function CommunityPage() {
   const queryClient  = useQueryClient();
   const renameOutfit = useRenameOutfit();
   const { data: localOutfits = [] } = useListOutfits();
+  const { data: myProfile } = useMyProfile(user?.id);
   const unreadCount = useUnreadNotifCount();
   const [heartNotifsEnabled] = useHeartNotifsEnabled();
   const setAboveNav = useContext(AboveNavSlotContext);
@@ -255,12 +256,16 @@ export default function CommunityPage() {
               <button
                 onClick={() => navigate("/profile/me")}
                 className="w-9 h-9 flex items-center justify-center border-2 border-black
-                           rounded-full bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                           rounded-full bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                            active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
-                           text-base leading-none"
+                           overflow-hidden text-sm font-bold leading-none"
                 aria-label="My profile"
               >
-                ✨
+                {myProfile?.avatar_url ? (
+                  <img src={myProfile.avatar_url} alt="me" className="w-full h-full object-cover" />
+                ) : (
+                  (myProfile?.display_name ?? myProfile?.handle ?? user.email ?? "?")[0].toUpperCase()
+                )}
               </button>
             )}
 
