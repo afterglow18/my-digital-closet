@@ -611,7 +611,7 @@ export default function ProfileMePage() {
                        shadow-xl whitespace-nowrap border-2 border-black
                        active:scale-95 transition-transform"
           >
-            ✨ Link Copied! Paste to Share ✨
+            ✨ Link Copied! Paste & Post ✨
           </button>
         </div>
       )}

@@ -199,7 +199,7 @@ export default function ProfileViewPage() {
                        shadow-xl whitespace-nowrap border-2 border-black
                        active:scale-95 transition-transform"
           >
-            ✨ Link Copied! Paste to Post ✨
+            ✨ Link Copied! Paste & Post ✨
           </button>
         </div>
       )}

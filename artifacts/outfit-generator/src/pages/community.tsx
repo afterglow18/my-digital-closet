@@ -854,7 +854,7 @@ export default function CommunityPage() {
             onClick={() => { navigator.clipboard.writeText(SHARE_TEXT).catch(() => {}); setCopied(false); }}
             className="bg-yellow-400 text-black px-7 py-4 rounded-full text-lg font-black shadow-xl whitespace-nowrap border-2 border-black active:scale-95 transition-transform"
           >
-            ✨ Link Copied! Paste to Post ✨
+            ✨ Link Copied! Paste & Post ✨
           </button>
         </div>
       )}
