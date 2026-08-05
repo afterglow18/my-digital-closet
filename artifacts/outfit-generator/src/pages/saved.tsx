@@ -265,6 +265,7 @@ export default function SavedPage() {
         { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
       );
       await publishOutfit({ ...outfit, visibility: "public" }, uid);
+      queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
       setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
     } else {
       postAuthSharingRef.current = false;
@@ -1016,6 +1017,7 @@ export default function SavedPage() {
                 { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
               );
               await publishOutfit({ ...outfit, visibility: "public" }, uid);
+              queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
               setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
             }}
           />
@@ -1043,6 +1045,7 @@ export default function SavedPage() {
                 { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
               );
               await publishOutfit({ ...outfit, visibility: "public" }, user.id);
+              queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
               setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
             }}
           />
@@ -1077,6 +1080,7 @@ export default function SavedPage() {
                     { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
                   );
                   await publishOutfit({ ...outfit, visibility: "public" }, uid);
+                  queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
                   setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
                 });
               } else {

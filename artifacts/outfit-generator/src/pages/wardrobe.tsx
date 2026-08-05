@@ -738,12 +738,18 @@ export default function WardrobePage() {
               const failed    = publishResults.length - succeeded;
 
               setShowSharePicker(false);
-              const parts: string[] = [];
-              if (succeeded          > 0) parts.push(`${succeeded} shared`);
-              if (toUnpublish.length > 0) parts.push(`${toUnpublish.length} unshared`);
-              if (failed             > 0) parts.push(`${failed} failed — tap Share to retry`);
-              setSavedToast(parts.join(" · ") + (failed === 0 ? "!" : ""));
-              setTimeout(() => setSavedToast(null), failed > 0 ? 4500 : 2800);
+              let toast = "";
+              if (failed > 0) {
+                toast = `${failed} failed — tap Share to retry`;
+              } else if (succeeded > 0) {
+                toast = "Shared!";
+              } else if (toUnpublish.length > 0) {
+                toast = "Updated!";
+              }
+              if (toast) {
+                setSavedToast(toast);
+                setTimeout(() => setSavedToast(null), failed > 0 ? 4500 : 2800);
+              }
             } finally {
               setIsPublishing(false);
             }
