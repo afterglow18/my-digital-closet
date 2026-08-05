@@ -418,22 +418,20 @@ export default function CommunityPage() {
                   ))}
                 </div>
                 <div className="flex-1 flex flex-col gap-3" style={{ marginTop: brickOffset }}>
-                  {/* Add Outfit tile — only for signed-in users */}
-                  {user && (
-                    <button
-                      onClick={() => setShowLookbookPicker(true)}
-                      className="w-full rounded-2xl border-2 border-dashed border-black/30
-                                 flex flex-col items-center justify-center gap-1.5 py-6
-                                 active:bg-black/5 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-full border-2 border-black/30 flex items-center justify-center">
-                        <Plus className="w-4 h-4 text-black/40" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-black/35">
-                        Add Outfit
-                      </span>
-                    </button>
-                  )}
+                  {/* Add Outfit tile — visible to all; prompts sign-in if unauthenticated */}
+                  <button
+                    onClick={() => user ? setShowLookbookPicker(true) : setShowAuth(true)}
+                    className="w-full rounded-2xl border-2 border-dashed border-black/30
+                               flex flex-col items-center justify-center gap-1.5 py-6
+                               active:bg-black/5 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full border-2 border-black/30 flex items-center justify-center">
+                      <Plus className="w-4 h-4 text-black/40" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black/35">
+                      Add Outfit
+                    </span>
+                  </button>
                   {outfits.filter((_, i) => i % 2 !== 0).map((outfit) => (
                     <PublicOutfitCard key={outfit.id} outfit={outfit} />
                   ))}
@@ -450,6 +448,20 @@ export default function CommunityPage() {
                   ))}
                 </div>
                 <div className="flex-1 flex flex-col gap-3" style={{ marginTop: itemBrickOffset }}>
+                  {/* Add Item tile — visible to all; prompts sign-in if unauthenticated */}
+                  <button
+                    onClick={() => user ? navigate("/") : setShowAuth(true)}
+                    className="w-full rounded-2xl border-2 border-dashed border-black/30
+                               flex flex-col items-center justify-center gap-1.5 py-6
+                               active:bg-black/5 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full border-2 border-black/30 flex items-center justify-center">
+                      <Plus className="w-4 h-4 text-black/40" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black/35">
+                      Add Item
+                    </span>
+                  </button>
                   {items.filter((_, i) => i % 2 !== 0).map((item) => (
                     <PublicItemCard key={item.id} item={item} />
                   ))}
