@@ -239,7 +239,13 @@ export default function CommunityPage() {
         {/* ── Scrollable header — Discover title (scrolls away) ── */}
         <div className="px-4 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Globe className="w-6 h-6" />
+            <button
+              onClick={() => user ? navigate("/profile/me") : setShowAuth(true)}
+              aria-label={user ? "My profile" : "Sign in"}
+              className="active:scale-90 transition-transform"
+            >
+              <Globe className="w-6 h-6" />
+            </button>
             <h1 className="font-display font-bold text-2xl uppercase tracking-tight">Discover</h1>
           </div>
           <div className="flex items-center gap-2">
