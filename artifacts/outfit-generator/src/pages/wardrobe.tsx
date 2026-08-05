@@ -30,10 +30,12 @@ import {
   useSaveOutfit, useListOutfits, getListOutfitsQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { X, Globe, Check } from "lucide-react";
+import { X, Globe, Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import { getImageUrl } from "@/lib/utils";
+import { publishItem } from "@/lib/sync";
+import { useUpdateClothingItem } from "@/lib/local-api";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClosetRow, ClosetRowHandle } from "@/components/ClosetRow";
 import { QuickAddSheet } from "@/components/clothing/QuickAddSheet";
@@ -173,6 +175,9 @@ export default function WardrobePage() {
   const [savedToast,      setSavedToast]      = useState<string | null>(null);
   const [showAuth,        setShowAuth]        = useState(false);
   const [showSharePicker, setShowSharePicker] = useState(false);
+  const [selectedIds,     setSelectedIds]     = useState<Set<number>>(new Set());
+  const [isPublishing,    setIsPublishing]    = useState(false);
+  const updateItem = useUpdateClothingItem();
 
   const { data: tops        = [] } = useListClothing({ category: "tops"        }, { query: { queryKey: getListClothingQueryKey({ category: "tops"        }) } });
   const { data: bottoms     = [] } = useListClothing({ category: "bottoms"     }, { query: { queryKey: getListClothingQueryKey({ category: "bottoms"     }) } });
@@ -203,45 +208,28 @@ export default function WardrobePage() {
     });
   }, [tops.length, bottoms.length, shoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Above-nav community bar (auth-aware) ─────────────────────────────────────
+  // ── Above-nav community bar ───────────────────────────────────────────────────
   useEffect(() => {
     setAboveNav(
-      !user ? (
-        <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
-          <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
-            Share your style
-          </p>
-          <button
-            onClick={() => setShowAuth(true)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
-                       rounded-xl bg-white text-xs font-bold uppercase tracking-wide
-                       shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            Add Items
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white/95 border-t border-black/10 px-4 py-2 flex items-center gap-2">
-          <p className="flex-1 text-[11px] font-bold text-black/40 uppercase tracking-wide">
-            Share your style
-          </p>
-          <button
-            onClick={() => setShowSharePicker(true)}
-            className="flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-xl
-                       bg-primary text-[11px] font-bold uppercase tracking-wide
-                       shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                       active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-          >
-            <Globe className="w-3 h-3" /> Add Items
-          </button>
-        </div>
-      ),
+      <div className="bg-primary border-t-2 border-black px-4 py-2.5 flex items-center gap-3">
+        <p className="flex-1 font-display font-bold text-sm uppercase tracking-tight leading-none">
+          Share your style
+        </p>
+        <button
+          onClick={() => { setSelectedIds(new Set()); setShowSharePicker(true); }}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-2 border-black
+                     rounded-xl bg-white text-xs font-bold uppercase tracking-wide
+                     shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          Add Items
+        </button>
+      </div>,
     );
     return () => setAboveNav(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, []);
 
   const setCentredTops    = useCallback((item: ClothingItem | null) =>
     setCentred(p => ({ ...p, tops:    item ?? undefined })), []);
@@ -691,68 +679,160 @@ export default function WardrobePage() {
         )}
       </AnimatePresence>
 
-      {/* ── Share picker ── */}
+      {/* ── Share picker (camera-roll multi-select) ── */}
       <AnimatePresence>
-        {showSharePicker && (
-          <motion.div
-            key="share-picker"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end"
-            style={{ background: "rgba(0,0,0,0.45)" }}
-            onPointerDown={e => { if (e.target === e.currentTarget) setShowSharePicker(false); }}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="w-full bg-white rounded-t-2xl overflow-hidden"
-              style={{ maxHeight: "80dvh", display: "flex", flexDirection: "column" }}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-4 border-b border-black/10">
-                <div>
-                  <h2 className="font-display font-bold text-base uppercase tracking-tight">Pick items to share</h2>
-                  <p className="text-[11px] text-black/40 mt-0.5">Tap an item to set it as public</p>
-                </div>
-                <button onClick={() => setShowSharePicker(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+        {showSharePicker && (() => {
+          const allItems = [...tops, ...dresses, ...bottoms, ...shoes, ...accessories, ...outerwear];
 
-              {/* Grid */}
-              <div className="overflow-y-auto p-3 grid grid-cols-3 gap-2">
-                {[...tops, ...dresses, ...bottoms, ...shoes, ...accessories, ...outerwear].map(item => {
-                  const isPublic = (item as any).visibility === "public";
-                  const imgSrc = item.imageObjectPath ? getImageUrl(item.imageObjectPath) : null;
-                  return (
+          const toggleId = (id: number) => setSelectedIds(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+          });
+
+          const handleShare = async () => {
+            if (!user || selectedIds.size === 0) return;
+            setIsPublishing(true);
+            try {
+              await Promise.all(
+                allItems
+                  .filter(it => selectedIds.has(it.id))
+                  .map(async it => {
+                    const updated = { ...it, visibility: "public" as const };
+                    updateItem.mutate({ id: it.id, data: { visibility: "public" } });
+                    await publishItem(updated, user.id);
+                  }),
+              );
+              setShowSharePicker(false);
+              setSelectedIds(new Set());
+              setSavedToast(`${selectedIds.size} item${selectedIds.size > 1 ? "s" : ""} shared!`);
+              setTimeout(() => setSavedToast(null), 2800);
+            } finally {
+              setIsPublishing(false);
+            }
+          };
+
+          return (
+            <motion.div
+              key="share-picker"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+              onPointerDown={e => { if (e.target === e.currentTarget) setShowSharePicker(false); }}
+            >
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                className="w-full bg-white rounded-t-2xl overflow-hidden"
+                style={{ maxHeight: "88dvh", display: "flex", flexDirection: "column" }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-black/10">
+                  <div>
+                    <h2 className="font-display font-bold text-base uppercase tracking-tight">Share to Community</h2>
+                    <p className="text-[11px] text-black/40 mt-0.5">
+                      {user
+                        ? selectedIds.size === 0 ? "Tap photos to select" : `${selectedIds.size} selected`
+                        : "Sign in to share your style"}
+                    </p>
+                  </div>
+                  <button onClick={() => setShowSharePicker(false)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Camera-roll grid */}
+                <div className="overflow-y-auto flex-1 p-0.5 grid grid-cols-3 gap-0.5"
+                  style={{ opacity: user ? 1 : 0.45, pointerEvents: user ? "auto" : "none" }}>
+                  {allItems.map(item => {
+                    const isSelected = selectedIds.has(item.id);
+                    const isPublic   = (item as any).visibility === "public";
+                    const imgSrc     = item.imageObjectPath ? getImageUrl(item.imageObjectPath) : null;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => toggleId(item.id)}
+                        className="relative aspect-square bg-black/5 overflow-hidden"
+                        style={{
+                          outline: isSelected ? "3px solid #C49B2A" : "none",
+                          outlineOffset: "-3px",
+                        }}
+                      >
+                        {imgSrc
+                          ? <img src={imgSrc} alt={item.name} className="w-full h-full object-cover" />
+                          : <span className="text-3xl absolute inset-0 flex items-center justify-center">👕</span>
+                        }
+                        {/* Selected checkmark */}
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-primary border-2 border-black flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 text-black" strokeWidth={3} />
+                          </div>
+                        )}
+                        {/* Already public badge */}
+                        {!isSelected && isPublic && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Globe className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Auth wall (guests) */}
+                {!user && (
+                  <div className="px-5 py-5 border-t-2 border-black/10 bg-white flex flex-col gap-3">
+                    <p className="text-sm font-bold text-center">Create an account to share your closet</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setShowSharePicker(false); setShowAuth(true); }}
+                        className="flex-1 py-2.5 border-2 border-black rounded-xl bg-primary font-bold text-sm uppercase tracking-wide
+                                   shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                      >
+                        Create Account
+                      </button>
+                      <button
+                        onClick={() => { setShowSharePicker(false); setShowAuth(true); }}
+                        className="flex-1 py-2.5 border-2 border-black rounded-xl bg-white font-bold text-sm uppercase tracking-wide
+                                   shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                      >
+                        Sign In
+                      </button>
+                    </div>
+                    <label className="flex items-center justify-center gap-2 text-[11px] text-black/50 cursor-pointer select-none">
+                      <input type="checkbox" defaultChecked className="accent-black w-3.5 h-3.5" />
+                      Keep me signed in
+                    </label>
+                  </div>
+                )}
+
+                {/* Share button (signed-in) */}
+                {user && (
+                  <div className="px-4 py-4 border-t border-black/10 bg-white">
                     <button
-                      key={item.id}
-                      onClick={() => { setShowSharePicker(false); setDetailsItem(item); }}
-                      className="relative rounded-xl overflow-hidden border-2 border-black/10 bg-black/5 aspect-square flex items-center justify-center active:scale-95 transition-transform"
+                      disabled={selectedIds.size === 0 || isPublishing}
+                      onClick={handleShare}
+                      className="w-full py-3 border-2 border-black rounded-xl bg-primary font-bold uppercase tracking-wide text-sm
+                                 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none
+                                 transition-all disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2"
                     >
-                      {imgSrc
-                        ? <img src={imgSrc} alt={item.name} className="w-full h-full object-cover" />
-                        : <span className="text-2xl">👕</span>
-                      }
-                      {isPublic && (
-                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
-                        <p className="text-white text-[9px] font-bold truncate text-center">{item.name}</p>
-                      </div>
+                      {isPublishing
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Sharing…</>
+                        : selectedIds.size === 0
+                          ? "Select items to share"
+                          : `Share ${selectedIds.size} Item${selectedIds.size > 1 ? "s" : ""}`}
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+                )}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Auth sheet ── */}
