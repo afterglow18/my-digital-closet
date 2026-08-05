@@ -364,7 +364,7 @@ export default function SavedPage() {
   return (
     <div className="min-h-full flex flex-col px-4 pb-8 bg-secondary/10 relative">
       {/* ── Sticky header — stays pinned while outfit list scrolls ── */}
-      <div className="sticky top-0 z-20 bg-secondary/10 -mx-4 px-4 pt-8 pb-1">
+      <div className="sticky top-0 z-20 bg-[#FDECEF] -mx-4 px-4 pt-8 pb-1">
       <header className="mb-6">
         <h1 className="text-4xl font-display font-bold uppercase tracking-tighter mb-1">Lookbook</h1>
         <div className="flex items-center justify-between">

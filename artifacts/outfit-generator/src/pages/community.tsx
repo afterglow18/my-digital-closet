@@ -282,13 +282,14 @@ export default function CommunityPage() {
                 className="w-9 h-9 flex items-center justify-center border-2 border-black
                            rounded-full bg-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
                            active:translate-y-0.5 active:translate-x-0.5 active:shadow-none transition-all
-                           overflow-hidden text-base font-display leading-none"
+                           overflow-hidden"
+                style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.1rem", lineHeight: 1 }}
                 aria-label="My profile"
               >
                 {myProfile?.avatar_url ? (
                   <img src={myProfile.avatar_url} alt="me" className="w-full h-full object-cover" />
                 ) : (
-                  (myProfile?.display_name ?? myProfile?.handle ?? user.email ?? "?")[0].toUpperCase()
+                  (myProfile?.display_name ?? myProfile?.handle ?? user.email ?? "?")[0].toLowerCase()
                 )}
               </button>
             )}
