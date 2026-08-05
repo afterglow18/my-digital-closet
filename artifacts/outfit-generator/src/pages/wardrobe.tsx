@@ -841,7 +841,10 @@ export default function WardrobePage() {
       {/* ── Auth sheet ── */}
       <AnimatePresence>
         {showAuth && (
-          <AuthSheet onClose={() => setShowAuth(false)} />
+          <AuthSheet
+            onClose={() => setShowAuth(false)}
+            onSuccess={() => { setShowAuth(false); setShowSharePicker(true); }}
+          />
         )}
       </AnimatePresence>
     </div>
