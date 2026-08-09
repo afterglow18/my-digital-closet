@@ -193,28 +193,36 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
             ...Array(Math.max(0, 5 - extraItems.length)).fill(null),
           ];
 
-          const BigSlot = ({ slot, dress = false }: { slot: typeof raw[0] | null; dress?: boolean }) => (
-            <div className="w-full rounded-2xl overflow-hidden bg-white/30"
-              style={{ aspectRatio: dress ? "1/2" : "1/1" }}>
-              {slot?.url
-                ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center">
-                    <Shirt className="w-5 h-5 text-black/15" />
-                  </div>
-              }
-            </div>
-          );
+          const BigSlot = ({ slot, dress = false }: { slot: typeof raw[0] | null; dress?: boolean }) => {
+            const [err, setErr] = React.useState(false);
+            return (
+              <div className="w-full rounded-2xl overflow-hidden bg-white/30"
+                style={{ aspectRatio: dress ? "1/2" : "1/1" }}>
+                {slot?.url && !err
+                  ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover"
+                      onError={() => setErr(true)} />
+                  : <div className="w-full h-full flex items-center justify-center">
+                      <Shirt className="w-5 h-5 text-black/15" />
+                    </div>
+                }
+              </div>
+            );
+          };
 
-          const SmallSlot = ({ slot }: { slot: typeof raw[0] | null }) => (
-            <div className="flex-1 w-full rounded-xl overflow-hidden bg-white/30">
-              {slot?.url
-                ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center">
-                    <Shirt className="w-3 h-3 text-black/15" />
-                  </div>
-              }
-            </div>
-          );
+          const SmallSlot = ({ slot }: { slot: typeof raw[0] | null }) => {
+            const [err, setErr] = React.useState(false);
+            return (
+              <div className="flex-1 w-full rounded-xl overflow-hidden bg-white/30">
+                {slot?.url && !err
+                  ? <img src={slot.url} alt={slot.name} className="w-full h-full object-cover"
+                      onError={() => setErr(true)} />
+                  : <div className="w-full h-full flex items-center justify-center">
+                      <Shirt className="w-3 h-3 text-black/15" />
+                    </div>
+                }
+              </div>
+            );
+          };
 
           return (
             <div className="w-full relative overflow-hidden"
