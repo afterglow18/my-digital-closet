@@ -88,6 +88,7 @@ export function useCommunityItems(filters: FeedFilters = {}) {
         .from("public_items")
         .select("*")
         .eq("status", "active")
+        .eq("visibility", "public")
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
       if (pageParam)        q = q.lt("created_at", pageParam as string);
@@ -212,6 +213,7 @@ export function usePublicProfileItems(userId: string | undefined) {
         .from("public_items")
         .select("*")
         .eq("user_id", userId)
+        .eq("visibility", "public")
         .order("created_at", { ascending: false });
       if (error) { logSupabaseError("usePublicProfileItems", error); throw new Error(error.message); }
       return (data ?? []) as PublicItem[];
@@ -259,6 +261,7 @@ export function useFollowingFeed(userId?: string) {
           .select("*")
           .in("user_id", followIds)
           .eq("status", "active")
+          .eq("visibility", "public")
           .order("created_at", { ascending: false })
           .limit(60),
         sb
@@ -392,6 +395,7 @@ export function useMyPublishedItems(userId: string | undefined) {
         .from("public_items")
         .select("*")
         .eq("user_id", userId)
+        .eq("visibility", "public")
         .order("updated_at", { ascending: false });
       if (error) { logSupabaseError("useMyPublishedItems", error); throw new Error(error.message); }
       return (data ?? []) as PublicItem[];

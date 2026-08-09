@@ -198,8 +198,14 @@ export async function publishItem(
 export async function unpublishItem(localId: number, uid: string): Promise<void> {
   try {
     const sb = getSupabase();
-    await sb.from("public_items").delete().eq("user_id", uid).eq("local_id", localId);
-    await deleteItemImage(uid, localId);
+    // Mark visibility = 'private' rather than deleting the row so the image
+    // URL is still resolvable by published outfits that include this item.
+    // The storage file is intentionally NOT deleted for the same reason.
+    await sb
+      .from("public_items")
+      .update({ visibility: "private" })
+      .eq("user_id", uid)
+      .eq("local_id", localId);
   } catch (e) {
     console.error("[sync] unpublishItem error:", e);
   }

@@ -293,9 +293,25 @@ export default function SavedPage() {
   };
 
   const handleRemoveItem = (outfitId: number, itemId: number) => {
+    const outfit = outfits?.find((o) => o.id === outfitId);
     removeItemFromOutfit.mutate(
       { id: outfitId, itemId },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) }
+      {
+        onSuccess: async () => {
+          queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+          // If the outfit is published, re-sync it to Discover with the item removed
+          if (outfit?.visibility === "public" && user && isSupabaseConfigured()) {
+            const updatedOutfit = {
+              ...outfit,
+              items: (outfit.items ?? []).filter((i) => i.id !== itemId),
+              visibility: "public" as const,
+            };
+            await publishOutfit(updatedOutfit, user.id);
+            queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
+            queryClient.invalidateQueries({ queryKey: ["community", "my-outfits"] });
+          }
+        },
+      }
     );
   };
 
