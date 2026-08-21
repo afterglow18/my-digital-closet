@@ -29,7 +29,7 @@ import { PrivateGateSheet } from "@/components/community/PrivateGateSheet";
 import { hasSavedPref, getSharingPref, setSharingPref } from "@/lib/sharingPreference";
 import { useMyProfile } from "@/hooks/useCommunity";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
-import type { Outfit } from "@/lib/db";
+import { updateOutfit, type Outfit } from "@/lib/db";
 import { OutfitCalendar } from "@/components/calendar/OutfitCalendar";
 import { CalendarDays, List } from "lucide-react";
 
@@ -245,12 +245,19 @@ export default function SavedPage() {
     if (isPublic) {
       // Unpublish immediately — no sharing picker needed
       setPublishingIds((s) => new Set([...s, outfit.id]));
-      renameOutfit.mutate(
-        { id: outfit.id, data: { visibility: "private" } },
-        { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }) },
-      );
-      if (user) await unpublishOutfit(outfit.id, user.id);
-      setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
+      try {
+        if (user) await unpublishOutfit(outfit.id, user.id);
+        // Keep Lookbook's source of truth in sync with the Discover post.
+        updateOutfit(outfit.id, { visibility: "private" });
+        await queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["community", "outfits"] }),
+          queryClient.invalidateQueries({ queryKey: ["community", "my-outfits"] }),
+          queryClient.invalidateQueries({ queryKey: ["following-feed"] }),
+        ]);
+      } finally {
+        setPublishingIds((s) => { const n = new Set(s); n.delete(outfit.id); return n; });
+      }
       return;
     }
 

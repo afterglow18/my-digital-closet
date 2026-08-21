@@ -34,6 +34,7 @@ import { cn, getImageUrl } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { useUnreadNotifCount, useHeartNotifsEnabled } from "@/hooks/useNotifications";
 import { useListOutfits, useRenameOutfit, getListOutfitsQueryKey, useListClothing, useUpdateClothingItem, type ClothingItem } from "@/lib/local-api";
+import { updateOutfit } from "@/lib/db";
 import { publishOutfit, unpublishOutfit, publishItem, unpublishItem } from "@/lib/sync";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -772,13 +773,18 @@ export default function CommunityPage() {
                         try {
                           if (isPublic) {
                             await unpublishOutfit(outfit.id, user.id);
-                            renameOutfit.mutate({ id: outfit.id, data: { visibility: "private" } });
+                            updateOutfit(outfit.id, { visibility: "private" });
                           } else {
                             await publishOutfit({ ...outfit, visibility: "public" }, user.id);
-                            renameOutfit.mutate({ id: outfit.id, data: { visibility: "public" } });
+                            updateOutfit(outfit.id, { visibility: "public" });
                             queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
                           }
-                          queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+                          await Promise.all([
+                            queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }),
+                            queryClient.invalidateQueries({ queryKey: ["community", "outfits"] }),
+                            queryClient.invalidateQueries({ queryKey: ["community", "my-outfits"] }),
+                            queryClient.invalidateQueries({ queryKey: ["following-feed"] }),
+                          ]);
                         } finally {
                           setTogglingId(null);
                         }

@@ -24,6 +24,8 @@ import { setSharingPref } from "@/lib/sharingPreference";
 import { syncLike } from "@/lib/likes";
 import { useFollowState } from "@/hooks/useFollows";
 import { useQueryClient } from "@tanstack/react-query";
+import { updateOutfit } from "@/lib/db";
+import { getListOutfitsQueryKey } from "@/lib/local-api";
 
 interface PublicOutfitCardProps {
   outfit: PublicOutfit & { profiles?: SafeProfile };
@@ -262,8 +264,15 @@ export function PublicOutfitCard({ outfit, onClick, className }: PublicOutfitCar
                 setIsUnpublishing(true);
                 try {
                   await unpublishOutfit(outfit.local_id, user.id);
-                  queryClient.invalidateQueries({ queryKey: ["community", "outfits"] });
-                  queryClient.invalidateQueries({ queryKey: ["community", "my-outfits"] });
+                  // This action originates in Discover, but Lookbook owns the
+                  // local visibility flag that controls the globe/lock icon.
+                  updateOutfit(outfit.local_id, { visibility: "private" });
+                  await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() }),
+                    queryClient.invalidateQueries({ queryKey: ["community", "outfits"] }),
+                    queryClient.invalidateQueries({ queryKey: ["community", "my-outfits"] }),
+                    queryClient.invalidateQueries({ queryKey: ["following-feed"] }),
+                  ]);
                 } catch {
                   setHidden(false); // restore if it failed
                   setIsUnpublishing(false);
