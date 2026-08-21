@@ -334,7 +334,12 @@ export default function SavedPage() {
     return `${m}/${d}/${String(y).slice(2)}`;
   };
 
-  const handleWearToday = (outfitId: number, items: ClothingItem[], currentLastWornDate?: string | null) => {
+  const handleWearToday = (
+    outfitId: number,
+    items: ClothingItem[],
+    currentLastWornDate?: string | null,
+    currentTimesWorn?: number | null,
+  ) => {
     if (items.length === 0) return;
     // Remember the old date so Unwear can restore it this session
     prevWornDatesRef.current.set(outfitId, currentLastWornDate ?? null);
@@ -348,12 +353,23 @@ export default function SavedPage() {
     items.forEach((item) => {
       updateItem.mutate({ id: item.id, data: { timesWorn: (item.timesWorn ?? 0) + 1, lastWornDate: todayStr } });
     });
-    // Persist today's date on the outfit so it survives app restarts
-    renameOutfit.mutate({ id: outfitId, data: { lastWornDate: todayStr } });
+    // Persist usage on the outfit itself so "# Times Worn" represents the
+    // number of times this complete look has been logged.
+    renameOutfit.mutate({
+      id: outfitId,
+      data: {
+        lastWornDate: todayStr,
+        timesWorn: (currentTimesWorn ?? 0) + 1,
+      },
+    });
     queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
   };
 
-  const handleUnwearToday = (outfitId: number, items: ClothingItem[]) => {
+  const handleUnwearToday = (
+    outfitId: number,
+    items: ClothingItem[],
+    currentTimesWorn?: number | null,
+  ) => {
     // Restore the date that was showing before "Wearing This Today" was tapped
     const restoredDate = prevWornDatesRef.current.get(outfitId) ?? null;
     prevWornDatesRef.current.delete(outfitId);
@@ -370,8 +386,14 @@ export default function SavedPage() {
       const prevDate = itemDates?.get(item.id) ?? null;
       updateItem.mutate({ id: item.id, data: { timesWorn: Math.max(0, (item.timesWorn ?? 1) - 1), lastWornDate: prevDate } });
     });
-    // Restore the previous date (or null if it was never worn before)
-    renameOutfit.mutate({ id: outfitId, data: { lastWornDate: restoredDate } });
+    // Restore the previous date and undo this session's outfit wear count.
+    renameOutfit.mutate({
+      id: outfitId,
+      data: {
+        lastWornDate: restoredDate,
+        timesWorn: Math.max(0, (currentTimesWorn ?? 1) - 1),
+      },
+    });
     queryClient.invalidateQueries({ queryKey: getListClothingQueryKey() });
   };
 
@@ -920,7 +942,7 @@ export default function SavedPage() {
                           <Check className="w-3.5 h-3.5" /> Logged!
                         </span>
                         <button
-                          onClick={() => handleUnwearToday(outfit.id, outfit.items ?? [])}
+                          onClick={() => handleUnwearToday(outfit.id, outfit.items ?? [], outfit.timesWorn)}
                           className="text-[10px] font-bold uppercase tracking-wide text-black/40
                                      underline underline-offset-2 hover:text-black/70 transition-colors"
                         >
@@ -942,7 +964,12 @@ export default function SavedPage() {
                           </span>
                         )}
                         <button
-                          onClick={() => handleWearToday(outfit.id, outfit.items ?? [], outfit.lastWornDate)}
+                          onClick={() => handleWearToday(
+                            outfit.id,
+                            outfit.items ?? [],
+                            outfit.lastWornDate,
+                            outfit.timesWorn,
+                          )}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-black
                                      bg-primary text-xs font-bold uppercase tracking-wide
                                      shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]

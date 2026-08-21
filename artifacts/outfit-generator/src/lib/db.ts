@@ -47,6 +47,7 @@ export interface Outfit {
   items?: ClothingItem[];
   createdAt?: string | null;
   lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
+  timesWorn?: number | null;
   visibility?: "private" | "public";
 }
 
@@ -58,6 +59,7 @@ export interface StoredOutfit {
   itemIds: number[];
   createdAt?: string | null;
   lastWornDate?: string | null;  // ISO date "YYYY-MM-DD", local timezone
+  timesWorn?: number | null;
   visibility?: "private" | "public";
 }
 
@@ -185,7 +187,13 @@ export function createOutfit(name: string, itemIds: number[]): Outfit {
 
 export function updateOutfit(
   id: number,
-  data: { name?: string; notes?: string | null; lastWornDate?: string | null; visibility?: "private" | "public" },
+  data: {
+    name?: string;
+    notes?: string | null;
+    lastWornDate?: string | null;
+    timesWorn?: number | null;
+    visibility?: "private" | "public";
+  },
 ): Outfit | null {
   const stored = getAllStoredOutfits();
   const idx = stored.findIndex((o) => o.id === id);

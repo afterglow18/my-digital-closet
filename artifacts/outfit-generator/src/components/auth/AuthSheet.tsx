@@ -76,6 +76,8 @@ const TITLES: Record<ViewState, string> = {
   "privacy-pick": "How to Participate",
   "email-signin": "Welcome Back",
   "check-email":  "Check Your Inbox",
+  "forgot-password": "Reset Password",
+  "reset-sent": "Check Your Inbox",
 };
 
 export function AuthSheet({ onClose, defaultTab = "signup", onSuccess }: AuthSheetProps) {

@@ -24,6 +24,8 @@ const config: CapacitorConfig = {
     // Export compliance — app uses only standard HTTPS; no custom encryption
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      // App Store marketing version — kept in sync with package.json.
+      CFBundleShortVersionString: "1.0.7",
       // iPhone only (1 = iPhone, 2 = iPad) — excludes iPad from App Store listing
       UIDeviceFamily: [1],
       // Required for camera access — missing key causes crash on iOS/iPadOS
