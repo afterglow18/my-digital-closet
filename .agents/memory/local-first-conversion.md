@@ -42,3 +42,16 @@ Stripe web checkout removed — purchases via RevenueCat / Apple StoreKit only.
 - `purchaseProduct()` calls `Purchases.purchasePackage({ aPackage: pkg })` — pkg comes from `offerings.current.monthly/annual`.
 
 **Why:** No server needed at runtime → zero infrastructure cost for end users. Works offline. Simpler App Store review (no server dependency). Images included in iCloud backup via Documents dir.
+
+## Product scope
+
+Keep My Digital Closet as a private, local-first product. Do not reintroduce
+community, Discover, public sharing, profiles, authentication, or Supabase
+features without fresh user approval.
+
+**Why:** The user explicitly chose the lookbook-only experience over the newer
+community-enabled branch, while retaining local Search, daily wear tracking,
+and the outfit planner.
+
+**How to apply:** New wardrobe and Lookbook features should store data locally
+and preserve the no-account experience by default.
