@@ -1,0 +1,50 @@
+log
+Resolving deltas:  80% (322/402)
+Resolving deltas:  81% (326/402)
+Resolving deltas:  82% (330/402)
+Resolving deltas:  83% (334/402)
+Resolving deltas:  84% (338/402)
+Resolving deltas:  85% (342/402)
+Resolving deltas:  86% (346/402)
+Resolving deltas:  87% (350/402)
+Resolving deltas:  88% (354/402)
+Resolving deltas:  89% (358/402)
+Resolving deltas:  90% (362/402)
+Resolving deltas:  91% (366/402)
+Resolving deltas:  92% (370/402)
+Resolving deltas:  93% (374/402)
+Resolving deltas:  94% (378/402)
+Resolving deltas:  95% (382/402)
+Resolving deltas:  96% (386/402)
+Resolving deltas:  97% (390/402)
+Resolving deltas:  98% (394/402)
+Resolving deltas:  99% (398/402)
+Resolving deltas: 100% (402/402)
+Resolving deltas: 100% (402/402), done.
+Updating files:  90% (681/754)
+Updating files:  91% (687/754)
+Updating files:  92% (694/754)
+Updating files:  93% (702/754)
+Updating files:  94% (709/754)
+Updating files:  95% (717/754)
+Updating files:  96% (724/754)
+Updating files:  97% (732/754)
+Updating files:  98% (739/754)
+Updating files:  99% (747/754)
+Updating files: 100% (754/754)
+Updating files: 100% (754/754), done.
+Downloading attached_assets/ScreenRecording_07-10-2026_19-49-09_1_1783731177567.mov (57 MB)
+Error downloading object: attached_assets/ScreenRecording_07-10-2026_19-49-09_1_1783731177567.mov (83a2f68): Smudge error: Error downloading attached_assets/ScreenRecording_07-10-2026_19-49-09_1_1783731177567.mov (83a2f68a3bbeb8006f0bff62d4f70d6c8a4092672ccd9021061ba183b1f5a962): batch response: This repository exceeded its LFS budget. The account responsible for the budget should increase it to restore access.
+
+Errors logged to '/Users/builder/clone/.git/lfs/logs/20260824T135215.378185.log'.
+Use `git lfs logs last` to view the log.
+error: external filter 'git-lfs filter-process' failed
+fatal: attached_assets/ScreenRecording_07-10-2026_19-49-09_1_1783731177567.mov: smudge filter lfs failed
+warning: Clone succeeded, but checkout failed.
+You can inspect what was checked out with 'git status'
+and retry with 'git restore --source=HEAD :/'
+
+
+
+Build failed :|
+Failed to clone repository
