@@ -11,7 +11,7 @@ import {
   getListClothingQueryKey,
   ClothingItem,
 } from "@/lib/local-api";
-import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt, Search } from "lucide-react";
+import { Trash2, Bookmark, Plus, Pencil, Check, X, Shirt, Search, CalendarDays, List } from "lucide-react";
 import { search as searchFn } from "@/lib/search";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/lib/utils";
@@ -21,6 +21,7 @@ import { UpgradeSheet } from "@/components/paywall/UpgradeSheet";
 import { FREE_OUTFIT_LIMIT } from "@/lib/entitlements";
 import { WardrobePickerSheet } from "@/components/clothing/WardrobePickerSheet";
 import { ItemDetailsSheet } from "@/components/clothing/ItemDetailsSheet";
+import { OutfitCalendar } from "@/components/calendar/OutfitCalendar";
 
 const SLOT_ORDER = ["tops", "bottoms", "shoes", "dresses", "outerwear", "accessories"] as const;
 type SlotKey = (typeof SLOT_ORDER)[number];
@@ -79,6 +80,7 @@ export default function SavedPage() {
   const updateItem = useUpdateClothingItem();
   const { tier } = useEntitlements();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [searchQuery, setSearchQuery] = useState('');
   const [detailsFromSearch, setDetailsFromSearch] = useState(false);
   const { data: allItems = [] } = useListClothing({});
@@ -255,25 +257,45 @@ export default function SavedPage() {
         <div className="flex items-center justify-between">
           <p className="font-medium text-muted-foreground text-sm">Hall of fame.</p>
 
-          {/* Free tier outfit usage badge */}
-          {isFree && outfitCount > 0 && (
-            <button
-              onClick={() => setShowUpgrade(true)}
-              className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full
-                          border-2 transition-colors
-                          ${atLimit
-                            ? "bg-black text-white border-black"
-                            : outfitCount >= FREE_OUTFIT_LIMIT - 1
-                            ? "bg-primary border-black text-black"
-                            : "bg-white border-black/20 text-black/40 hover:border-black/40"
-                          }`}
-            >
-              {outfitCount}/{FREE_OUTFIT_LIMIT} saved
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-full border-2 border-black overflow-hidden">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-2 py-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide ${viewMode === "list" ? "bg-black text-white" : "bg-white text-black/50"}`}
+              >
+                <List className="w-3 h-3" /> List
+              </button>
+              <button
+                onClick={() => setViewMode("calendar")}
+                className={`px-2 py-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide ${viewMode === "calendar" ? "bg-black text-white" : "bg-white text-black/50"}`}
+              >
+                <CalendarDays className="w-3 h-3" /> Plan
+              </button>
+            </div>
+
+            {isFree && outfitCount > 0 && (
+              <button
+                onClick={() => setShowUpgrade(true)}
+                className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full
+                            border-2 transition-colors
+                            ${atLimit
+                              ? "bg-black text-white border-black"
+                              : outfitCount >= FREE_OUTFIT_LIMIT - 1
+                              ? "bg-primary border-black text-black"
+                              : "bg-white border-black/20 text-black/40 hover:border-black/40"
+                            }`}
+              >
+                {outfitCount}/{FREE_OUTFIT_LIMIT} saved
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
+      {viewMode === "calendar" ? (
+        <OutfitCalendar outfits={outfits ?? []} />
+      ) : (
+        <>
       {/* ── Search bar ── */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40 pointer-events-none" />
@@ -742,6 +764,8 @@ export default function SavedPage() {
           </p>
         </div>
       ))}
+        </>
+      )}
 
       {/* Upgrade sheet */}
       <AnimatePresence>

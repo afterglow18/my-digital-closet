@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   type ClothingItem,
   type Outfit,
+  type CalendarEntry,
   getClothingItem,
   listClothingItems,
   createClothingItem,
@@ -22,12 +23,16 @@ import {
   deleteOutfit,
   addItemToOutfit,
   removeItemFromOutfit,
+  getCalendarEntries,
+  setCalendarEntry,
+  removeCalendarEntry,
   generateOutfitItems,
 } from "./db";
 import { deleteImage } from "./imageStorage";
 
 // Re-export types so pages can import them from here
 export type { ClothingItem, Outfit };
+export type { CalendarEntry };
 
 // Compatibility type aliases (used in some components)
 export type ClothingItemUpdateCategory = string;
@@ -193,6 +198,43 @@ export function useRemoveItemFromOutfit() {
       removeItemFromOutfit(id, itemId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListOutfitsQueryKey() });
+    },
+  });
+}
+
+// ── Outfit planner hooks ───────────────────────────────────────────────────────
+
+export function getCalendarQueryKey(): unknown[] {
+  return ["calendar"];
+}
+
+export function useCalendarEntries() {
+  return useQuery({
+    queryKey: getCalendarQueryKey(),
+    queryFn: () => getCalendarEntries(),
+  });
+}
+
+export function useSetCalendarEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ date, outfitId }: { date: string; outfitId: number }) => {
+      setCalendarEntry(date, outfitId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getCalendarQueryKey() });
+    },
+  });
+}
+
+export function useRemoveCalendarEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ date }: { date: string }) => {
+      removeCalendarEntry(date);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getCalendarQueryKey() });
     },
   });
 }

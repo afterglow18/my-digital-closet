@@ -206,6 +206,35 @@ export function removeItemFromOutfit(outfitId: number, itemId: number): Outfit |
   return hydrateOutfit(stored[idx]);
 }
 
+// ── Outfit planner ────────────────────────────────────────────────────────────
+export interface CalendarEntry {
+  date: string;
+  outfitId: number;
+}
+
+const CALENDAR_KEY = "mdc_calendar";
+
+export function getCalendarEntries(): CalendarEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(CALENDAR_KEY) ?? "[]") as CalendarEntry[];
+  } catch {
+    return [];
+  }
+}
+
+export function setCalendarEntry(date: string, outfitId: number): void {
+  const entries = getCalendarEntries().filter((entry) => entry.date !== date);
+  entries.push({ date, outfitId });
+  localStorage.setItem(CALENDAR_KEY, JSON.stringify(entries));
+}
+
+export function removeCalendarEntry(date: string): void {
+  localStorage.setItem(
+    CALENDAR_KEY,
+    JSON.stringify(getCalendarEntries().filter((entry) => entry.date !== date)),
+  );
+}
+
 // ── Outfit generator (local random pick per category) ─────────────────────────
 export function generateOutfitItems(excludeCategories: string[] = []): ClothingItem[] {
   const items = getAllClothingItems().filter(
