@@ -543,9 +543,7 @@ export default function WardrobePage() {
                   border: "none",
                   cursor: "pointer",
                   borderRadius: 20,
-                  boxShadow: canSave
-                    ? "0 0 0 2.5px rgba(196,155,42,0.45)"
-                    : "none",
+                   boxShadow: "none",
                 }}
               />
             )}
