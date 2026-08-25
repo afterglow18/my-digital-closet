@@ -1,9 +1,11 @@
 /**
  * WardrobePage — closet-bg.png (941×1672 PNG)
  *
- * Sizing: object-fit CONTAIN inside min(calc(100dvh − 90px), calc(100vw × H/W)).
- *   Image ratio 0.5629 — taller than iPhone portrait ratio (≈0.517) → fills width.
- *   min() clamps container to image aspect ratio so image fills exactly — no letterbox.
+ * Sizing: the page fills the space above the bottom navigation and the image
+ * uses aspect-preserving cover math so there is no blank strip below it.
+ *   On tall phone screens the image is a little wider than the viewport and
+ *   is cropped symmetrically at the sides; all overlay landmarks use that
+ *   same rendered rectangle, keeping controls aligned with the image.
  *   Container background #F0C030 (door yellow) blends with yellow doors on sides.
  *
  * Layout (z-index):
@@ -125,22 +127,31 @@ function useImageRect(containerRef: RefObject<HTMLDivElement>): ImgRect {
     const compute = () => {
       const c = containerRef.current;
       if (!c) return;
-      const cW = c.clientWidth, cH = c.clientHeight;
+      const bounds = c.getBoundingClientRect();
+      const cW = bounds.width, cH = bounds.height;
+      if (cW <= 0 || cH <= 0) return;
       const iR = IMG_W / IMG_H;
       const cR = cW / cH;
       let rW: number, rH: number, rL: number, rT: number;
       if (cR > iR) {
-        // Container wider than image: fill height, center horizontally
+        // Container wider than image: fill height, center horizontally.
         rH = cH; rW = cH * iR; rT = 0; rL = (cW - rW) / 2;
       } else {
-        // Container taller than image: fill width, anchor top
-        rW = cW; rH = cW / iR; rL = 0; rT = 0;
+        // Container taller than image: fill height and crop equal side strips.
+        rH = cH; rW = cH * iR; rL = (cW - rW) / 2; rT = 0;
       }
       setRect({ top: rT, left: rL, width: rW, height: rH, containerH: cH });
     };
     compute();
     window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(compute)
+      : null;
+    if (observer && containerRef.current) observer.observe(containerRef.current);
+    return () => {
+      window.removeEventListener("resize", compute);
+      observer?.disconnect();
+    };
   }, [containerRef]);
   return rect;
 }
@@ -263,10 +274,9 @@ export default function WardrobePage() {
       style={{
         position: "relative",
         width: "100%",
-        // Clamp to image aspect ratio so it fills the container exactly — no
-        // letterbox gap below — because the save-bar is baked into the rug at the
-        // bottom of the image.  min() prevents overflow on very short screens.
-        height: `min(calc(100dvh - ${NAV_H}px), calc(100vw * ${(IMG_H / IMG_W).toFixed(6)}))`,
+        // Fill the complete content area above the bottom navigation so the
+        // background image continues through the former white strip.
+        height: `calc(100dvh - ${NAV_H}px - env(safe-area-inset-bottom))`,
         overflow: "hidden",
         // Door-yellow background blends with yellow doors visible at sides/bottom
         background: "#F0C030",

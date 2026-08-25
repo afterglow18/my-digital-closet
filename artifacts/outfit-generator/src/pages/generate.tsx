@@ -53,17 +53,26 @@ function useImageRect(ref: RefObject<HTMLDivElement>): ImgRect {
     const compute = () => {
       const c = ref.current;
       if (!c) return;
-      const cW = c.clientWidth, cH = c.clientHeight;
+      const bounds = c.getBoundingClientRect();
+      const cW = bounds.width, cH = bounds.height;
+      if (cW <= 0 || cH <= 0) return;
       const iR = IMG_W / IMG_H;
       const cR = cW / cH;
       let rW: number, rH: number, rL: number, rT: number;
       if (cR > iR) { rH = cH; rW = cH * iR; rT = 0; rL = (cW - rW) / 2; }
-      else          { rW = cW; rH = cW / iR; rL = 0; rT = 0; }
+      else          { rH = cH; rW = cH * iR; rL = (cW - rW) / 2; rT = 0; }
       setRect({ top: rT, left: rL, width: rW, height: rH, containerH: cH });
     };
     compute();
     window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(compute)
+      : null;
+    if (observer && ref.current) observer.observe(ref.current);
+    return () => {
+      window.removeEventListener("resize", compute);
+      observer?.disconnect();
+    };
   }, [ref]);
   return rect;
 }
@@ -253,7 +262,7 @@ export default function GeneratePage() {
       style={{
         position: "relative",
         width: "100%",
-        height: `min(calc(100dvh - ${NAV_H}px), calc(100vw * ${(IMG_H / IMG_W).toFixed(6)}))`,
+        height: `calc(100dvh - ${NAV_H}px - env(safe-area-inset-bottom))`,
         overflow: "hidden",
         background: "#F0C030",
       }}
