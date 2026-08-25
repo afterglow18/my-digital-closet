@@ -262,7 +262,9 @@ export default function GeneratePage() {
       style={{
         position: "relative",
         width: "100%",
-        height: `calc(100dvh - ${NAV_H}px - env(safe-area-inset-bottom))`,
+        // The bottom navigation owns the iOS safe-area inset.  Do not subtract
+        // it here or a white strip appears above the navigation on device.
+        height: `calc(100dvh - ${NAV_H}px)`,
         overflow: "hidden",
         background: "#F0C030",
       }}
@@ -273,10 +275,11 @@ export default function GeneratePage() {
         alt="My Digital Closet"
         style={{
           position: "absolute",
-          top:    ready ? ir.top    : 0,
-          left:   ready ? ir.left   : 0,
+           top:    ready ? ir.top    : 0,
+           left:   "50%",
           width:  ready ? ir.width  : "100%",
           height: ready ? ir.height : "auto",
+           transform: "translateX(-50%)",
           display: "block",
           pointerEvents: "none",
           userSelect: "none",

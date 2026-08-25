@@ -9,7 +9,7 @@ description: Background image sizing, landmark fractions, ClosetRow contract, ha
 **Dimensions:** 941×1672 px (aspect ratio H/W = 1.7769)
 **Source:** User-supplied image (no modifications).
 
-**Rendering:** Wardrobe and Generate fill the area above the bottom navigation. Artwork uses aspect-preserving cover math, cropping equal side strips on tall portrait screens rather than leaving a blank band below it. All overlays use the same rendered image rectangle, which updates through `ResizeObserver` as iOS settles its viewport after launch.
+**Rendering:** Wardrobe and Generate fill the area above the bottom navigation. The navigation—not the artwork page—owns the iOS bottom safe area; subtracting that inset leaves a visible white band. Artwork uses aspect-preserving cover math, cropping equal side strips on tall portrait screens rather than leaving a blank band below it. All overlays use the same rendered image rectangle, which updates through `ResizeObserver` as iOS settles its viewport after launch.
 
 **Container background:** `#F0C030` (matches yellow doors visible on sides).
 

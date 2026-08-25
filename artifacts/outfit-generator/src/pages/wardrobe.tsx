@@ -276,7 +276,9 @@ export default function WardrobePage() {
         width: "100%",
         // Fill the complete content area above the bottom navigation so the
         // background image continues through the former white strip.
-        height: `calc(100dvh - ${NAV_H}px - env(safe-area-inset-bottom))`,
+        // The bottom navigation owns the iOS safe-area inset.  Do not subtract
+        // it here or a white strip appears above the navigation on device.
+        height: `calc(100dvh - ${NAV_H}px)`,
         overflow: "hidden",
         // Door-yellow background blends with yellow doors visible at sides/bottom
         background: "#F0C030",
@@ -288,10 +290,11 @@ export default function WardrobePage() {
         alt="My Digital Closet"
         style={{
           position: "absolute",
-          top:    ready ? ir.top    : 0,
-          left:   ready ? ir.left   : 0,
+           top:    ready ? ir.top    : 0,
+           left:   ready ? "50%"    : "50%",
           width:  ready ? ir.width  : "100%",
           height: ready ? ir.height : "auto",
+           transform: "translateX(-50%)",
           display: "block",
           pointerEvents: "none",
           userSelect: "none",
