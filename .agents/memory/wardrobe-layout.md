@@ -40,10 +40,10 @@ rows[2] SHOES:
 Save bar (transparent tap zones over baked-in rug circles):
   barY:    0.885   (rug top   y≈1480)
   barBot:  0.993   (bar bot   y≈1660)
-  hangerCX: 0.175  (left hanger icon centre x≈165)
-  saveBtnL: 0.350  (centre button left  x≈329)
-  saveBtnR: 0.650  (centre button right x≈612)
-  manneCX:  0.824  (right dress-form   x≈775)
+   hangerCX: 0.268  (left hanger icon centre x≈253)
+   saveBtnL: 0.411  (centre button left  x≈387)
+   saveBtnR: 0.573  (centre button right x≈539)
+   manneCX:  0.708  (right dress-form   x≈667)
 ```
 
 ## ClosetRow photo positioning

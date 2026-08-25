@@ -108,10 +108,12 @@ const LM = {
   // Visual from background image; HTML = transparent tap zones only.
   barY:     0.885, // rug/bar top   y≈1480 (1480/1672)
   barBot:   0.993, // bar bottom    y≈1660 (1660/1672)
-  hangerCX: 0.175, // left  hanger icon centre x≈165 (165/941)
-  saveBtnL: 0.350, // centre button left  edge  x≈329 (329/941)
-  saveBtnR: 0.650, // centre button right edge  x≈612 (612/941)
-  manneCX:  0.824, // right dress-form centre   x≈775 (775/941)
+  // Measured from the current closet background's baked-in rug controls.
+  // These are intentionally not the old wide-spaced landmark values.
+  hangerCX: 0.268, // left hanger circle centre x≈253 (253/941)
+  saveBtnL: 0.411, // centre save circle left edge x≈387 (387/941)
+  saveBtnR: 0.573, // centre save circle right edge x≈539 (539/941)
+  manneCX:  0.708, // right dress-form circle centre x≈667 (667/941)
 } as const;
 
 // ── useImageRect ─────────────────────────────────────────────────────────────
@@ -467,8 +469,8 @@ export default function WardrobePage() {
             style={{
               position: "absolute",
               top:    pY(ir, LM.barY),
-              left:   pX(ir, LM.hangerCX) - 38,
-              width:  76,
+              left:   pX(ir, LM.hangerCX) - 41,
+              width:  82,
               height: pH(ir, LM.barBot - LM.barY),
               zIndex: 14,
               background: "transparent",
@@ -571,8 +573,8 @@ export default function WardrobePage() {
             style={{
               position: "absolute",
               top:    pY(ir, LM.barY),
-              left:   pX(ir, LM.manneCX) - 38,
-              width:  76,
+              left:   pX(ir, LM.manneCX) - 41,
+              width:  82,
               height: pH(ir, LM.barBot - LM.barY),
               zIndex: 14,
               background: "transparent",
